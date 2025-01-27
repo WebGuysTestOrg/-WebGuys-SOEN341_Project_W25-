@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Page</title>
+    <link rel="stylesheet" href="adminstyle.css">
+</head>
+<body>
+    <h3>Hi, <span id="admin-name">Admin</span></h3>
+    <h1>Welcome to the Admin Page</h1>
+    <p>This is the admin page where you can manage teams, channels, and users.</p>
+    <a href="/logout" class="btn">Logout</a>
+
+    
+    <div class="form-container">
+        <h2>Create Team</h2>
+        <form id="createTeamForm">
+            <input type="text" id="teamName" placeholder="Enter Team Name" required>
+            <button type="submit" class="btn">Create Team</button>
+        </form>
+    </div>
+
+    
+  
+<div class="form-container">
+    <h2>Create Channel</h2>
+    <form id="createChannelForm">
+        <input type="text" id="channelName" placeholder="Enter Channel Name" required>
+        <input type="number" id="teamId" placeholder="Enter Team ID" required>
+        <button type="submit" class="btn">Create Channel</button>
+    </form>
+</div>
+
+
+    
+<div class="form-container">
+    <h2>Assign User to Channel</h2>
+    <form id="assignUserForm">
+        <input type="number" id="teamIdAssign" placeholder="Enter Team ID" required>
+        <input type="text" id="channelNameAssign" placeholder="Enter Channel Name" required>
+        <input type="text" id="userNameAssign" placeholder="Enter User Name" required>
+        <button type="submit" class="btn">Assign User</button>
+    </form>
+</div>
+
+
+    
+    <div class="form-container">
+        <h2>Teams, Channels, and Members</h2>
+        <div id="teams-container"></div>
+    </div>
+
+    <script>
+        // Fetch Admin Info
+        fetch('/admin-info')
+            .then(response => {
+                if (!response.ok) throw new Error('Unauthorized');
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('admin-name').textContent = data.name;
+            })
+            .catch(() => window.location.href = '/login_form.html');
+
+            document.getElementById("createTeamForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const teamName = document.getElementById("teamName").value;
+
+    //fetch team info
+    fetch("/create-team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamName }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert("Team created successfully!");
+                fetchTeamsWithChannels(); 
+                document.getElementById("createTeamForm").reset(); 
+                
+            }
+        })
+        .catch((err) => console.error("Error creating team:", err));
+});
+
+        // Create Channel
+    document.getElementById('createChannelForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const channelName = document.getElementById('channelName').value;
+    const teamId = document.getElementById('teamId').value;
+
+    if (!channelName || !teamId) {
+        alert("Please provide both Channel Name and Team ID.");
+        return;
+    }
+
+    fetch('/create-channel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelName, teamId }),
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert('Channel created successfully!');
+                fetchTeamsWithChannels(); 
+                document.getElementById('createChannelForm').reset(); 
+            }
+        })
+        .catch(err => console.error('Error:', err));
+});
+
+        // Assign User to Channel
+    document.getElementById('assignUserForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const teamId = document.getElementById('teamIdAssign').value;
+    const channelName = document.getElementById('channelNameAssign').value;
+    const userName = document.getElementById('userNameAssign').value;
+
+    if (!teamId || !channelName || !userName) {
+        alert("Please provide Team ID, Channel Name, and User Name.");
+        return;
+    }
+
+    fetch('/assign-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, channelName, userName }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert('User assigned successfully!');
+                fetchTeamsWithChannels(); 
+                document.getElementById('assignUserForm').reset();
+            }
+        })
+        .catch((err) => console.error('Error:', err));
+});
+
+
+        // Fetch Teams with Channels and Members
+        function fetchTeamsWithChannels() {
+            fetch('/get-teams-with-channels')
+                .then(response => response.json())
+                .then(teams => {
+                    const teamsContainer = document.getElementById('teams-container');
+                    teamsContainer.innerHTML = '';
+                    Object.values(teams).forEach(team => {
+                        const teamDiv = document.createElement('div');
+                        teamDiv.innerHTML = `<h3>${team.teamName}</h3>`;
+                        Object.values(team.channels).forEach(channel => {
+                            const channelDiv = document.createElement('div');
+                            channelDiv.innerHTML = `
+                                <h4>Channel: ${channel.channelName}</h4>
+                                <p>Members: ${channel.members.join(', ') || 'No members'}</p>
+                            `;
+                            teamDiv.appendChild(channelDiv);
+                        });
+                        teamsContainer.appendChild(teamDiv);
+                    });
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchTeamsWithChannels);
+    </script>
+</body>
+</html>
+
