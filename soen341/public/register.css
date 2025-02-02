@@ -1,30 +1,81 @@
 
-body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    background-color: #eef2f3;
-    color: #333;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+:root{
+    --accent-color: rgb(163, 108, 163);
+    --base-color:var(--accent-color);
+    --text-color:var(--accent-color);
+    --input-color:var(--accent-color);
 }
 
+*{
+    margin:0;
+    padding:0;
+}
 
-.form-container {
-    background-color: #ffffff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 350px;
+html{
+    font-family:Poppins, Segoe UI, sans-serif;
+    font-size: 12pt;
+    color:var(--text-color);
     text-align: center;
 }
 
+body {
+    display: flex;
+    justify-content: flex-start; /* Align the form container to the left */
+    align-items: center; /* Center the container vertically */
+    background-color: #3A3A3A;
+    min-height: 100vh; /* Full viewport height */
+    margin: 0; /* Remove default browser margin */
+}
+
+/* Navbar styles */
+.navbar {
+    width: 100%;
+    background-color:rgb(163, 108, 163); /* Dark background color */
+    color: #fff; /* White text */
+    padding: 15px 20px;
+    position: fixed; /* Stick to the top of the page */
+    top: 0;
+    left: 0;
+    z-index: 1000; /* Ensure it stays above other elements */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+.navbar-content {
+    display: flex;
+    justify-content: space-between; /* Space between website name and links */
+    align-items: left; /* Align items vertically */
+    max-width: 1200px; /* Optional: Limit the width for centered content */
+    margin: 0 auto; /* Center the content horizontally */
+}
+
+.navbar-title {
+    position:Left;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+    font-family: "Poppins", sans-serif;
+  
+}
+
+.form-container {
+    display: flex;
+    flex-direction: column; /* Stack heading and form vertically */
+    justify-content: center; /* Center content within the container */
+    align-items: center; /* Align items in the center horizontally */
+    background-color: rgb(255, 255, 255); /* White background for the form */
+    padding: 50px; /* Add padding around the form */
+    border-radius: 20px; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+    max-width: 700px; /* Limit maximum width of the form */
+    width: 90%; /* Adjust width for responsiveness */
+    text-align: center; /* Center-align text */
+    margin-left: 400px; /* Move the container slightly to the left */
+
+}
 .form-container h1 {
-    font-size: 2rem;
-    color: #007bff;
+    font-size: 2rem;  
     margin-bottom: 20px;
 }
 
@@ -34,10 +85,11 @@ body {
 }
 
 label {
-    display: block;
-    font-size: 0.9rem;
-    margin-bottom: 5px;
-    color: #555;
+    display: flex;
+    align-items: center;
+    margin-right: 10px; /* Space between the icon and the input */
+    font-size: 1rem;
+  
 }
 
 input[type="email"],
