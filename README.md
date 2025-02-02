@@ -10,7 +10,7 @@ ChatHaven is a web-based communication platform designed to facilitate seamless 
 
 This project follows Agile development practices, utilizing GitHub for version control, task management, and collaboration tools, ensuring an iterative and efficient development process.
 
-##Features
+## Features
 
     -Topic-Specific Text Channels: Users can join and  participate in discussions in categorized public channels.
     -Direct Messaging: Private one-on-one conversations with message privacy.
