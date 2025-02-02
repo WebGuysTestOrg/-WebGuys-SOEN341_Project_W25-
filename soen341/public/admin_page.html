@@ -218,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         closeChat.addEventListener("click", () => {
-            chatContainer.style.left = "-300px";
+            chatContainer.style.left = "-700px";
             setTimeout(() => {
         chatToggle.style.display = "block";  // Show button after animation ends
     }, 300);
@@ -243,13 +243,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     input.focus()
         const message = input.value;
-        // if (message) {
-        //     const messageElement = document.createElement("div");
-        //      messageElement.textContent = "You: " + message;
-        //      chatMessages.appendChild(messageElement);
-        //     chatMessages.scrollTop = chatMessages.scrollHeight; 
-        
-        // }
           
     }
     socket.on("message", (msg) => {
