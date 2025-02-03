@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="login.css">
+        <title>Login Page</title>
+    </head>
+    <body>
+        <div class="form-container">
+            <h1>Login</h1>
+             <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="btn">Login</button>
+                <p id="error-message" style="color: red; display: none;"></p>
+                <p>Don't have an account? <a href="register_form.html">Register here</a></p>
+            </form>
+            <script>
+                document.getElementById('loginForm').addEventListener('submit', function (e) {
+                     e.preventDefault();
+             
+                     const email = document.getElementById('email').value;
+                     const password = document.getElementById('password').value;
+             
+                     fetch('/login', {
+                         method: 'POST',
+                         headers: {
+                             'Content-Type': 'application/json',
+                         },
+                         body: JSON.stringify({ email, password }),
+                     })
+                         .then((response) => response.json())
+                         .then((data) => {
+                             if (data.error) {
+                                 const errorMessage = document.getElementById('error-message');
+                                 errorMessage.style.display = 'block';
+                                 errorMessage.textContent = data.error;
+                             } else if (data.redirect) {
+                                 window.location.href = data.redirect;
+                             }
+                         })
+                         .catch((error) => {
+                             console.error('Error:', error);
+                         });
+                 });
+             </script>
+ 
+</body>
+</html>          
