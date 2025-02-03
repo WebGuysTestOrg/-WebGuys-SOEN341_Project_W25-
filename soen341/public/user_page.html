@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Page</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" integrity="sha512-8ExARjWWkIllMlNzVg7JKq9RKWPlJABQUNq6YvAjE/HobctjH/NA+bSiDMDvouBVjp4Wwnf1VP1OEv7Zgjtuxw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="adminstyle.css">
 </head>
 <body>
@@ -17,7 +19,20 @@
         <h2>Teams, Channels, and Members</h2>
         <div id="teams-container"></div>
     </div>
-
+    <div id="chat-toggle">
+        <i class="fa-solid fa-globe"></i>
+</div>
+    <div id="chat-container">
+        <div id="chat-header">
+            <span id="Chat-title"> Global Chat</span>
+            <button id="close-chat">✖</button>
+        </div>
+        <div id="chat-messages"></div> <!-- Ensure this ID matches with CSS -->
+        <div id="chat-input">
+            <input type="text" id="message" placeholder="Type a message...">
+            <button id="send">Send</button>
+        </div>
+    </div>
     <script>
         let loggedInUser = "";
         let loggedInUserId = "";
@@ -93,6 +108,109 @@
 }
 
         
+        document.addEventListener('DOMContentLoaded', fetchUserTeams);
+
+        const socket=io('ws://localhost:3000')
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    const chatToggle = document.getElementById("chat-toggle");
+    const chatContainer = document.getElementById("chat-container");
+    const closeChat = document.getElementById("close-chat");
+    const sendButton = document.getElementById("send");
+    const messageInput = document.getElementById("message");
+    const chatMessages = document.getElementById("chat-messages");
+
+    // Toggle chat visibility
+    chatToggle.addEventListener("click", () => {
+            chatContainer.style.left = "0";
+            chatToggle.style.display = "none"; 
+        });
+
+        closeChat.addEventListener("click", () => {
+            chatContainer.style.left = "-700px";
+            setTimeout(() => {
+        chatToggle.style.display = "block";  // Show button after animation ends
+    }, 300);
+        });
+
+    // Send message
+    sendButton.addEventListener("click", () => {
+        sendMessage();
+    });
+
+    messageInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+            sendMessage();
+        }
+    });
+    let messages = [];
+    //load messages
+    const storedMessages = JSON.parse(sessionStorage.getItem("chatMessages")) || [];
+    messages = storedMessages;
+    console.log("LoadedMessage",messages)
+displayMessage(messages)
+    //display messages
+    function displayMessage(msg) {
+    
+messages.forEach((msg)=>{
+    const messageElement = document.createElement("div");
+    if (msg.sender === "Me") {
+        messageElement.classList.add("my-message");
+        messageElement.textContent = `${msg.text}`;
+}else {
+        messageElement.classList.add("other-message");
+        messageElement.textContent = `${msg.sender}: ${msg.text}`;
+    }
+    chatMessages.appendChild(messageElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+})
+  
+}
+
+
+
+    function addMessage(sender,text) {
+    const newMessage = {
+        id: messages.length + 1,
+        text: text,
+        sender: sender, // "Me" if it's your message
+        timestamp: Date.now()
+    };
+
+    messages.push(newMessage); // Store message in the array
+    sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+}
+    function sendMessage() {
+    
+    const input =document.getElementById("message")
+    if (input.value){
+        socket.emit('message',{text:input.value})
+    }
+    input.focus()
+        const message = input.value;
+          
+    }
+    socket.on("message", (msg) => {
+        const messageElement = document.createElement("div");
+        if(socket.id===msg.SSocketId){
+            messageElement.classList.add("my-message");
+            messageElement.textContent = `${msg.text}`;
+            addMessage("Me",msg.text)
+            sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+        }
+        else{
+            messageElement.classList.add("other-message");
+            messageElement.textContent = `${msg.user}: ${msg.text}`;
+            addMessage(msg.user,msg.text)
+            sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+        }
+        console.log("SavedMessages",messages)
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight; 
+        messageInput.value = "";
+    });
+});
     </script>
 </body>
 </html>

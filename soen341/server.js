@@ -1,26 +1,65 @@
 const express = require("express");
-const mysql = require("mysql");
+const mysql = require("mysql2");
 const bodyParser = require("body-parser");
 const crypto = require("crypto");
 const session = require("express-session");
 const path = require("path");
+const sharedSession = require("express-socket.io-session"); 
+const {Server} =require("socket.io") 
+
+
 
 const app = express();
+
+const PORT= process.env.PORT|| 3000
+const expressServer=app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+});
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-app.use(
+const sessionMiddleware= 
     session({
         secret: "your_secret_key",
         resave: false,
         saveUninitialized: true,
         cookie: { maxAge: 3600000 },
-    })
-);
+    });
 
+app.use(sessionMiddleware)
 app.use(express.static(path.join(__dirname, "public")));
 
 
+const io= new Server(expressServer,{
+    cors:{
+        origin:process.env.NODE_ENV==="production"? false :["http://localhost:3000","http://127.0.0.1:3000"]
+    }
+})
+io.use(sharedSession(sessionMiddleware, {
+    autoSave: true,  // Automatically save session on socket events
+}));
+io.on('connection',socket =>{
+    const session = socket.handshake.session;
+
+    if (session && session.user && session.user.name) {
+        console.log(`User ${session.user.name} connected`);
+    } else {
+        console.log(`User with no session connected`);
+    }
+    socket.on('message',data=>{
+        const message = data.text;
+         
+        const user = session.user && session.user.name ? `${session.user.name}[${session.user.user_type}_${session.user.id.toString().padStart(3, '0')}]`:"Anonymous"; 
+        io.emit('message',{SSocketId:socket.id,user:user,text:message})
+    })
+
+    socket.on("disconnect", (reason) => {
+        console.log(`User ${socket.id} disconnected: ${reason}`);
+    });
+})
+
+
+// Database Connection
 const connection = mysql.createConnection({
     host: "localhost",
     user: "root",
@@ -34,6 +73,11 @@ connection.connect((err) => {
 });
 
 
+
+
+
+
+// User Registration
 app.post("/register", (req, res) => {
     const { name, email, password, cpassword, user_type } = req.body;
 
@@ -128,6 +172,7 @@ app.get("/admin-info", (req, res) => {
     }
     res.json({ name: req.session.user.name });
 });
+
 
 app.post("/create-team", (req, res) => {
     if (!req.session.user) {
@@ -421,6 +466,3 @@ app.get("/logout", (req, res) => {
 });
 
 
-app.listen(3000, () => {
-    console.log("Server running at http://localhost:3000");
-});
