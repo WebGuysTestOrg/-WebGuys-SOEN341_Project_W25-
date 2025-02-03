@@ -234,7 +234,43 @@ document.addEventListener("DOMContentLoaded", () => {
             sendMessage();
         }
     });
+    let messages = [];
+    //load messages
+    const storedMessages = JSON.parse(sessionStorage.getItem("chatMessages")) || [];
+    messages = storedMessages;
+    console.log("LoadedMessage",messages)
+displayMessage(messages)
+    //display messages
+    function displayMessage(msg) {
+    
+messages.forEach((msg)=>{
+    const messageElement = document.createElement("div");
+    if (msg.sender === "Me") {
+        messageElement.classList.add("my-message");
+        messageElement.textContent = `${msg.text}`;
+}else {
+        messageElement.classList.add("other-message");
+        messageElement.textContent = `${msg.sender}: ${msg.text}`;
+    }
+    chatMessages.appendChild(messageElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+})
+  
+}
 
+
+
+    function addMessage(sender,text) {
+    const newMessage = {
+        id: messages.length + 1,
+        text: text,
+        sender: sender, // "Me" if it's your message
+        timestamp: Date.now()
+    };
+
+    messages.push(newMessage); // Store message in the array
+    sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+}
     function sendMessage() {
     
     const input =document.getElementById("message")
@@ -250,12 +286,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if(socket.id===msg.SSocketId){
             messageElement.classList.add("my-message");
             messageElement.textContent = `${msg.text}`;
+            addMessage("Me",msg.text)
+            sessionStorage.setItem("chatMessages", JSON.stringify(messages));
         }
         else{
             messageElement.classList.add("other-message");
             messageElement.textContent = `${msg.user}: ${msg.text}`;
+            addMessage(msg.user,msg.text)
+            sessionStorage.setItem("chatMessages", JSON.stringify(messages));
         }
-        
+        console.log("SavedMessages",messages)
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight; 
         messageInput.value = "";
