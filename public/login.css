@@ -92,16 +92,3 @@ p a:hover {
 }
 
 
-@media (max-width: 600px) {
-    .form-container {
-        padding: 20px;
-    }
-
-    .form-container h1 {
-        font-size: 1.5rem;
-    }
-
-    .btn {
-        font-size: 0.9rem;
-    }
-}

@@ -20,7 +20,7 @@ app.use(
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// Database Connection
+
 const connection = mysql.createConnection({
     host: "localhost",
     user: "root",
@@ -33,7 +33,7 @@ connection.connect((err) => {
     console.log("Connected to the database.");
 });
 
-// User Registration
+
 app.post("/register", (req, res) => {
     const { name, email, password, cpassword, user_type } = req.body;
 
@@ -41,32 +41,48 @@ app.post("/register", (req, res) => {
         return res.status(400).json({ error: "Passwords do not match!" });
     }
 
+   
     const checkEmailQuery = "SELECT id FROM user_form WHERE email = ?";
-    connection.query(checkEmailQuery, [email], (err, results) => {
+    connection.query(checkEmailQuery, [email], (err, emailResults) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ error: "Server error. Please try again later." });
         }
 
-        if (results.length > 0) {
+        if (emailResults.length > 0) {
             return res.status(400).json({ error: "Email is already in use!" });
         }
 
-        const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
-        const insertQuery = "INSERT INTO user_form (name, email, password, user_type) VALUES (?, ?, ?, ?)";
-
-        connection.query(insertQuery, [name, email, hashedPassword, user_type], (err) => {
+        
+        const checkUsernameQuery = "SELECT id FROM user_form WHERE name = ?";
+        connection.query(checkUsernameQuery, [name], (err, nameResults) => {
             if (err) {
                 console.error(err);
-                return res.status(500).json({ error: "Error registering user." });
+                return res.status(500).json({ error: "Server error. Please try again later." });
             }
-            res.status(200).json({ redirect: "/login_form.html" });
+
+            if (nameResults.length > 0) {
+                return res.status(400).json({ error: "Username is already in use!" });
+            }
+
+            
+            const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
+            const insertQuery = "INSERT INTO user_form (name, email, password, user_type) VALUES (?, ?, ?, ?)";
+
+            connection.query(insertQuery, [name, email, hashedPassword, user_type], (err) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json({ error: "Error registering user." });
+                }
+                res.status(200).json({ redirect: "/login_form.html" });
+            });
         });
     });
 });
 
 
-// User Login
+
+
 app.post("/login", (req, res) => {
     const { email, password } = req.body;
     const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
@@ -98,12 +114,12 @@ app.post("/login", (req, res) => {
     });
 });
 
-// Fetch User Info
+
 app.get("/user-info", (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
-    res.json({ name: req.session.user.name });
+    res.json({ name: req.session.user.name, id: req.session.user.id});
 });
 
 app.get("/admin-info", (req, res) => {
@@ -114,26 +130,36 @@ app.get("/admin-info", (req, res) => {
 });
 
 app.post("/create-team", (req, res) => {
-    const { teamName } = req.body;
-
-    
     if (!req.session.user) {
         return res.status(401).json({ error: "Unauthorized. Please log in." });
     }
 
-    const createdBy = req.session.user.id;
+    const { teamName } = req.body;
+    const createdBy = req.session.user.id; // Get user ID from session
 
-    if (!teamName || !createdBy) {
-        return res.status(400).json({ error: "Team name and creator are required." });
+    if (!teamName) {
+        return res.status(400).json({ error: "Team name is required." });
     }
 
-    const query = "INSERT INTO teams (name, created_by) VALUES (?, ?)";
-    connection.query(query, [teamName, createdBy], (err) => {
+    
+    const insertTeamQuery = "INSERT INTO teams (name, created_by) VALUES (?, ?)";
+    connection.query(insertTeamQuery, [teamName, createdBy], (err, result) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ error: "Error creating team." });
         }
-        res.json({ message: "Team created successfully." });
+
+        const teamId = result.insertId; 
+
+        
+        const insertCreatorQuery = "INSERT INTO user_channels (user_id, channel_id) VALUES (?, ?)";
+        connection.query(insertCreatorQuery, [createdBy, teamId], (err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: "Error adding creator to team." });
+            }
+            res.json({ message: "Team created successfully!", teamId });
+        });
     });
 });
 
@@ -152,89 +178,158 @@ app.get("/get-team-id", (req, res) => {
 
 app.post("/create-channel", (req, res) => {
     const { channelName, teamId } = req.body;
-    if (!channelName || !teamId) return res.status(400).json({ error: "Channel name and team ID are required." });
+    if (!req.session.user) return res.status(401).json({ error: "Unauthorized" });
 
-    const query = "INSERT INTO channels (name, team_id) VALUES (?, ?)";
-    connection.query(query, [channelName, teamId], (err) => {
-        if (err) return res.status(500).json({ error: "Error creating channel." });
-        res.json({ message: "Channel created successfully." });
+    const userId = req.session.user.id;
+    const userRole = req.session.user.user_type; 
+
+    
+    const checkTeamCreatorQuery = "SELECT created_by FROM teams WHERE id = ?";
+    connection.query(checkTeamCreatorQuery, [teamId], (err, results) => {
+        if (err) return res.status(500).json({ error: "Server error" });
+        if (results.length === 0) return res.status(404).json({ error: "Team not found" });
+
+        const teamCreatorId = results[0].created_by;
+
+        if (userId === teamCreatorId || userRole === "admin") {
+            
+            const createChannelQuery = "INSERT INTO channels (name, team_id) VALUES (?, ?)";
+            connection.query(createChannelQuery, [channelName, teamId], (err, result) => {
+                if (err) return res.status(500).json({ error: "Error creating channel" });
+
+                const channelId = result.insertId;
+
+               
+                const assignCreatorQuery = "INSERT INTO user_channels (user_id, channel_id) VALUES (?, ?)";
+                connection.query(assignCreatorQuery, [teamCreatorId, channelId], (err) => {
+                    if (err) return res.status(500).json({ error: "Error adding creator to channel" });
+
+                    res.json({ message: "Channel created successfully" });
+                });
+            });
+        } else {
+            res.status(403).json({ error: "You are not authorized to create channels for this team." });
+        }
     });
 });
 
-// Assign User to Channel
+
 app.post("/assign-user", (req, res) => {
     const { teamId, channelName, userName } = req.body;
+    if (!req.session.user) return res.status(401).json({ error: "Unauthorized" });
 
-    if (!teamId || !channelName || !userName) {
-        return res.status(400).json({ error: "Team ID, Channel Name, and User Name are required." });
-    }
+    const userId = req.session.user.id;
+    const userRole = req.session.user.user_type; 
 
-    const channelQuery = "SELECT id FROM channels WHERE name = ? AND team_id = ?";
-    const userQuery = "SELECT id FROM user_form WHERE name = ?";
-    const assignQuery = "INSERT INTO user_channels (user_id, channel_id) VALUES (?, ?)";
+    
+    const checkTeamCreatorQuery = "SELECT created_by FROM teams WHERE id = ?";
+    connection.query(checkTeamCreatorQuery, [teamId], (err, results) => {
+        if (err) return res.status(500).json({ error: "Server error" });
+        if (results.length === 0) return res.status(404).json({ error: "Team not found" });
 
-    connection.query(channelQuery, [channelName, teamId], (err, channelResults) => {
-        if (err || channelResults.length === 0) {
-            return res.status(404).json({ error: "Channel not found in the specified team." });
-        }
+        const teamCreatorId = results[0].created_by;
 
-        const channelId = channelResults[0].id;
+        if (userId === teamCreatorId || userRole === "admin") {
+           
+            const channelQuery = "SELECT id FROM channels WHERE name = ? AND team_id = ?";
+            const userQuery = "SELECT id FROM user_form WHERE name = ?";
+            const assignQuery = "INSERT INTO user_channels (user_id, channel_id) VALUES (?, ?)";
 
-        connection.query(userQuery, [userName], (err, userResults) => {
-            if (err || userResults.length === 0) {
-                return res.status(404).json({ error: "User not found." });
-            }
-
-            const userId = userResults[0].id;
-
-            connection.query(assignQuery, [userId, channelId], (err) => {
-                if (err) {
-                    return res.status(500).json({ error: "Error assigning user to channel." });
+            connection.query(channelQuery, [channelName, teamId], (err, channelResults) => {
+                if (err || channelResults.length === 0) {
+                    return res.status(404).json({ error: "Channel not found in the specified team." });
                 }
-                res.json({ message: "User assigned to channel successfully." });
+
+                const channelId = channelResults[0].id;
+
+                connection.query(userQuery, [userName], (err, userResults) => {
+                    if (err || userResults.length === 0) {
+                        return res.status(404).json({ error: "User not found." });
+                    }
+
+                    const userToAddId = userResults[0].id;
+
+                    connection.query(assignQuery, [userToAddId, channelId], (err) => {
+                        if (err) {
+                            return res.status(500).json({ error: "Error assigning user to channel." });
+                        }
+                        res.json({ message: "User assigned to channel successfully!" });
+                    });
+                });
             });
-        });
+        } else {
+            res.status(403).json({ error: "You are not authorized to add users to this channel." });
+        }
     });
 });
+
 
 
 app.get("/get-teams-with-channels", (req, res) => {
     const query = `
         SELECT 
+            t.id AS team_id, 
             t.name AS team_name, 
+            t.created_by AS creator_id,
+            u.name AS creator_name,  
+            c.id AS channel_id,
             c.name AS channel_name,
-            u.name AS user_name
+            m.name AS user_name
         FROM 
             teams t
+        LEFT JOIN 
+            user_form u ON t.created_by = u.id  
         LEFT JOIN 
             channels c ON t.id = c.team_id
         LEFT JOIN 
             user_channels cu ON c.id = cu.channel_id
         LEFT JOIN 
-            user_form u ON cu.user_id = u.id
+            user_form m ON cu.user_id = m.id
         ORDER BY 
-            t.name, c.name, u.name;
+            t.id, c.id, m.name;
     `;
+
     connection.query(query, (err, results) => {
-        if (err) return res.status(500).json({ error: "Error fetching data." });
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: "Error fetching teams." });
+        }
 
         const teams = {};
-        results.forEach(row => {
-            if (!teams[row.team_name]) {
-                teams[row.team_name] = { teamName: row.team_name, channels: {} };
+        results.forEach((row) => {
+            if (!teams[row.team_id]) {
+                teams[row.team_id] = {
+                    teamId: row.team_id,
+                    teamName: row.team_name,
+                    createdBy: row.creator_id,  
+                    creatorName: row.creator_name,  
+                    channels: {},
+                    members: new Set(), 
+                };
             }
-            if (row.channel_name) {
-                if (!teams[row.team_name].channels[row.channel_name]) {
-                    teams[row.team_name].channels[row.channel_name] = { channelName: row.channel_name, members: [] };
+            if (row.channel_id) {
+                if (!teams[row.team_id].channels[row.channel_id]) {
+                    teams[row.team_id].channels[row.channel_id] = {
+                        channelName: row.channel_name,
+                        members: [],
+                    };
                 }
                 if (row.user_name) {
-                    teams[row.team_name].channels[row.channel_name].members.push(row.user_name);
+                    teams[row.team_id].channels[row.channel_id].members.push(row.user_name);
                 }
             }
+           
+            teams[row.team_id].members.add(row.creator_name);
+        });
+
+       
+        Object.values(teams).forEach(team => {
+            team.members = Array.from(team.members);
         });
         res.json(teams);
     });
 });
+
 
 app.get("/get-user-teams", (req, res) => {
     if (!req.session.user) {
@@ -247,28 +342,29 @@ app.get("/get-user-teams", (req, res) => {
         SELECT 
             t.id AS team_id, 
             t.name AS team_name, 
+            t.created_by AS creator_id,
+            u.name AS creator_name,  
             c.id AS channel_id,
             c.name AS channel_name,
-            u.name AS user_name
+            m.name AS user_name
         FROM 
             teams t
-        INNER JOIN 
+        LEFT JOIN 
+            user_form u ON t.created_by = u.id  
+        LEFT JOIN 
             channels c ON t.id = c.team_id
-        INNER JOIN 
+        LEFT JOIN 
             user_channels cu ON c.id = cu.channel_id
-        INNER JOIN 
-            user_form u ON cu.user_id = u.id
+        LEFT JOIN 
+            user_form m ON cu.user_id = m.id
         WHERE 
-            c.id IN (
-                SELECT DISTINCT cu.channel_id
-                FROM user_channels cu
-                WHERE cu.user_id = ?
-            )
+            t.created_by = ? OR 
+            t.id IN (SELECT DISTINCT team_id FROM channels WHERE id IN (SELECT channel_id FROM user_channels WHERE user_id = ?))
         ORDER BY 
-            t.id, c.id, u.name;
+            t.id, c.id, m.name;
     `;
 
-    connection.query(query, [userId], (err, results) => {
+    connection.query(query, [userId, userId], (err, results) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ error: "Error fetching user teams." });
@@ -278,8 +374,12 @@ app.get("/get-user-teams", (req, res) => {
         results.forEach((row) => {
             if (!userTeams[row.team_id]) {
                 userTeams[row.team_id] = {
+                    teamId: row.team_id,
                     teamName: row.team_name,
+                    createdBy: row.creator_id,  
+                    creatorName: row.creator_name,  
                     channels: {},
+                    members: new Set(), 
                 };
             }
             if (row.channel_id) {
@@ -293,13 +393,23 @@ app.get("/get-user-teams", (req, res) => {
                     userTeams[row.team_id].channels[row.channel_id].members.push(row.user_name);
                 }
             }
+            
+            userTeams[row.team_id].members.add(row.creator_name);
+        });
+
+        
+        Object.values(userTeams).forEach(team => {
+            team.members = Array.from(team.members);
         });
 
         res.json(userTeams);
     });
 });
 
-// Logout Route
+
+
+
+
 app.get("/logout", (req, res) => {
     req.session.destroy((err) => {
         if (err) {

@@ -166,30 +166,4 @@ h2 {
     margin-left: 20px;
 }
 
-@media (max-width: 600px) {
-    h1 {
-        font-size: 2rem;
-    }
-
-    h2 {
-        font-size: 1.5rem;
-    }
-
-    h3 {
-        font-size: 1.2rem;
-    }
-
-    form input, form select, form button {
-        font-size: 0.9rem;
-    }
-
-    a.btn, button.btn {
-        font-size: 0.9rem;
-        padding: 8px 15px;
-    }
-
-    #teamList {
-        padding: 10px;
-    }
-}
 
