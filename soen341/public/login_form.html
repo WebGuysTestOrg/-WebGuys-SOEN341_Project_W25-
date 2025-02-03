@@ -1,57 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="login.css">
-        <title>Login Page</title>
-    </head>
-    <body>
-        <div class="form-container">
-            <h1>Login</h1>
-             <form id="loginForm">
-                <div class="form-group">
-                    <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
-                </div>
-                <button type="submit" class="btn">Login</button>
-                <p id="error-message" style="color: red; display: none;"></p>
-                <p>Don't have an account? <a href="register_form.html">Register here</a></p>
-            </form>
-            <script>
-                document.getElementById('loginForm').addEventListener('submit', function (e) {
-                     e.preventDefault();
-             
-                     const email = document.getElementById('email').value;
-                     const password = document.getElementById('password').value;
-             
-                     fetch('/login', {
-                         method: 'POST',
-                         headers: {
-                             'Content-Type': 'application/json',
-                         },
-                         body: JSON.stringify({ email, password }),
-                     })
-                         .then((response) => response.json())
-                         .then((data) => {
-                             if (data.error) {
-                                 const errorMessage = document.getElementById('error-message');
-                                 errorMessage.style.display = 'block';
-                                 errorMessage.textContent = data.error;
-                             } else if (data.redirect) {
-                                 window.location.href = data.redirect;
-                             }
-                         })
-                         .catch((error) => {
-                             console.error('Error:', error);
-                         });
-                 });
-             </script>
- 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <h1 class="navbar-title">Chat Haven</h1>
+        </div>
+    </nav>
+
+    <div class="form-container">
+        <h1>Login</h1>
+        <form id="loginForm">
+            <!-- Email -->
+            <div class="form-group">
+                <label for="email">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368" style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm320-280L160-640v400h640v-400L480-440Zm0-80 320-200H160l320 200ZM160-640v-80 480-400Z"></path>
+                    </svg>
+                    Email:
+                </label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <label for="password">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368" style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm0-80h480v-400H240v400Zm240-120q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80ZM240-160v-400 400Z"></path>
+                    </svg>
+                    Password:
+                </label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn">Login</button>
+
+            <!-- Register Link -->
+            <p>Don't have an account? <a href="register_form.html">Register here</a></p>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.error) {
+                        const errorMessage = document.getElementById('error-message');
+                        errorMessage.style.display = 'block';
+                        errorMessage.textContent = data.error;
+                    } else if (data.redirect) {
+                        window.location.href = data.redirect;
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+        });
+    </script>
 </body>
-</html>          
+</html>
