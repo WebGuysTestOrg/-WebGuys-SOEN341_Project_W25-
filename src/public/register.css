@@ -1,30 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 
-body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    background-color: #eef2f3;
-    color: #333;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+:root {
+    --light-grey: #F0F0F0; /* Light background */
+    --medium-grey: #E0E0E0; /* Form Container */
+    --dark-grey: #3A3A3A; /* Navigation Bar & Button */
+    --text-color-light: #FFFFFF; /* White text */
+    --text-color-dark: #000000; /* Black text */
+    --button-hover: #2C2C2C; /* Slightly darker grey for button hover */
 }
 
+* {
+    margin: 0;
+    padding: 0;
+}
 
-.form-container {
-    background-color: #ffffff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 350px;
+html {
+    font-family: Poppins, Segoe UI, sans-serif;
+    font-size: 12pt;
+    color: var(--text-color-dark);
     text-align: center;
 }
 
+body {
+    display: flex;
+    justify-content: center; /* Align the form container to the left */
+    background-color: var(--light-grey); 
+    color: var(--text-color-light); /* Black text */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+    padding-bottom: 100px;
+    padding-top: 90px;
+    padding-left:100px;
+    
+}
+
+.form-container {
+    flex-direction: column; /* Stack heading and form vertically */
+    justify-content: center; /* Center content within the container */
+    align-items: center; /* Align items in the center horizontally */
+    background-color: var(--medium-grey); /* Medium grey */
+    padding: 50px; /* Add padding around the form */
+    border-radius: 20px; /* Rounded corners */
+    box-shadow: 19px 19px 100px #666666; /* Subtle shadow for depth */
+    max-width: 500px; /* Limit maximum width of the form */
+    max-height: 550px;
+    width: 90%; /* Adjust width for responsiveness */
+    text-align: center; /* Center-align text */
+}
+
 .form-container h1 {
+    display: flex;
     font-size: 2rem;
-    color: #007bff;
     margin-bottom: 20px;
 }
 
@@ -34,12 +59,76 @@ body {
 }
 
 label {
-    display: block;
-    font-size: 0.9rem;
-    margin-bottom: 5px;
-    color: #555;
+    display: flex;
+    align-items: center;
+    margin-right: 10px; /* Space between the icon and the input */
+    font-size: 1rem;
 }
 
+.navbar {
+    width: 100%;
+    background-color: var(--dark-grey); /* Dark grey */
+    color: var(--text-color-light); /* White text */
+    padding: 15px 20px;
+    position: fixed; /* Stick to the top of the page */
+    top: 0;
+    left: 0;
+    z-index: 1000; /* Ensure it stays above other elements */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+.navbar-content {
+    display: flex;
+    justify-content: space-between; /* Space between website name and links */
+    align-items: left; /* Align items vertically */
+    max-width: 1200px; /* Optional: Limit the width for centered content */
+}
+
+.navbar-title {
+    position: Left;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+    font-family: "Poppins", sans-serif;
+}
+
+
+.signup-message {
+    max-width: 600px;
+    font-family: 'Poppins', sans-serif;
+    text-align: left;
+    margin-top: 0px;
+    margin-left: 200px;
+    color: var(--dark-grey);
+}
+
+.signup-message h2 {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.signup-message p {
+    font-size: 1rem;
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+
+.gif-container {
+    max-height:400px;
+    padding-bottom: 100px ;
+    display: flex;
+    justify-content: center; /* Center the GIF horizontally */
+    margin-top: 20px; /* Adds spacing above the GIF */
+}
+
+.gif-container img {
+    max-width: 100%; /* Ensures the GIF fits within the container */
+    height: auto; /* Maintains the aspect ratio */
+    border-radius: 0px; /* Optional: Rounded corners for aesthetics */
+
+}
+ 
 input[type="email"],
 input[type="password"],
 input[type="text"],
@@ -47,7 +136,7 @@ select {
     width: 100%;
     padding: 10px;
     font-size: 1rem;
-    border: 1px solid #ccc;
+    border: 1px solid var(--dark-grey); /* Dark grey border */
     border-radius: 5px;
     box-sizing: border-box;
     outline: none;
@@ -58,48 +147,54 @@ input[type="email"]:focus,
 input[type="password"]:focus,
 input[type="text"]:focus,
 select:focus {
-    border-color: #007bff;
+    border-color: var(--dark-grey);
 }
 
 select {
     appearance: none;
-    background-color: #f9f9f9;
+    background-color: var(--medium-grey);
     cursor: pointer;
 }
-
 
 .btn {
-    width: 100%;
-    padding: 10px;
-    font-size: 1rem;
-    color: #fff;
-    background-color: #007bff;
-    border: none;
-    border-radius: 5px;
+    background: #fbca1f;
+    font-family: inherit;
+    padding: 0.6em 1.3em;
+    font-weight: 900;
+    font-size: 18px;
+    border: 3px solid black;
+    border-radius: 0.4em;
+    width: 200px;
+    box-shadow: 0.1em 0.1em;
     cursor: pointer;
-    transition: background-color 0.3s;
 }
 
-.btn:hover {
-    background-color: #0056b3;
+button:hover {
+    transform: translate(-0.05em, -0.05em);
+    box-shadow: 0.15em 0.15em;
+    background: var(--button-hover); /* Slightly darker grey on hover */
 }
 
+button:active {
+    transform: translate(0.05em, 0.05em);
+    box-shadow: 0.05em 0.05em;
+}
 
 p {
     margin-top: 20px;
     font-size: 0.9rem;
-    color: #555;
+    color: var(--text-color-dark);
 }
 
 p a {
-    color: #007bff;
+    color: blue; /* Dark grey links */
     text-decoration: none;
 }
 
 p a:hover {
     text-decoration: underline;
+    color: blue; /* Black on hover */
 }
-
 
 @media (max-width: 600px) {
     .form-container {
