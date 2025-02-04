@@ -21,7 +21,7 @@ body {
     color: var(--text-color-dark);
     display: flex;
     justify-content: center;
-    align-items: flexstart;
+    align-items: center;
     flex-direction: column;
     min-height: 100vh;
 }
@@ -44,19 +44,25 @@ body {
 
 .form-container {
     background-color: var(--medium-grey);
-    margin-left: 400px;
     padding: 40px;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     width: 100%;
     max-width: 500px;
     text-align: center;
-    margin-top: 100px;
+    margin-top: 0;
 }
 
 .form-container h1 {
     font-size: 1.8rem;
     margin-bottom: 20px;
+}
+
+@media (max-width: 600px) {
+    .form-container {
+        padding: 20px;
+        max-width: 80%;
+    }
 }
 
 .form-group {

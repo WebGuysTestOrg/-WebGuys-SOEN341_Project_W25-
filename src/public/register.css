@@ -99,6 +99,7 @@ label {
     text-align: left;
     margin-top: 0px;
     margin-left: 200px;
+    margin-right: 70px;
     color: var(--dark-grey);
 }
 
@@ -128,6 +129,33 @@ label {
     border-radius: 0px; /* Optional: Rounded corners for aesthetics */
 
 }
+
+@media (max-width: 850px) {
+    body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding-left: 0;
+    }
+
+    .form-container,
+    .signup-message,
+    .gif-container {
+        width: 100%;
+        margin-bottom: 20px;
+        display: block;
+        margin-left: 0px;
+    }
+
+    .signup-message {
+        display: block;
+        margin-top: 30px;
+        margin-left: 0px;
+        margin-right: 0px;
+    }
+}
+
  
 input[type="email"],
 input[type="password"],
