@@ -192,4 +192,149 @@ h2 {
         padding: 10px;
     }
 }
+#chat-toggle {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1000;
+    transition: background 0.3s;
+}
 
+#chat-toggle:hover {
+    background-color: #0056b3;
+}
+
+/* Chat container */
+#chat-container {
+    position: fixed;
+    top: 0;
+    left: -700px; /* Hidden by default */
+    width: 700px;
+    height: 100%;
+    background: #f8f9fa;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+    transition: left 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    z-index: 999;
+    
+}
+
+/* Chat header */
+#chat-header {
+    background: #007bff;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Chat messages */
+#chat-messages {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    height: 100%;
+    overflow-y: auto;
+    flex-grow: 1; /* Make chat messages take up all available space */
+}
+
+/* Chat input area */
+#chat-input {
+    display: flex;
+    padding: 10px;
+    background: #ffffff;
+    border-top: 1px solid #ccc;
+}
+
+#message {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    outline: none;
+}
+
+#send {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    margin-left: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+#send:hover {
+    background-color: #0056b3;
+}
+
+/* Close button */
+#close-chat {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
+#Chat-title{
+    color: white;
+}
+
+/* Container for all messages */
+#chatMessages {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Style for messages sent by the user (you) */
+.my-message {
+    background-color: #007bff;
+    color: white;
+    padding: 10px;
+    margin: 10px 0;
+    max-width: 75%;
+    border-radius: 8px;
+    align-self: flex-end;
+    text-align: left;
+    word-wrap: break-word;
+    box-sizing: border-box;
+    display: block;
+}
+
+/* Style for messages sent by others */
+.other-message {
+    background-color: #f1f1f1;
+    color: black;
+    padding: 10px;
+    margin: 10px 0;
+    max-width: 75%;
+    border-radius: 8px;
+    align-self: flex-start;
+    text-align: left;
+    word-wrap: break-word;
+    box-sizing: border-box;
+    display: block;
+}
+
+/* Optional: For making the message boxes square-like */
+.my-message, .other-message {
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
