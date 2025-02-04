@@ -21,7 +21,7 @@ body {
     color: var(--text-color-dark);
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flexstart;
     flex-direction: column;
     min-height: 100vh;
 }
@@ -44,11 +44,12 @@ body {
 
 .form-container {
     background-color: var(--medium-grey);
+    margin-left: 400px;
     padding: 40px;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     width: 100%;
-    max-width: 400px;
+    max-width: 500px;
     text-align: center;
     margin-top: 100px;
 }
@@ -94,9 +95,11 @@ input[type="password"]:focus {
     font-size: 1rem;
     border: 3px solid black;
     border-radius: 0.4em;
-    width: 100%;
+    width: 200px;
+    box-shadow: 0.1em 0.1em;
     cursor: pointer;
 }
+
 
 .btn:hover {
     transform: translate(-0.05em, -0.05em);
