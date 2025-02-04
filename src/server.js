@@ -451,7 +451,10 @@ app.get("/get-user-teams", (req, res) => {
     });
 });
 
-
+app.get("/", (req, res) => {
+        res.redirect("/login_form.html"); 
+    
+});
 
 
 
