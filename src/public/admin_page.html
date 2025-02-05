@@ -10,66 +10,78 @@
     <link rel="stylesheet" href="adminstyle.css">
 </head>
 <body>
-    <h3>Hi, <span id="admin-name">Admin</span></h3>
-    <h1>Welcome to the Super Admin Page</h1>
-    <p>Manage teams, channels, and users.</p>
-    <a href="/logout" class="btn">Logout</a>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <h1 class="navbar-title">Chat Haven - Admin</h1>
+        </div>
+    </nav>
 
-   
-    <div class="form-container">
-        <h2>Create Team</h2>
-        <form id="createTeamForm">
-            <input type="text" id="teamName" placeholder="Enter Team Name" required>
-            <button type="submit" class="btn">Create Team</button>
-        </form>
+    <!-- Main Content -->
+    <div class="content-container">
+        <h3>Hi, <span id="admin-name">Admin</admin-name>
+        </span></h3>
+        <h1>Welcome to the Moderator Page</h1>
+        <p>Manage teams, channels, and users.</p>
+        <a href="/logout" class="btn">Logout</a>
+
+        <!-- Create Team Section -->
+        <div class="form-container">
+            <h2>Create Team</h2>
+            <form id="createTeamForm">
+                <input type="text" id="teamName" placeholder="Enter Team Name" required>
+                <button type="submit" class="btn">Create Team</button>
+            </form>
+        </div>
+
+        <!-- Create Channel Section -->
+        <div class="form-container">
+            <h2>Create Channel</h2>
+            <form id="createChannelForm">
+                <input type="text" id="channelName" placeholder="Enter Channel Name" required>
+                <input type="number" id="teamId" placeholder="Enter Team ID" required>
+                <button type="submit" class="btn">Create Channel</button>
+            </form>
+        </div>
+
+        <!-- Assign User Section -->
+        <div class="form-container">
+            <h2>Assign User to Channel</h2>
+            <form id="assignUserForm">
+                <input type="number" id="teamIdAssign" placeholder="Enter Team ID" required>
+                <input type="text" id="channelNameAssign" placeholder="Enter Channel Name" required>
+                <input type="text" id="userNameAssign" placeholder="Enter User Name" required>
+                <button type="submit" class="btn">Assign User</button>
+            </form>
+        </div>
+
+        <!-- Teams, Channels, and Members Section -->
+        <div class="form-container">
+            <h2>Teams, Channels, and Members</h2>
+            <div id="teams-container"></div>
+        </div>
     </div>
 
-    
-    <div class="form-container">
-        <h2>Create Channel</h2>
-        <form id="createChannelForm">
-            <input type="text" id="channelName" placeholder="Enter Channel Name" required>
-            <input type="number" id="teamId" placeholder="Enter Team ID" required>
-            <button type="submit" class="btn">Create Channel</button>
-        </form>
-    </div>
-
-   
-    <div class="form-container">
-        <h2>Assign User to Channel</h2>
-        <form id="assignUserForm">
-            <input type="number" id="teamIdAssign" placeholder="Enter Team ID" required>
-            <input type="text" id="channelNameAssign" placeholder="Enter Channel Name" required>
-            <input type="text" id="userNameAssign" placeholder="Enter User Name" required>
-            <button type="submit" class="btn">Assign User</button>
-        </form>
-    </div>
-
-
-
-    
-    <div class="form-container">
-        <h2>Teams, Channels, and Members</h2>
-        <div id="teams-container"></div>
-    </div>
-<!-- Chat Icon Button -->
-<div id="chat-toggle">
+    <!-- Chat Icon Button -->
+    <div id="chat-toggle">
         <i class="fa-solid fa-globe"></i>
-</div>
-
-
-<!-- Chatbox -->
-<div id="chat-container">
-    <div id="chat-header">
-        <span id="Chat-title"> Global Chat</span>
-        <button id="close-chat">✖</button>
     </div>
-    <div id="chat-messages"></div> <!-- Ensure this ID matches with CSS -->
-    <div id="chat-input">
-        <input type="text" id="message" placeholder="Type a message...">
-        <button id="send">Send</button>
+
+    <!-- Chatbox -->
+    <div id="chat-container">
+        <div id="chat-header">
+            <span id="Chat-title">Global Chat</span>
+            <button id="close-chat">✖</button>
+        </div>
+        <div id="chat-messages"></div>
+        <div id="chat-input">
+            <input type="text" id="message" placeholder="Type a message...">
+            <button id="send">Send</button>
+        </div>
     </div>
-</div>
+</body>
+</html>
+
     <script>
         
         fetch('/admin-info')
