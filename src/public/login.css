@@ -42,13 +42,40 @@ body {
     font-weight: bold;
 }
 
+.container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 40px;
+}
+
+.info-text {
+    flex: 1;
+    max-width: 400px;
+    text-align: center;
+}
+
+.info-text h2 {
+    font-size: 28px;
+    color: #333;
+}
+
+.info-text p {
+    font-size: 16px;
+    color: #555;
+    line-height: 1.5;
+}
 .form-container {
-    background-color: var(--medium-grey);
+    /* background-color: var(--medium-grey); */
+    background: #e0e0e0;
+    margin-left: 300px;
     padding: 40px;
     border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    width: 100%;
+    box-shadow: 19px 19px 100px #666666;
     max-width: 500px;
+    width: 90%;
     text-align: center;
     margin-top: 0;
 }
