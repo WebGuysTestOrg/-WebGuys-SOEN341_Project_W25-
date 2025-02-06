@@ -193,18 +193,8 @@ app.post("/create-team", (req, res) => {
             console.error(err);
             return res.status(500).json({ error: "Error creating team." });
         }
-
-        const teamId = result.insertId; 
-
+        res.json({ message: "Team created successfully.", teamId: result.insertId });
         
-        const insertCreatorQuery = "INSERT INTO user_channels (user_id, channel_id) VALUES (?, ?)";
-        connection.query(insertCreatorQuery, [createdBy, teamId], (err) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ error: "Error adding creator to team." });
-            }
-            res.json({ message: "Team created successfully!", teamId });
-        });
     });
 });
 
