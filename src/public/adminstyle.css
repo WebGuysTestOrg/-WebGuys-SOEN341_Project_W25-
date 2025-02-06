@@ -348,3 +348,24 @@ h2 {
     border: 1px solid #ccc;
     box-sizing: border-box;
 }
+
+.settings-button{
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    font-size: inherit;
+    cursor: pointer;
+    background-color: var(--yellow);
+    color: var(--text-dark);
+    border: 3px solid var(--dark-grey);
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.settings-button:hover{
+    background: var(--button-hover);
+    color: var(--text-light);
+}
