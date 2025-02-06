@@ -160,10 +160,15 @@ app.post("/login", (req, res) => {
 
 
 app.get("/user-info", (req, res) => {
+
     if (!req.session.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
-    res.json({ name: req.session.user.name, id: req.session.user.id});
+    res.json({ 
+        name: req.session.user.name, 
+        email: req.session.user.email, 
+        id: req.session.user.id
+    });
 });
 
 app.get("/admin-info", (req, res) => {
@@ -455,6 +460,32 @@ app.get("/logout", (req, res) => {
             return res.status(500).json({ error: "Error logging out." });
         }
         res.redirect("/login_form.html"); 
+    });
+});
+app.post("/update-password", (req, res) => {
+
+    const {newPassword, confirmPassword} = req.body;
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (newPassword !== confirmPassword) {
+        return res.status(400).json({ error: "Passwords do not match!" });
+    }
+
+    const hashedPassword = crypto.createHash("md5").update(newPassword).digest("hex");
+    const id = req.session.user.id;
+    
+    const updatePasswordQuery = "UPDATE user_form SET password = ? WHERE id = ?";
+
+    connection.query(updatePasswordQuery, [hashedPassword, id], (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: "Error updating password." });
+        }
+
+        res.status(200).json({ message: "Password updated successfully!" });
     });
 });
 
