@@ -78,19 +78,18 @@ fetch('/user-info')
     .catch(() => window.location.href = '/login_form.html');
     
     document.getElementById('settingsForm').addEventListener('submit', (event) => {
-        event.preventDefault(); // Prevent form from submitting the traditional way
-
-        // Get values from the form fields
+        event.preventDefault(); 
+        
         const newPassword = document.getElementById('password').value;
         const confirmPassword = document.getElementById('cpassword').value;
 
-        // Check if the passwords match
+        
         if (newPassword !== confirmPassword) {
             alert("Passwords do not match!");
             return;
         }
 
-        // Send data to server for password update
+       
         fetch('/update-password', {
             method: 'POST',
             headers: {
@@ -106,7 +105,7 @@ fetch('/user-info')
             if (data.error) {
                 alert(data.error);
             } else {
-                alert(data.message); // Success message from the server
+                alert(data.message);
             }
         })
         .catch(error => {
