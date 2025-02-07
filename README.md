@@ -4,7 +4,7 @@
 
 ## Problem statement
 
-Web users around the globe are in dire need of a place to converse with friends and family, as well as, companies and co-workers. They need a secure aestetically pleasing digital environment to converse in...
+
 
 ## Project Overview
 
@@ -51,3 +51,9 @@ As the project progresses, additional functionalities will be proposed and integ
 - **Development Approach**: Agile Scrum (Sprint-Based)
 - **Issue Tracking**: GitHub Issues
 - **Task Management**: GitHub Projects
+
+## Personal Contribution Log
+
+Each team member maintains an individual contribution log to track time spent, document tasks completed, and ensure transparency in workload distribution. You can access the Google Sheet for the personal contribution logs here:
+
+https://docs.google.com/spreadsheets/d/1yzdOKmYIBJipA0QvmgK5Z2lteJAdY1IftvpsWpOOGvk/edit?usp=drive_link
