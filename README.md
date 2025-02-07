@@ -26,7 +26,9 @@ As the project progresses, additional functionalities will be proposed and integ
 * Sem Axil Raïs(BE)
 * Noah Scally(FE)
 * Chadi Zebian(FE)
-
+**BE: Back End Development**
+**FE:Front End Development**
+  
 ## Technologies Used
 
 -**Front End**: HTML, CSS, JavaScript
