@@ -2,11 +2,16 @@
 
 ## SOEN 341 (Software Processes) Web Development Project
 
+## Problem statement
+
+Web users around the globe are in dire need of a place to converse with friends and family, as well as, companies and co-workers. They need a secure aestetically pleasing digital environment to converse in...
+
 ## Project Overview
 
 ChatHaven is a web-based communication platform designed to facilitate seamless discussions within structured topic-specific text channels and private direct messaging. It enables users to engage in meaningful conversations, collaborate in teams, and connect in a well-organized, intuitive digital environment.
 
 This project follows Agile development practices, utilizing GitHub for version control, task management, and collaboration tools, ensuring an iterative and efficient development process.
+
 
 ## Features
 
