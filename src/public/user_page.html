@@ -53,6 +53,8 @@
                 loggedInUser = data.name;
                 loggedInUserId = data.id;
                 document.getElementById('username').textContent = data.name;
+                if (data.role === "admin" && window.location.pathname !== "/admin_page.html") {
+                    window.location.href = "/admin_page.html"; }
                 fetchUserTeams(); 
             })
             .catch(() => window.location.href = '/login_form.html');
@@ -158,10 +160,18 @@ document.addEventListener("DOMContentLoaded", () => {
 displayMessage(messages)
     //display messages
     function displayMessage(msg) {
-    
-messages.forEach((msg)=>{
+        fetch('/user-info')
+            .then(response => {
+                if (!response.ok) throw new Error('Unauthorized');
+                return response.json();
+            })
+            .then(data => {
+                loggedInUser = data.name;
+                loggedInUserId = data.id;
+                messages.forEach((msg)=>{
     const messageElement = document.createElement("div");
-    if (msg.sender === "Me") {
+    console.log("LoggedInUser",loggedInUserId)
+    if (msg.senderID === loggedInUserId) {
         messageElement.classList.add("my-message");
         messageElement.textContent = `${msg.text}`;
 }else {
@@ -171,16 +181,20 @@ messages.forEach((msg)=>{
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 })
+            })
+            .catch(() => window.location.href = '/login_form.html');
+
   
 }
 
 
 
-    function addMessage(sender,text) {
+    function addMessage(sender,text, senderID) {
     const newMessage = {
         id: messages.length + 1,
         text: text,
         sender: sender, // "Me" if it's your message
+        senderID:senderID,
         timestamp: Date.now()
     };
 
@@ -199,16 +213,16 @@ messages.forEach((msg)=>{
     }
     socket.on("message", (msg) => {
         const messageElement = document.createElement("div");
-        if(socket.id===msg.SSocketId){
+        if(loggedInUserId===msg.userID){
             messageElement.classList.add("my-message");
             messageElement.textContent = `${msg.text}`;
-            addMessage("Me",msg.text)
+            addMessage(msg.user,msg.text,msg.userID)
             sessionStorage.setItem("chatMessages", JSON.stringify(messages));
         }
         else{
             messageElement.classList.add("other-message");
             messageElement.textContent = `${msg.user}: ${msg.text}`;
-            addMessage(msg.user,msg.text)
+            addMessage(msg.user,msg.text,msg.userID)
             sessionStorage.setItem("chatMessages", JSON.stringify(messages));
         }
         console.log("SavedMessages",messages)
