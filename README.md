@@ -20,12 +20,12 @@ As the project progresses, additional functionalities will be proposed and integ
 
 ## Team Members
 
-* Wadih Bou Jaoude
-* Ruso Kanapathipillai
-* Manlai Munkhbold
-* Sem Axil Raïs
-* Noah Scally
-* Chadi Zebian
+* Wadih Bou Jaoude (BE)
+* Ruso Kanapathipillai(BE)
+* Manlai Munkhbold(FE)
+* Sem Axil Raïs(BE)
+* Noah Scally(FE)
+* Chadi Zebian(FE)
 
 ## Technologies Used
 
