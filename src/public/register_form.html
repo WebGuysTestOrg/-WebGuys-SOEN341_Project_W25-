@@ -141,7 +141,7 @@
                     errorMessage.style.display = 'block';
                     errorMessage.textContent = data.error;
                 } else if (data.redirect) {
-                    showToast("Account has been created")
+                    showToast("Account has been created!")
                     setTimeout(() => {
                         window.location.href = data.redirect;
                     }, 1000);
