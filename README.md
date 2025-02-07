@@ -3,8 +3,9 @@
 ## SOEN 341 (Software Processes) Web Development Project
 
 ## Problem statement
+Effective communication is essential for both personal and professional interactions, yet existing platforms often lack structured organization, accessibility, or privacy controls. Users need a secure, intuitive, and organized space to collaborate seamlessly.
 
-
+ChatHaven addresses this by providing topic-based channels for structured discussions, direct messaging for private interactions, and role-based user management for effective moderation. With a user-friendly interface and privacy-focused features, ChatHaven ensures an efficient and well-managed communication experience.
 
 ## Project Overview
 
