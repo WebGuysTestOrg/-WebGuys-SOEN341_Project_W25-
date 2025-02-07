@@ -20,12 +20,12 @@ As the project progresses, additional functionalities will be proposed and integ
 
 ## Team Members
 
-* Wadih Bou Jaoude (BE)
-* Ruso Kanapathipillai(BE)
-* Manlai Munkhbold(FE)
-* Sem Axil Raïs(BE)
-* Noah Scally(FE)
-* Chadi Zebian(FE)
+* Wadih Bou Jaoude (WadihBj) - Full-Stack Developer
+* Ruso Kanapathipillai (RusoKan) - Full-Stack Developer
+* Manlai Munkhbold (ManlaiM) - Front-End Developer
+* Sem Axil Raïs (kisuk8) - Full-Stack Developer
+* Noah Scally (NoahScally) - Front-End Developer
+* Chadi Zebian (chadithebian) - Front-End Developer
 
 **BE: Back End Development**
 
