@@ -115,7 +115,11 @@
             errorMessage.style.display = 'block';
             errorMessage.textContent = data.error;
         } else if (data.redirect) {
-            window.location.href = data.redirect;
+            alert("Account has been created")
+            setTimeout(() => {
+                window.location.href = data.redirect;
+            }, 1000);
+            
         }
     })
     .catch(error => {
