@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="register.css">
+</head>
+<body>
+         <!-- Navigation Bar -->
+         <nav class="navbar">
+            <div class="navbar-content">
+                <h1 class="navbar-title">Chat Haven</h1>
+            </div>
+        </nav>
+    <div class="form-container">
+        <h1>Register</h1>
+        <form id="registerForm">
+            <!-- Name -->
+            <div class="form-group">
+                <label for="name">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368" style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Z"></path>
+                    </svg>
+                    Name:
+                </label>
+                <input type="text" id="name" name="name" placeholder="Enter your name" required>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label for="email">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368" style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm320-280L160-640v400h640v-400L480-440Zm0-80 320-200H160l320 200ZM160-640v-80 480-400Z"></path>
+                    </svg>
+                    Email:
+                </label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <label for="password">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#5f6368" style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm0-80h480v-400H240v400Zm240-120q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80ZM240-160v-400 400Z"></path>
+                    </svg>
+                    Password:
+                </label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="form-group">
+                <label for="cpassword">Confirm Password:</label>
+                <input required type="password" id="cpassword" name="cpassword" placeholder="Confirm your password" required>
+            </div>
+
+            <!-- User Type -->
+            <div class="form-group">
+                <label for="user_type">User Type:</label>
+                <select id="user_type" name="user_type">
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div id="error-message" style="display: none; color: red; margin-top: 10px;"></div>
+            <!-- Submit Button -->
+            <button type="submit" class="btn">Sign Up</button>
+
+            <!-- Already Registered -->
+            <p>Already have an account? <a href="login_form.html">Login here</a></p>
+        </form>
+    </div>
+    <div class="signup-message">
+        <h2>Welcome to Chat Haven!</h2>
+    <p>Your go-to platform for seamless communication and community engagement.</p>
+    <ul>
+        <li>Chat with friends and stay connected like never before.</li>
+        <li>Join topic-specific <strong>channels</strong> to share ideas and collaborate with ease.</li>
+        <li>Create your own channels and foster vibrant communities.</li>
+        <li>Experience a user-friendly interface built for fast and secure messaging.</li>
+    </ul>
+    <p>Let’s get connected and make your conversations effortless!</p>
+    <!-- Separate div for the GIF -->
+    <div class="gif-container">
+        <img src="giphy.gif" alt="Exciting Chat Haven GIF">
+    </div>
+</div>
+</body>
+
+
+
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const cpassword = document.getElementById('cpassword').value;
+    const user_type = document.getElementById('user_type').value;
+
+    const errorMessage = document.getElementById('error-message');
+    errorMessage.style.display = 'none';
+
+    fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, cpassword, user_type }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            errorMessage.style.display = 'block';
+            errorMessage.textContent = data.error;
+        } else if (data.redirect) {
+            window.location.href = data.redirect;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        errorMessage.style.display = 'block';
+        errorMessage.textContent = 'Something went wrong. Please try again.';
+    });
+});
+
+    </script>
+</body>
+</html>
