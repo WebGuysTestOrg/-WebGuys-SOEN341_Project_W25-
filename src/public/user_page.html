@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Page</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" integrity="sha512-8ExARjWWkIllMlNzVg7JKq9RKWPlJABQUNq6YvAjE/HobctjH/NA+bSiDMDvouBVjp4Wwnf1VP1OEv7Zgjtuxw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="adminstyle.css">
+</head>
+<body>
+    <h3>Hi, <span id="username">User</span></h3>
+    <h1>Welcome</h1>
+    <p>This is the user page</p>
+    <a href="/logout" class="btn">Logout</a>
+    <a href="/create_team.html" class="btn">Create Team</a>
+
+    <div class="form-container">
+        <h2>Teams, Channels, and Members</h2>
+        <div id="teams-container"></div>
+    </div>
+    <div id="chat-toggle">
+        <i class="fa-solid fa-globe"></i>
+</div>
+    <div id="chat-container">
+        <div id="chat-header">
+            <span id="Chat-title"> Global Chat</span>
+            <button id="close-chat">✖</button>
+        </div>
+        <div id="chat-messages"></div> <!-- Ensure this ID matches with CSS -->
+        <div id="chat-input">
+            <input type="text" id="message" placeholder="Type a message...">
+            <button id="send">Send</button>
+        </div>
+    </div>
+
+    <div class="settings-button">
+        <a href="settings_page.html">
+            <i class="fa-solid fa-cog"></i>
+        </a>
+    </div>
+     <script>
+        let loggedInUser = "";
+        let loggedInUserId = "";
+        
+        
+        fetch('/user-info')
+            .then(response => {
+                if (!response.ok) throw new Error('Unauthorized');
+                return response.json();
+            })
+            .then(data => {
+                loggedInUser = data.name;
+                loggedInUserId = data.id;
+                document.getElementById('username').textContent = data.name;
+                if (data.role === "admin" && window.location.pathname !== "/admin_page.html") {
+                    window.location.href = "/admin_page.html"; }
+                fetchUserTeams(); 
+            })
+            .catch(() => window.location.href = '/login_form.html');
+
+            function fetchUserTeams() { 
+    fetch('/get-user-teams')
+    .then((response) => response.json())
+    .then((teams) => {
+        const teamsContainer = document.getElementById('teams-container');
+        teamsContainer.innerHTML = '';
+
+        Object.values(teams).forEach((team) => {
+            const teamElement = document.createElement('div');
+            teamElement.classList.add('team-card');
+
+            const teamName = document.createElement('h3');
+            teamName.textContent = `(${team.teamId}) ${team.teamName}`;
+            teamName.style.color = '#007BFF';
+
+            const createdBy = document.createElement('p');
+            createdBy.innerHTML = `<strong>Created by:</strong> ${team.creatorName || 'Unknown'}`;
+            teamElement.appendChild(teamName);
+            teamElement.appendChild(createdBy);
+
+            
+            if (team.createdBy == loggedInUserId) {
+                const adminTag = document.createElement('p');
+                adminTag.innerHTML = `<strong>Admin</strong>`;
+                adminTag.style.color = 'red';
+                teamElement.appendChild(adminTag);
+            }
+
+            
+            const membersList = document.createElement('p');
+            membersList.innerHTML = `<strong>Member:</strong> ${team.members.join(', ') || 'No members'}`;
+            teamElement.appendChild(membersList);
+
+            
+            Object.values(team.channels).forEach((channel) => {
+                const channelElement = document.createElement('div');
+                channelElement.style.marginLeft = '20px';
+
+                const channelName = document.createElement('h4');
+                channelName.textContent = `Channel: ${channel.channelName}`;
+                channelName.style.color = '#555';
+
+                const channelMembersList = document.createElement('p');
+                channelMembersList.innerHTML = `<strong>Members:</strong> ${channel.members.join(', ') || 'No members'}`;
+
+                channelElement.appendChild(channelName);
+                channelElement.appendChild(channelMembersList);
+                teamElement.appendChild(channelElement);
+            });
+
+            teamsContainer.appendChild(teamElement);
+        });
+    })
+    .catch((err) => console.error('Error fetching user teams:', err));
+}
+
+        
+        document.addEventListener('DOMContentLoaded', fetchUserTeams);
+
+        const socket=io('ws://localhost:3000')
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    const chatToggle = document.getElementById("chat-toggle");
+    const chatContainer = document.getElementById("chat-container");
+    const closeChat = document.getElementById("close-chat");
+    const sendButton = document.getElementById("send");
+    const messageInput = document.getElementById("message");
+    const chatMessages = document.getElementById("chat-messages");
+
+    // Toggle chat visibility
+    chatToggle.addEventListener("click", () => {
+            chatContainer.style.left = "0";
+            chatToggle.style.display = "none"; 
+        });
+
+        closeChat.addEventListener("click", () => {
+            chatContainer.style.left = "-700px";
+            setTimeout(() => {
+        chatToggle.style.display = "block";  // Show button after animation ends
+    }, 300);
+        });
+
+    // Send message
+    sendButton.addEventListener("click", () => {
+        sendMessage();
+    });
+
+    messageInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+            sendMessage();
+        }
+    });
+    let messages = [];
+    //load messages
+    const storedMessages = JSON.parse(sessionStorage.getItem("chatMessages")) || [];
+    messages = storedMessages;
+    console.log("LoadedMessage",messages)
+displayMessage(messages)
+    //display messages
+    function displayMessage(msg) {
+        fetch('/user-info')
+            .then(response => {
+                if (!response.ok) throw new Error('Unauthorized');
+                return response.json();
+            })
+            .then(data => {
+                loggedInUser = data.name;
+                loggedInUserId = data.id;
+                messages.forEach((msg)=>{
+    const messageElement = document.createElement("div");
+    console.log("LoggedInUser",loggedInUserId)
+    if (msg.senderID === loggedInUserId) {
+        messageElement.classList.add("my-message");
+        messageElement.textContent = `${msg.text}`;
+}else {
+        messageElement.classList.add("other-message");
+        messageElement.textContent = `${msg.sender}: ${msg.text}`;
+    }
+    chatMessages.appendChild(messageElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+})
+            })
+            .catch(() => window.location.href = '/login_form.html');
+
+  
+}
+
+
+
+    function addMessage(sender,text, senderID) {
+    const newMessage = {
+        id: messages.length + 1,
+        text: text,
+        sender: sender, // "Me" if it's your message
+        senderID:senderID,
+        timestamp: Date.now()
+    };
+
+    messages.push(newMessage); // Store message in the array
+    sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+}
+    function sendMessage() {
+    
+    const input =document.getElementById("message")
+    if (input.value){
+        socket.emit('message',{text:input.value})
+    }
+    input.focus()
+        const message = input.value;
+          
+    }
+    socket.on("message", (msg) => {
+        const messageElement = document.createElement("div");
+        if(loggedInUserId===msg.userID){
+            messageElement.classList.add("my-message");
+            messageElement.textContent = `${msg.text}`;
+            addMessage(msg.user,msg.text,msg.userID)
+            sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+        }
+        else{
+            messageElement.classList.add("other-message");
+            messageElement.textContent = `${msg.user}: ${msg.text}`;
+            addMessage(msg.user,msg.text,msg.userID)
+            sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+        }
+        console.log("SavedMessages",messages)
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight; 
+        messageInput.value = "";
+    });
+});
+    </script>
+</body>
+</html>
