@@ -39,7 +39,21 @@
         </form>
     </div>
 
+    <div id="toast-container"></div>
+
     <script>
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = message;
+
+            document.getElementById('toast-container').appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('hide');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 3000);
+        }
        
         fetch('/user-info')
             .then(response => {
@@ -63,10 +77,12 @@
             .then((response) => response.json())
             .then((data) => {
                 if (data.error) {
-                    alert(data.error);
+                    showToast(data.error, 'error');
                 } else {
-                    alert("Team created successfully!");
-                    window.location.href = '/user_page.html';
+                    showToast("Team created successfully!");
+                    setTimeout(() => {
+                        window.location.href = '/user_page.html';
+                    }, 2000);
                 }
             })
             .catch((err) => console.error("Error creating team:", err));
@@ -85,10 +101,12 @@
             .then((response) => response.json())
             .then((data) => {
                 if (data.error) {
-                    alert(data.error);
+                    showToast(data.error, 'error');
                 } else {
-                    alert("Channel created successfully!");
-                    window.location.href = '/user_page.html';
+                    showToast("Channel created successfully!");
+                    setTimeout(() => {
+                        window.location.href = '/user_page.html';
+                    }, 2000);
                 }
             })
             .catch((err) => console.error("Error creating channel:", err));
@@ -108,10 +126,12 @@
             .then((response) => response.json())
             .then((data) => {
                 if (data.error) {
-                    alert(data.error);
+                    showToast(data.error, 'error');
                 } else {
-                    alert("User assigned successfully!");
-                    window.location.href = '/user_page.html';
+                    showToast("User assigned successfully!");
+                    setTimeout(() => {
+                        window.location.href = '/user_page.html';
+                    }, 2000);
                 }
             })
             .catch((err) => console.error("Error assigning user:", err));
