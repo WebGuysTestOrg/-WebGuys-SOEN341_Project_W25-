@@ -19,8 +19,7 @@
 
     <!-- Main Content -->
     <div class="content-container">
-        <h3>Hi, <span id="admin-name">Admin</admin-name>
-        </span></h3>
+        <h3>Hi, <span id="admin-name">Admin</span></h3>
         <h1>Welcome to the Moderator Page</h1>
         <p>Manage teams, channels, and users.</p>
         <a href="/logout" class="btn">Logout</a>
@@ -87,10 +86,22 @@
         </a>
     </div>
 
-</body>
-</html>
+    <div id="toast-container"></div>
 
     <script>
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = message;
+
+            document.getElementById('toast-container').appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('hide');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 3000);
+        }
         
         fetch('/admin-info')
             .then(response => {
@@ -115,11 +126,12 @@
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    showToast(data.error, 'error');
                 } else {
-                    alert("Team created successfully!");
-                    fetchTeamsWithChannels(); 
-                    document.getElementById("createTeamForm").reset(); 
+                    showToast("Team created successfully!");
+                    setTimeout(() => {
+                        window.location.href = '/user_page.html';
+                    }, 2000);
                 }
             })
             .catch(err => console.error("Error creating team:", err));
@@ -132,7 +144,7 @@
             const teamId = document.getElementById('teamId').value;
 
             if (!channelName || !teamId) {
-                alert("Please provide both Channel Name and Team ID.");
+                showToast("Please provide both Channel Name and Team ID.", 'error');
                 return;
             }
 
@@ -144,11 +156,12 @@
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    showToast(data.error, 'error');
                 } else {
-                    alert('Channel created successfully!');
-                    fetchTeamsWithChannels(); 
-                    document.getElementById('createChannelForm').reset(); 
+                    showToast("Channel created successfully!");
+                    setTimeout(() => {
+                        window.location.href = '/user_page.html';
+                    }, 2000);
                 }
             })
             .catch(err => console.error('Error:', err));
@@ -162,7 +175,7 @@
             const userName = document.getElementById('userNameAssign').value;
 
             if (!teamId || !channelName || !userName) {
-                alert("Please provide Team ID, Channel Name, and User Name.");
+                showToast("Please provide Team ID, Channel Name, and User Name.", 'error');
                 return;
             }
 
@@ -173,12 +186,13 @@
             })
             .then(response => response.json())
             .then(data => {
-                if (data.error) {
-                    alert(data.error);
+            if (data.error) {
+                    showToast(data.error, 'error');
                 } else {
-                    alert('User assigned successfully!');
-                    fetchTeamsWithChannels(); 
-                    document.getElementById('assignUserForm').reset();
+                    showToast("User assigned successfully!");
+                    setTimeout(() => {
+                        window.location.href = '/user_page.html';
+                    }, 2000);
                 }
             })
             .catch(err => console.error('Error:', err));
@@ -279,24 +293,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const storedMessages = JSON.parse(sessionStorage.getItem("chatMessages")) || [];
     messages = storedMessages;
     console.log("LoadedMessage",messages)
-displayMessage(messages)
+    displayMessage(messages)
     //display messages
     function displayMessage(msg) {
     
-messages.forEach((msg)=>{
+    messages.forEach((msg)=>{
     const messageElement = document.createElement("div");
     if (msg.sender === "Me") {
         messageElement.classList.add("my-message");
         messageElement.textContent = `${msg.text}`;
-}else {
+    }else {
         messageElement.classList.add("other-message");
         messageElement.textContent = `${msg.sender}: ${msg.text}`;
     }
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-})
+    })
   
-}
+    }
 
 
 
@@ -310,7 +324,7 @@ messages.forEach((msg)=>{
 
     messages.push(newMessage); // Store message in the array
     sessionStorage.setItem("chatMessages", JSON.stringify(messages));
-}
+    }
     function sendMessage() {
     
     const input =document.getElementById("message")
@@ -340,7 +354,7 @@ messages.forEach((msg)=>{
         chatMessages.scrollTop = chatMessages.scrollHeight; 
         messageInput.value = "";
     });
-});
+    });
 
     </script>
 
