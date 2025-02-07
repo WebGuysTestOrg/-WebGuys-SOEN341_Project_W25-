@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,110 +13,125 @@
 
     <div class="back-button">
         <button onclick="history.back()">
-              <i class="fa fa-arrow-left"></i>
+            <i class="fa fa-arrow-left"></i>
         </button>
     </div>
 
-    <div class = left-panel>
+    <div class=left-panel>
         <div>
             <nav>
-                <a class = "tab" onclick="tabs(0)"> Account Settings</a>
-                <a class = "tab" onclick="tabs(1)">Messages</a>
+                <a class="tab" onclick="tabs(0)"> Account Settings</a>
+                <a class="tab" onclick="tabs(1)">Messages</a>
             </nav>
         </div>
     </div>
 
-    <div class = "box">
+    <div class="box">
         <div class="tabShow">
-        <h1>Account Settings</h1>
-        <form id="settingsForm">
+            <h1>Account Settings</h1>
+            <form id="settingsForm">
 
-            <label>Full name</label>
-            <input class="inputs" id="name" readonly placeholder="Enter your full name" >
-            <label>Email Address</label>
-            <input class="inputs" id="email" readonly value="Your current email address">
-            <label>Change Password</label>
-            <input class="inputs" id="password" type="password" placeholder="New Password">
-            <label>Confirm Password</label>
-            <input class="inputs" id="cpassword" type="password"placeholder="Confirm New password">
-            <div class ="buttonWrapper">
-            <button id="save">Save</button>
-            </div>
-        </form>
+                <label>Full name</label>
+                <input class="inputs" id="name" readonly placeholder="Enter your full name">
+                <label>Email Address</label>
+                <input class="inputs" id="email" readonly value="Your current email address">
+                <label>Change Password</label>
+                <input class="inputs" id="password" type="password" placeholder="New Password">
+                <label>Confirm Password</label>
+                <input class="inputs" id="cpassword" type="password" placeholder="Confirm New password">
+                <div class="buttonWrapper">
+                    <button id="save">Save</button>
+                </div>
+            </form>
         </div>
         <div class="tabShow">
-        <h1>Messages</h1>
+            <h1>Messages</h1>
         </div>
     </div>
 
-<script>
+    <div id="toast-container"></div>
 
+    <script>
 
-const tabBtn = document.querySelectorAll(".tab");
-const tab = document.querySelectorAll(".tabShow");
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = message;
 
-function tabs(panelIndex){
-    tab.forEach(function(node){
-        node.style.display = "none";
-    });
-    tab[panelIndex].style.display = "block";
-}
+            document.getElementById('toast-container').appendChild(toast);
 
-tabs(0);
-
-fetch('/user-info')
-
-    
-    .then(response => {
-            if (!response.ok) throw new Error('Unauthorized');
-            return response.json();
-        })
-    .then(data => {
-            console.log(data);
-            document.getElementById('name').value = data.name;
-            document.getElementById('email').value = data.email;
-        })
-    .catch(() => window.location.href = '/login_form.html');
-    
-    document.getElementById('settingsForm').addEventListener('submit', (event) => {
-        event.preventDefault(); 
-        
-        const newPassword = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('cpassword').value;
-
-        
-        if (newPassword !== confirmPassword) {
-            alert("Passwords do not match!");
-            return;
+            setTimeout(() => {
+                toast.classList.add('hide');
+                toast.addEventListener('transitionend', () => { toast.remove() });
+            }, 500);
         }
 
-       
-        fetch('/update-password', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                newPassword: newPassword,
-                confirmPassword: confirmPassword
+
+        const tabBtn = document.querySelectorAll(".tab");
+        const tab = document.querySelectorAll(".tabShow");
+
+        function tabs(panelIndex) {
+            tab.forEach(function (node) {
+                node.style.display = "none";
+            });
+            tab[panelIndex].style.display = "block";
+        }
+
+        tabs(0);
+
+        fetch('/user-info')
+
+
+            .then(response => {
+                if (!response.ok) throw new Error('Unauthorized');
+                return response.json();
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert(data.error);
-            } else {
-                alert(data.message);
+            .then(data => {
+                console.log(data);
+                document.getElementById('name').value = data.name;
+                document.getElementById('email').value = data.email;
+            })
+            .catch(() => window.location.href = '/login_form.html');
+
+        document.getElementById('settingsForm').addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const newPassword = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('cpassword').value;
+
+
+            if (newPassword !== confirmPassword) {
+                showToast("Passwords do not match!", 'error');
+                return;
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while updating the password.');
+
+
+            fetch('/update-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    newPassword: newPassword,
+                    confirmPassword: confirmPassword
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showToast(data.error, 'error');
+                    } else {
+                        showToast(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while updating the password.');
+                });
         });
-    });
-    
 
 
-</script>
+
+    </script>
 
 </body>
