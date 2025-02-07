@@ -99,8 +99,8 @@
 
             setTimeout(() => {
                 toast.classList.add('hide');
-                toast.addEventListener('transitionend', () => toast.remove());
-            }, 3000);
+                toast.addEventListener('transitionend', () => {toast.remove()});
+            }, 500);
         }
         
         fetch('/admin-info')
@@ -110,6 +110,9 @@
             })
             .then(data => {
                 document.getElementById('admin-name').textContent = data.name;
+                if (data.role === "user" && window.location.pathname !== "/user_page.html") {
+            window.location.href = "/user_page.html";
+        }
             })
             .catch(() => window.location.href = '/login_form.html');
 
@@ -130,8 +133,8 @@
                 } else {
                     showToast("Team created successfully!");
                     setTimeout(() => {
-                        window.location.href = '/user_page.html';
-                    }, 2000);
+                        window.location.href = '/admin_page.html';
+                    }, 1000);
                 }
             })
             .catch(err => console.error("Error creating team:", err));
@@ -160,8 +163,8 @@
                 } else {
                     showToast("Channel created successfully!");
                     setTimeout(() => {
-                        window.location.href = '/user_page.html';
-                    }, 2000);
+                        window.location.href = '/admin_page.html';
+                    }, 1000);
                 }
             })
             .catch(err => console.error('Error:', err));
@@ -191,8 +194,8 @@
                 } else {
                     showToast("User assigned successfully!");
                     setTimeout(() => {
-                        window.location.href = '/user_page.html';
-                    }, 2000);
+                        window.location.href = '/admin_page.html';
+                    }, 1000);
                 }
             })
             .catch(err => console.error('Error:', err));
@@ -296,10 +299,18 @@ document.addEventListener("DOMContentLoaded", () => {
     displayMessage(messages)
     //display messages
     function displayMessage(msg) {
-    
-    messages.forEach((msg)=>{
+        fetch('/user-info')
+            .then(response => {
+                if (!response.ok) throw new Error('Unauthorized');
+                return response.json();
+            })
+            .then(data => {
+                loggedInUser = data.name;
+                loggedInUserId = data.id;
+                messages.forEach((msg)=>{
     const messageElement = document.createElement("div");
-    if (msg.sender === "Me") {
+    console.log("LoggedInUser",loggedInUserId)
+    if (msg.senderID === loggedInUserId) {
         messageElement.classList.add("my-message");
         messageElement.textContent = `${msg.text}`;
     }else {
@@ -308,17 +319,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-    })
+})
+            })
+            .catch(() => window.location.href = '/login_form.html');
+
   
     }
 
 
 
-    function addMessage(sender,text) {
+    function addMessage(sender,text, senderID) {
     const newMessage = {
         id: messages.length + 1,
         text: text,
         sender: sender, // "Me" if it's your message
+        senderID:senderID,
         timestamp: Date.now()
     };
 
@@ -337,16 +352,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     socket.on("message", (msg) => {
         const messageElement = document.createElement("div");
-        if(socket.id===msg.SSocketId){
+        if(loggedInUserId===msg.userID){
             messageElement.classList.add("my-message");
             messageElement.textContent = `${msg.text}`;
-            addMessage("Me",msg.text)
+            addMessage(msg.user,msg.text,msg.userID)
             sessionStorage.setItem("chatMessages", JSON.stringify(messages));
         }
         else{
             messageElement.classList.add("other-message");
             messageElement.textContent = `${msg.user}: ${msg.text}`;
-            addMessage(msg.user,msg.text)
+            addMessage(msg.user,msg.text,msg.userID)
             sessionStorage.setItem("chatMessages", JSON.stringify(messages));
         }
         console.log("SavedMessages",messages)

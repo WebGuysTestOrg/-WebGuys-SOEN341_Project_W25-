@@ -20,16 +20,17 @@ As the project progresses, additional functionalities will be proposed and integ
 
 ## Team Members
 
-* Wadih Bou Jaoude
-* Ruso Kanapathipillai
-* Manlai Munkhbold
-* Sem Axil Raïs
-* Noah Scally
-* Chadi Zebian
-
+* Wadih Bou Jaoude (WadihBj) - Full-Stack Developer
+* Ruso Kanapathipillai (RusoKan) - Full-Stack Developer
+* Manlai Munkhbold (ManlaiM) - Front-End Developer
+* Sem Axil Raïs (kisuk8) - Full-Stack Developer
+* Noah Scally (NoahScally) - Front-End Developer
+* Chadi Zebian (chadithebian) - Front-End Developer
+  
 ## Technologies Used
 
 -**Front End**: HTML, CSS, JavaScript
+
 -**Back End**: JavaScript, MySQL
 
 ## Repository Structure

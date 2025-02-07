@@ -50,7 +50,7 @@ io.on('connection',socket =>{
         const message = data.text;
          
         const user = session.user && session.user.name ? `${session.user.name}[${session.user.user_type}_${session.user.id.toString().padStart(3, '0')}]`:"Anonymous"; 
-        io.emit('message',{SSocketId:socket.id,user:user,text:message})
+        io.emit('message',{SSocketId:socket.id,user:user,text:message, userID:session.user.id})
     })
 
     socket.on("disconnect", (reason) => {
@@ -167,8 +167,10 @@ app.get("/user-info", (req, res) => {
     res.json({ 
         name: req.session.user.name, 
         email: req.session.user.email, 
-        id: req.session.user.id
+        id: req.session.user.id,
+        role: req.session.user.user_type
     });
+    
 });
 
 app.get("/admin-info", (req, res) => {
