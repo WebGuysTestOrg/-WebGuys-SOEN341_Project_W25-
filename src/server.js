@@ -305,8 +305,9 @@ app.post("/create-channel", (req, res) => {
         return res.status(400).json({ error: "Channel Name and Team ID are required." });
     }
 
+    // Verify if the user is either the team creator or a team member
     const checkMembershipQuery = `
-        SELECT t.created_by, ut.user_id 
+        SELECT t.created_by AS creatorId, ut.user_id 
         FROM teams t
         LEFT JOIN user_teams ut ON t.id = ut.team_id
         WHERE t.id = ? AND (t.created_by = ? OR ut.user_id = ?)`;
@@ -315,22 +316,30 @@ app.post("/create-channel", (req, res) => {
         if (err) return res.status(500).json({ error: "Database error while verifying team membership." });
         if (results.length === 0) return res.status(403).json({ error: "You must be the creator or a member of the team to create a channel." });
 
-        
+        const teamCreatorId = results[0].creatorId;
+
+        // Insert the new channel
         const insertChannelQuery = "INSERT INTO channels (name, team_id) VALUES (?, ?)";
         connection.query(insertChannelQuery, [channelName, teamId], (err, channelResult) => {
-            if (err) return res.status(500).json({ error: "Error creating channel." });
+            if (err) return res.status(500).json({ error: "Channel name already exists!" });
 
-            const channelId = channelResult.insertId; 
+            const channelId = channelResult.insertId;
 
-            
+            // Insert the user who created the channel
             const insertUserChannelQuery = "INSERT INTO user_channels (user_id, channel_id) VALUES (?, ?)";
             connection.query(insertUserChannelQuery, [userId, channelId], (err) => {
                 if (err) return res.status(500).json({ error: "Error adding creator to channel." });
 
-                res.json({ message: "Channel created successfully, and creator added automatically.", channelId });
+                // If the team creator is not the same as the channel creator, add them to the channel
+                if (teamCreatorId !== userId) {
+                    connection.query(insertUserChannelQuery, [teamCreatorId, channelId], (err) => {
+                        if (err) return res.status(500).json({ error: "Error adding team creator to channel." });
 
-                
-
+                        res.json({ message: "Channel created successfully. Team creator and channel creator added." });
+                    });
+                } else {
+                    res.json({ message: "Channel created successfully. Creator added automatically." });
+                }
             });
         });
     });
