@@ -13,12 +13,33 @@
     <h1>Welcome</h1>
     <p>This is the user page</p>
     <a href="/logout" class="btn">Logout</a>
-    <a href="/create_team.html" class="btn">Create Team</a>
+    
+    <div class="form-container">
+        <h2>Create Channel</h2>
+        <form id="createChannelForm">
+            <input type="number" id="teamId" placeholder="Enter Team ID" required>
+            <input type="text" id="channelName" placeholder="Enter Channel Name" required>
+            <button type="submit" class="btn">Create Channel</button>
+        </form>
+    </div>
 
     <div class="form-container">
+        <h2>Assign User to Channel</h2>
+        <form id="assignUserForm">
+            <input type="number" id="teamIdAssign" placeholder="Enter Team ID" required>
+            <input type="text" id="channelNameAssign" placeholder="Enter Channel Name" required>
+            <input type="text" id="userNameAssign" placeholder="Enter User Name" required>
+            <button type="submit" class="btn">Assign User</button>
+        </form>
+    </div>
+    
+<div class="form-container">
         <h2>Teams, Channels, and Members</h2>
         <div id="teams-container"></div>
-    </div>
+ </div>
+    
+
+    <div id="toast-container"></div>
     <div id="chat-toggle">
         <i class="fa-solid fa-globe"></i>
 </div>
@@ -27,88 +48,129 @@
             <span id="Chat-title"> Global Chat</span>
             <button id="close-chat">✖</button>
         </div>
-        <div id="chat-messages"></div> <!-- Ensure this ID matches with CSS -->
+        <div id="chat-messages"></div> 
         <div id="chat-input">
             <input type="text" id="message" placeholder="Type a message...">
             <button id="send">Send</button>
         </div>
     </div>
+
+    <div class="settings-button">
+        <a href="settings_page.html">
+            <i class="fa-solid fa-cog"></i>
+        </a>
+    </div>
      <script>
-        let loggedInUser = "";
-        let loggedInUserId = "";
-        
-        
-        fetch('/user-info')
-            .then(response => {
-                if (!response.ok) throw new Error('Unauthorized');
-                return response.json();
-            })
+         let userTeams = {};
+
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerText = message;
+
+    document.getElementById('toast-container').appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('hide');
+        toast.addEventListener('transitionend', () => toast.remove());
+    }, 3000);
+}
+
+fetch('/user-info')
+            .then(response => response.json())
             .then(data => {
-                loggedInUser = data.name;
-                loggedInUserId = data.id;
                 document.getElementById('username').textContent = data.name;
-                fetchUserTeams(); 
+                fetchUserTeams();
             })
             .catch(() => window.location.href = '/login_form.html');
 
-            function fetchUserTeams() { 
-    fetch('/get-user-teams')
-    .then((response) => response.json())
-    .then((teams) => {
-        const teamsContainer = document.getElementById('teams-container');
-        teamsContainer.innerHTML = '';
+            document.getElementById("createChannelForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const teamId = document.getElementById("teamId").value;
+            const channelName = document.getElementById("channelName").value;
 
-        Object.values(teams).forEach((team) => {
-            const teamElement = document.createElement('div');
-            teamElement.classList.add('team-card');
-
-            const teamName = document.createElement('h3');
-            teamName.textContent = `(${team.teamId}) ${team.teamName}`;
-            teamName.style.color = '#007BFF';
-
-            const createdBy = document.createElement('p');
-            createdBy.innerHTML = `<strong>Created by:</strong> ${team.creatorName || 'Unknown'}`;
-            teamElement.appendChild(teamName);
-            teamElement.appendChild(createdBy);
-
-            
-            if (team.createdBy == loggedInUserId) {
-                const adminTag = document.createElement('p');
-                adminTag.innerHTML = `<strong>Admin</strong>`;
-                adminTag.style.color = 'red';
-                teamElement.appendChild(adminTag);
-            }
-
-            
-            const membersList = document.createElement('p');
-            membersList.innerHTML = `<strong>Member:</strong> ${team.members.join(', ') || 'No members'}`;
-            teamElement.appendChild(membersList);
-
-            
-            Object.values(team.channels).forEach((channel) => {
-                const channelElement = document.createElement('div');
-                channelElement.style.marginLeft = '20px';
-
-                const channelName = document.createElement('h4');
-                channelName.textContent = `Channel: ${channel.channelName}`;
-                channelName.style.color = '#555';
-
-                const channelMembersList = document.createElement('p');
-                channelMembersList.innerHTML = `<strong>Members:</strong> ${channel.members.join(', ') || 'No members'}`;
-
-                channelElement.appendChild(channelName);
-                channelElement.appendChild(channelMembersList);
-                teamElement.appendChild(channelElement);
-            });
-
-            teamsContainer.appendChild(teamElement);
+            fetch("/create-channel", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ teamId, channelName }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.error ? data.error : "Channel created successfully!", data.error ? 'error' : 'success');
+                setTimeout(() => window.location.reload(), 2000);
+            })
+            .catch(err => console.error("Error creating channel:", err));
         });
-    })
-    .catch((err) => console.error('Error fetching user teams:', err));
+
+        document.getElementById("assignUserForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const teamId = document.getElementById("teamIdAssign").value;
+            const channelName = document.getElementById("channelNameAssign").value;
+            const userName = document.getElementById("userNameAssign").value;
+
+            fetch("/assign-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ teamId, channelName, userName }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.error ? data.error : "User assigned successfully!", data.error ? 'error' : 'success');
+                setTimeout(() => window.location.reload(), 2000);
+            })
+            .catch(err => console.error("Error assigning user:", err));
+        });
+
+        function fetchUserTeams() {
+    fetch('/get-user-teams')
+        .then(response => response.json())
+        .then(teams => {
+            const teamsContainer = document.getElementById("teams-container");
+            teamsContainer.innerHTML = "";
+
+            teams.forEach(team => {
+                let teamElement = document.createElement("div");
+                teamElement.classList.add("team-card");
+
+                let teamName = document.createElement("h3");
+                teamName.textContent = `(${team.teamId}) ${team.teamName}`;
+                teamName.style.color = "#007BFF";
+
+                let createdBy = document.createElement("p");
+                createdBy.innerHTML = `<strong>Created by:</strong> ${team.creatorName || "Unknown"}`;
+
+                let membersList = document.createElement("p");
+                membersList.innerHTML = `<strong>Members:</strong> ${team.members.length > 0 ? team.members.join(", ") : "No members"}`;
+
+                teamElement.appendChild(teamName);
+                teamElement.appendChild(createdBy);
+                teamElement.appendChild(membersList);
+
+                Object.values(team.channels).forEach(channel => {
+                    let channelElement = document.createElement("div");
+                    channelElement.style.marginLeft = "20px";
+
+                    let channelName = document.createElement("h4");
+                    channelName.textContent = `Channel: ${channel.channelName}`;
+                    channelName.style.color = "#555";
+
+                    let channelMembersList = document.createElement("p");
+                    channelMembersList.innerHTML = `<strong>Members:</strong> ${channel.members.length > 0 ? channel.members.join(", ") : "No members"}`;
+
+                    channelElement.appendChild(channelName);
+                    channelElement.appendChild(channelMembersList);
+                    teamElement.appendChild(channelElement);
+                });
+
+                teamsContainer.appendChild(teamElement);
+            });
+        })
+        .catch(err => console.error("Error fetching user teams:", err));
 }
 
-        
-        document.addEventListener('DOMContentLoaded', fetchUserTeams);
+document.addEventListener('DOMContentLoaded', fetchUserTeams);
+
+
 
         const socket=io('ws://localhost:3000')
 
@@ -152,10 +214,18 @@ document.addEventListener("DOMContentLoaded", () => {
 displayMessage(messages)
     //display messages
     function displayMessage(msg) {
-    
-messages.forEach((msg)=>{
+        fetch('/user-info')
+            .then(response => {
+                if (!response.ok) throw new Error('Unauthorized');
+                return response.json();
+            })
+            .then(data => {
+                loggedInUser = data.name;
+                loggedInUserId = data.id;
+                messages.forEach((msg)=>{
     const messageElement = document.createElement("div");
-    if (msg.sender === "Me") {
+    console.log("LoggedInUser",loggedInUserId)
+    if (msg.senderID === loggedInUserId) {
         messageElement.classList.add("my-message");
         messageElement.textContent = `${msg.text}`;
 }else {
@@ -165,16 +235,20 @@ messages.forEach((msg)=>{
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 })
+            })
+            .catch(() => window.location.href = '/login_form.html');
+
   
 }
 
 
 
-    function addMessage(sender,text) {
+    function addMessage(sender,text, senderID) {
     const newMessage = {
         id: messages.length + 1,
         text: text,
         sender: sender, // "Me" if it's your message
+        senderID:senderID,
         timestamp: Date.now()
     };
 
@@ -193,16 +267,16 @@ messages.forEach((msg)=>{
     }
     socket.on("message", (msg) => {
         const messageElement = document.createElement("div");
-        if(socket.id===msg.SSocketId){
+        if(loggedInUserId===msg.userID){
             messageElement.classList.add("my-message");
             messageElement.textContent = `${msg.text}`;
-            addMessage("Me",msg.text)
+            addMessage(msg.user,msg.text,msg.userID)
             sessionStorage.setItem("chatMessages", JSON.stringify(messages));
         }
         else{
             messageElement.classList.add("other-message");
             messageElement.textContent = `${msg.user}: ${msg.text}`;
-            addMessage(msg.user,msg.text)
+            addMessage(msg.user,msg.text,msg.userID)
             sessionStorage.setItem("chatMessages", JSON.stringify(messages));
         }
         console.log("SavedMessages",messages)

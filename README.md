@@ -2,11 +2,17 @@
 
 ## SOEN 341 (Software Processes) Web Development Project
 
+## Problem statement
+Effective communication is essential for both personal and professional interactions, yet existing platforms often lack structured organization, accessibility, or privacy controls. Users need a secure, intuitive, and organized space to collaborate seamlessly.
+
+ChatHaven addresses this by providing topic-based channels for structured discussions, direct messaging for private interactions, and role-based user management for effective moderation. With a user-friendly interface and privacy-focused features, ChatHaven ensures an efficient and well-managed communication experience.
+
 ## Project Overview
 
 ChatHaven is a web-based communication platform designed to facilitate seamless discussions within structured topic-specific text channels and private direct messaging. It enables users to engage in meaningful conversations, collaborate in teams, and connect in a well-organized, intuitive digital environment.
 
 This project follows Agile development practices, utilizing GitHub for version control, task management, and collaboration tools, ensuring an iterative and efficient development process.
+
 
 ## Features
 
@@ -20,16 +26,17 @@ As the project progresses, additional functionalities will be proposed and integ
 
 ## Team Members
 
-* Wadih Bou Jaoude
-* Ruso Kanapathipillai
-* Manlai Munkhbold
-* Sem Axil Raïs
-* Noah Scally
-* Chadi Zebian
-
+* Wadih Bou Jaoude (WadihBj) - Full-Stack Developer
+* Ruso Kanapathipillai (RusoKan) - Full-Stack Developer
+* Manlai Munkhbold (ManlaiM) - Front-End Developer
+* Sem Axil Raïs (kisuk8) - Full-Stack Developer
+* Noah Scally (NoahScally) - Front-End Developer
+* Chadi Zebian (chadithebian) - Front-End Developer
+  
 ## Technologies Used
 
 -**Front End**: HTML, CSS, JavaScript
+
 -**Back End**: JavaScript, MySQL
 
 ## Repository Structure
@@ -45,3 +52,9 @@ As the project progresses, additional functionalities will be proposed and integ
 - **Development Approach**: Agile Scrum (Sprint-Based)
 - **Issue Tracking**: GitHub Issues
 - **Task Management**: GitHub Projects
+
+## Personal Contribution Log
+
+Each team member maintains an individual contribution log to track time spent, document tasks completed, and ensure transparency in workload distribution. You can access the Google Sheet for the personal contribution logs here:
+
+🔗https://docs.google.com/spreadsheets/d/1yzdOKmYIBJipA0QvmgK5Z2lteJAdY1IftvpsWpOOGvk/edit?usp=drive_link
