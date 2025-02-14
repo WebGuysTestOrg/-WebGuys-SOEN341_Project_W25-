@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct Messages</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
+    <link rel="stylesheet" href="dmstyle.css">
+</head>
+<body>
+    <button id="back-btn">← Back</button>
+    <div class="dm-container">
+        <div class="sidebar">
+            <h2>Chats</h2>
+            <ul id="chat-list"></ul>
+            <button id="new-chat-btn">New Chat</button>
+        </div>
+        <div class="chat-window">
+            <div id="chat-header">Select a chat to start messaging</div>
+            <div id="chat-messages"></div>
+            <div class="chat-input">
+                <input type="text" id="message" placeholder="Type a message...">
+                <button id="send">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let loggedInUserId = null;
+        let loggedInUserName = "";
+
+        
+        document.getElementById("back-btn").addEventListener("click", () => {
+            fetch('/user-info')
+                .then(response => response.json())
+                .then(data => {
+                    window.location.href = data.role === "admin" ? "/admin_page.html" : "/user_page.html";
+                })
+                .catch(() => window.location.href = "/user_page.html");
+        });
+
+        // Fetch logged-in user info
+        fetch('/user-info')
+            .then(response => response.json())
+            .then(data => {
+                loggedInUserId = data.id;
+                loggedInUserName = data.name;
+                fetchUserChats();
+            })
+            .catch(() => window.location.href = '/login_form.html');
+
+        // Fetch user's existing chats
+        function fetchUserChats() {
+            fetch(`/get-user-chats?userId=${loggedInUserId}`)
+                .then(response => response.json())
+                .then(chats => {
+                    const chatList = document.getElementById("chat-list");
+                    chatList.innerHTML = "";
+                    chats.forEach(chat => {
+                        let chatItem = document.createElement("li");
+                        chatItem.textContent = chat.username;
+                        chatItem.dataset.recipientId = chat.user_id;
+                        chatItem.addEventListener("click", () => loadChat(chat.user_id, chat.username));
+                        chatList.appendChild(chatItem);
+                    });
+                })
+                .catch(err => console.error("Error fetching chats:", err));
+        }
+
+        // Create a new chat
+        document.getElementById("new-chat-btn").addEventListener("click", () => {
+            const recipientName = prompt("Enter the username to chat with:");
+            if (!recipientName) return;
+
+            fetch(`/get-user-id?username=${recipientName}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert("User not found.");
+                    } else {
+                        startChat(data.userId, recipientName);
+                    }
+                })
+                .catch(err => console.error("Error fetching user ID:", err));
+        });
+
+        // Start a new chat with a user
+        function startChat(recipientId, recipientName) {
+            if (!recipientId) return;
+
+            const chatList = document.getElementById("chat-list");
+            let chatItem = document.createElement("li");
+            chatItem.textContent = recipientName;
+            chatItem.dataset.recipientId = recipientId;
+            chatItem.addEventListener("click", () => loadChat(recipientId, recipientName));
+            chatList.appendChild(chatItem);
+
+            loadChat(recipientId, recipientName);
+        }
+
+        // Load chat messages
+        function loadChat(recipientId, recipientName) {
+            document.getElementById("chat-header").innerHTML = `<strong>Chats - ${recipientName}</strong>`;
+            document.getElementById("chat-header").dataset.recipientId = recipientId;
+            document.getElementById("chat-messages").innerHTML = "";
+
+            fetch(`/get-messages?senderId=${loggedInUserId}&recipientId=${recipientId}`)
+                .then(response => response.json())
+                .then(messages => {
+                    messages.forEach(msg => displayMessage(msg, msg.sender_id === loggedInUserId));
+                })
+                .catch(err => console.error("Error loading messages:", err));
+        }
+
+        // Send a message
+        document.getElementById("send").addEventListener("click", () => {
+            sendMessage();
+        });
+
+        document.getElementById("message").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const messageInput = document.getElementById("message");
+            const messageText = messageInput.value.trim();
+            const recipientId = document.getElementById("chat-header").dataset.recipientId;
+
+            if (!messageText || !recipientId) return;
+
+            const messageData = {
+                senderId: loggedInUserId,
+                recipientId: recipientId,
+                text: messageText,
+            };
+
+            socket.emit("private-message", messageData);
+            messageInput.value = "";
+        }
+
+        // Display messages
+        socket.on("private-message", (msg) => {
+            if (msg.senderId == loggedInUserId || msg.recipientId == loggedInUserId) {
+                displayMessage(msg, msg.senderId === loggedInUserId);
+            }
+        });
+
+        function displayMessage(msg, isOwnMessage) {
+            const chatMessages = document.getElementById("chat-messages");
+            const messageElement = document.createElement("div");
+
+            messageElement.classList.add(isOwnMessage ? "my-message" : "other-message");
+            messageElement.textContent = isOwnMessage ? `Me: ${msg.text}` : `${msg.senderName}: ${msg.text}`;
+
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    </script>
+</body>
+</html>
+
+
+
