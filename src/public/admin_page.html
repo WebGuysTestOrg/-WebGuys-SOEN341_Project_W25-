@@ -32,7 +32,18 @@
                 <button type="submit" class="btn">Create Team</button>
             </form>
         </div>
-
+       
+        <div class="form-container">
+            <h2>Assign User to Team</h2>
+            <form id="assignUserFormForTeams">
+                <input type="text" id="userNameAssign" placeholder="Enter User Name" required>
+                <input type="number" id="teamIdAssign" placeholder="Enter Team ID" required>
+                <button type="submit" class="btn">Assign User</button>
+            </form>
+        </div>
+        
+        
+        
         <!-- Create Channel Section -->
         <div class="form-container">
             <h2>Create Channel</h2>
@@ -46,10 +57,10 @@
         <!-- Assign User Section -->
         <div class="form-container">
             <h2>Assign User to Channel</h2>
-            <form id="assignUserForm">
-                <input type="number" id="teamIdAssign" placeholder="Enter Team ID" required>
-                <input type="text" id="channelNameAssign" placeholder="Enter Channel Name" required>
-                <input type="text" id="userNameAssign" placeholder="Enter User Name" required>
+            <form id="assignUserFormChannel">
+                <input type="number" id="teamIdAssign1" placeholder="Enter Team ID" required>
+                <input type="text" id="channelNameAssign1" placeholder="Enter Channel Name" required>
+                <input type="text" id="userNameAssign1" placeholder="Enter User Name" required>
                 <button type="submit" class="btn">Assign User</button>
             </form>
         </div>
@@ -102,7 +113,7 @@
                 toast.addEventListener('transitionend', () => {toast.remove()});
             }, 500);
         }
-        
+       
         fetch('/admin-info')
             .then(response => {
                 if (!response.ok) throw new Error('Unauthorized');
@@ -140,98 +151,129 @@
             .catch(err => console.error("Error creating team:", err));
         });
 
+        document.getElementById("assignUserFormForTeams").addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const userName = document.getElementById("userNameAssign").value;
+    const teamId = document.getElementById("teamIdAssign").value;
+
+    if (!userName || !teamId) {
+        showToast("Please provide both User Name and Team ID.", "error");
+        return;
+    }
+
+    fetch("/assign-user-to-team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userName, teamId }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showToast(data.error, 'error');
+        } else {
+            showToast("User assigned successfully!");
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+    })
+    .catch(err => console.error("Error assigning user:", err));
+});
+
+
+document.getElementById('createChannelForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const channelName = document.getElementById('channelName').value;
+    const teamId = document.getElementById('teamId').value;
+
+    if (!channelName || !teamId) {
+        showToast("Please provide both Channel Name and Team ID.", 'error');
+        return;
+    }
+
+    fetch('/create-channel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelName, teamId }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showToast(data.error, 'error');
+        } else {
+            showToast("Channel created successfully!");
+            setTimeout(() => {
+                window.location.href = '/admin_page.html';
+            }, 1000);
+        }
+    })
+    .catch(err => console.error('Error:', err));
+});
+
         
-        document.getElementById('createChannelForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const channelName = document.getElementById('channelName').value;
-            const teamId = document.getElementById('teamId').value;
+document.getElementById('assignUserFormChannel').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const teamId = document.getElementById('teamIdAssign1').value;
+    const channelName = document.getElementById('channelNameAssign1').value;
+    const userName = document.getElementById('userNameAssign1').value;
 
-            if (!channelName || !teamId) {
-                showToast("Please provide both Channel Name and Team ID.", 'error');
-                return;
-            }
+    if (!teamId || !channelName || !userName) {
+        showToast("Please provide Team ID, Channel Name, and User Name.", 'error');
+        return;
+    }
 
-            fetch('/create-channel', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channelName, teamId }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    showToast(data.error, 'error');
-                } else {
-                    showToast("Channel created successfully!");
-                    setTimeout(() => {
-                        window.location.href = '/admin_page.html';
-                    }, 1000);
-                }
-            })
-            .catch(err => console.error('Error:', err));
-        });
+    fetch('/assign-user', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, channelName, userName }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showToast(data.error, 'error');
+        } else {
+            showToast("User assigned successfully!");
+            setTimeout(() => {
+                window.location.href = '/admin_page.html';
+            }, 1000);
+        }
+    })
+    .catch(err => console.error('Error:', err));
+});
 
-        
-        document.getElementById('assignUserForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const teamId = document.getElementById('teamIdAssign').value;
-            const channelName = document.getElementById('channelNameAssign').value;
-            const userName = document.getElementById('userNameAssign').value;
-
-            if (!teamId || !channelName || !userName) {
-                showToast("Please provide Team ID, Channel Name, and User Name.", 'error');
-                return;
-            }
-
-            fetch('/assign-user', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ teamId, channelName, userName }),
-            })
-            .then(response => response.json())
-            .then(data => {
-            if (data.error) {
-                    showToast(data.error, 'error');
-                } else {
-                    showToast("User assigned successfully!");
-                    setTimeout(() => {
-                        window.location.href = '/admin_page.html';
-                    }, 1000);
-                }
-            })
-            .catch(err => console.error('Error:', err));
-        });
-
-        function fetchTeamsWithChannels() {
-    fetch('/get-teams-with-channels')
+function fetchTeamsWithMembers() {
+    fetch('/get-teams-with-members')
         .then(response => response.json())
         .then(teams => {
             const teamsContainer = document.getElementById('teams-container');
             teamsContainer.innerHTML = '';
 
-            if (Object.keys(teams).length === 0) {
+            if (teams.length === 0) {
                 teamsContainer.innerHTML = '<p>No teams available.</p>';
                 return;
             }
 
-            Object.values(teams).forEach(team => {
+            teams.forEach(team => {
+                console.log("Processing team:", team);
+
                 const teamDiv = document.createElement('div');
                 teamDiv.classList.add('team-card');
 
                 const teamTitle = document.createElement('h3');
-                teamTitle.innerHTML = `(${team.teamId}) ${team.teamName}`;
+                teamTitle.innerHTML = `(${team.teamId || 'N/A'}) ${team.teamName || 'Unnamed Team'}`;
                 teamTitle.style.color = '#007BFF';
 
                 const createdBy = document.createElement('p');
                 createdBy.innerHTML = `<strong>Created by:</strong> ${team.creatorName || 'Unknown'}`;
 
                 const membersList = document.createElement('p');
-                membersList.innerHTML = `<strong>Member:</strong> ${team.members.join(', ') || 'No members'}`;
-
-                teamDiv.appendChild(teamTitle);
-                teamDiv.appendChild(createdBy);
-                teamDiv.appendChild(membersList);
+                membersList.innerHTML = `<strong>Members:</strong> ${team.members?.join(', ') || 'No members'}`;
 
                 
+                const channelContainer = document.createElement('div');
+                channelContainer.classList.add('channel-container');
+
                 Object.values(team.channels).forEach(channel => {
                     const channelDiv = document.createElement('div');
                     channelDiv.style.marginLeft = '20px';
@@ -241,12 +283,21 @@
                     channelName.style.color = '#555';
 
                     const channelMembersList = document.createElement('p');
-                    channelMembersList.innerHTML = `<strong>Members:</strong> ${channel.members.join(', ') || 'No members'}`;
+                    if (channel.members && channel.members.length > 0) {
+                        channelMembersList.innerHTML = `<strong>Members:</strong> ${channel.members.join(', ')}`;
+                    } else {
+                        channelMembersList.innerHTML = `<strong>Members:</strong> No members`;
+                    }
 
                     channelDiv.appendChild(channelName);
                     channelDiv.appendChild(channelMembersList);
-                    teamDiv.appendChild(channelDiv);
+                    channelContainer.appendChild(channelDiv);
                 });
+
+                teamDiv.appendChild(teamTitle);
+                teamDiv.appendChild(createdBy);
+                teamDiv.appendChild(membersList);
+                teamDiv.appendChild(channelContainer);
 
                 teamsContainer.appendChild(teamDiv);
             });
@@ -254,8 +305,8 @@
         .catch(err => console.error('Error fetching teams:', err));
 }
 
+document.addEventListener('DOMContentLoaded', fetchTeamsWithMembers);
 
-        document.addEventListener('DOMContentLoaded', fetchTeamsWithChannels);
 
 const socket=io('ws://localhost:3000')
 
