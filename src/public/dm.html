@@ -55,15 +55,26 @@
             fetch(`/get-user-chats?userId=${loggedInUserId}`)
                 .then(response => response.json())
                 .then(chats => {
+                  
                     const chatList = document.getElementById("chat-list");
-                    chatList.innerHTML = "";
-                    chats.forEach(chat => {
-                        let chatItem = document.createElement("li");
-                        chatItem.textContent = chat.username;
-                        chatItem.dataset.recipientId = chat.user_id;
-                        chatItem.addEventListener("click", () => loadChat(chat.user_id, chat.username));
-                        chatList.appendChild(chatItem);
-                    });
+
+    // 🔹 Clear any existing content in the list
+    chatList.innerHTML = "";
+
+    // 🔹 Loop through channels and create list items
+    data.channels.forEach(channel => {
+        const listItem = document.createElement("li"); // Create `<li>`
+        listItem.textContent = channel; // Set text as channel name
+        listItem.classList.add("channel-item"); // Optional: Add a CSS class for styling
+
+        // 🔹 Add click event to open the channel (optional)
+        listItem.addEventListener("click", () => {
+            console.log(`Opening channel: ${channel}`);
+            alert(`You clicked on ${channel}`);
+        });
+
+        chatList.appendChild(listItem); // Append `<li>` to `#chat-list`
+    });
                 })
                 .catch(err => console.error("Error fetching chats:", err));
         }

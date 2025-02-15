@@ -261,10 +261,15 @@ function fetchTeamsWithMembers() {
 
                 const teamDiv = document.createElement('div');
                 teamDiv.classList.add('team-card');
+                
+                const teamsButton = document.createElement("button");
+                teamsButton.textContent = "Open Chat";
+                teamsButton.classList.add("teamsButton");
 
                 const teamTitle = document.createElement('h3');
                 teamTitle.innerHTML = `(${team.teamId || 'N/A'}) ${team.teamName || 'Unnamed Team'}`;
                 teamTitle.style.color = '#007BFF';
+
 
                 const createdBy = document.createElement('p');
                 createdBy.innerHTML = `<strong>Created by:</strong> ${team.creatorName || 'Unknown'}`;
@@ -283,7 +288,8 @@ function fetchTeamsWithMembers() {
                     const channelName = document.createElement('h4');
                     channelName.textContent = `Channel: ${channel.channelName}`;
                     channelName.style.color = '#555';
-
+                    
+                    
                     const channelMembersList = document.createElement('p');
                     if (channel.members && channel.members.length > 0) {
                         channelMembersList.innerHTML = `<strong>Members:</strong> ${channel.members.join(', ')}`;
@@ -294,12 +300,18 @@ function fetchTeamsWithMembers() {
                     channelDiv.appendChild(channelName);
                     channelDiv.appendChild(channelMembersList);
                     channelContainer.appendChild(channelDiv);
+                    
                 });
 
                 teamDiv.appendChild(teamTitle);
                 teamDiv.appendChild(createdBy);
                 teamDiv.appendChild(membersList);
                 teamDiv.appendChild(channelContainer);
+                teamDiv.appendChild(teamsButton);
+
+                teamsButton.addEventListener("click", function(){
+                        window.location.href = `teams_chat.html?team=${encodeURIComponent(team.teamName)}`;
+                    })
 
                 teamsContainer.appendChild(teamDiv);
             });
