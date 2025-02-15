@@ -675,7 +675,7 @@ app.post("/get-channel-messages", (req, res) => {
     }
 
     const query = `
-        SELECT sender, text FROM channels_messages 
+        SELECT id, sender, text FROM channels_messages 
         WHERE team_name = ? AND channel_name = ? 
         ORDER BY created_at ASC
     `;
@@ -686,6 +686,28 @@ app.post("/get-channel-messages", (req, res) => {
             return res.status(500).json({ error: "Internal Server Error: Database query failed." });
         }
         res.json(results);
+    });
+});
+app.post("/remove-message", (req, res) => {
+    const { messageId } = req.body;
+
+    if (!messageId) {
+        return res.status(400).json({ error: "Message ID is required." });
+    }
+
+    const query = `
+        UPDATE channels_messages
+        SET text = 'Removed by Admin'
+        WHERE id = ?
+    `;
+
+    connection.query(query, [messageId], (err, result) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Database update failed." });
+        }
+
+        res.json({ success: true });
     });
 });
 
