@@ -625,4 +625,87 @@ app.post("/update-password", (req, res) => {
     });
 });
 
+app.post("/get-team-id-from-name", (req, res) => {
+    const { teamName } = req.body; // Get teamName from request body
 
+    if (!teamName) {
+        return res.status(400).json({ error: "Team name is required." }); // Handle missing teamName
+    }
+
+    const query = "SELECT id FROM teams WHERE name = ?";
+    connection.query(query, [teamName], (err, results) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Internal Server Error: Database query failed." });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Team not found." }); // Handle no matching team
+        }
+        res.json({ teamId: results[0].id });
+    });
+});
+
+app.post("/get-channels", (req, res) => {
+    const { teamId } = req.body; // Get teamId from request body
+    if (!teamId) {
+        return res.status(400).json({ error: "Team ID is required." }); // Handle missing teamId
+    }
+
+    const query = "SELECT name FROM channels WHERE team_id = ?"; // Adjust table/column names if necessary
+
+    connection.query(query, [teamId], (err, results) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Internal Server Error: Database query failed." });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: "No channels found for this team." });
+        }
+        
+        const channelNames = results.map(row => row.name); // Extract channel names
+        res.json({ channels: channelNames });
+    });
+});
+
+app.post("/get-channel-messages", (req, res) => {
+    const { teamName, channelName } = req.body;
+
+    if (!teamName || !channelName) {
+        return res.status(400).json({ error: "Team name and channel name are required." });
+    }
+
+    const query = `
+        SELECT sender, text FROM channels_messages 
+        WHERE team_name = ? AND channel_name = ? 
+        ORDER BY created_at ASC
+    `;
+
+    connection.query(query, [teamName, channelName], (err, results) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Internal Server Error: Database query failed." });
+        }
+        res.json(results);
+    });
+});
+
+app.post("/sendChannelMessage", (req, res) => {
+    const { teamName, channelName, sender, text } = req.body;
+
+    if (!teamName || !channelName || !sender || !text) {
+        return res.status(400).json({ error: "All fields are required." });
+    }
+
+    const query = `
+        INSERT INTO channels_messages (team_name, channel_name, sender, text) 
+        VALUES (?, ?, ?, ?)
+    `;
+
+    connection.query(query, [teamName, channelName, sender, text], (err, results) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Failed to save message." });
+        }
+        res.json({ success: true });
+    });
+});
