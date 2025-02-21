@@ -41,7 +41,7 @@ As the project progresses, additional functionalities will be proposed and integ
 
 ## Repository Structure
 
-- `/docs` - Documentation and project-related resources
+- `Sprint#` - Documentation and Sprint-related resources
 - `/src` - Source code for frontend and backend
 - `/tests` - Unit and integration tests
 - `/config` - Configuration files and environment settings
