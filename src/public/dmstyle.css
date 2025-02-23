@@ -35,6 +35,8 @@ body {
     padding: 0;
     margin: 0;
     overflow-y: auto;
+    border: 1px solid #ffffff;
+    border-radius: 20px;
     flex: 1;
 }
 
@@ -43,8 +45,8 @@ body {
     cursor: pointer;
     display: flex;
     align-items: center;
+    justify-content: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-   
 }
 
 #chat-list li:hover {
@@ -93,13 +95,16 @@ body {
 
 
 .message {
-    max-width: 70%;
+    max-width: 50%;
     padding: 10px;
     border-radius: 15px;
     margin-bottom: 10px;
     font-size: 14px;
     display: inline-block;
+    background: #FBCA1F;
+    border: 3px solid #000000;
 }
+
 
 .my-message {
     color: black;
@@ -109,10 +114,19 @@ body {
 }
 
 .other-message {
-    background: #ffffff;
+    background: #dedede;
     color: black;
     align-self: flex-start;
-    border-bottom-left-radius: 0;
+    border-top-left-radius: 0;
+}
+
+.message-username {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.message-text {
+    font-size: 14px;
 }
 
 
@@ -134,7 +148,7 @@ body {
 .chat-input button {
     background: #ffd700;
     color: black;
-    border: none;
+    border: 3px solid #000000;
     padding: 10px 20px;
     cursor: pointer;
     margin-left: 10px;

@@ -152,12 +152,23 @@
             const chatMessages = document.getElementById("chat-messages");
             const messageElement = document.createElement("div");
 
-            messageElement.classList.add(isOwnMessage ? "my-message" : "other-message");
-            messageElement.textContent = isOwnMessage ? `Me: ${msg.text}` : `${msg.senderName}: ${msg.text}`;
+            messageElement.classList.add("message", isOwnMessage ? "my-message" : "other-message");
+
+            const usernameElement = document.createElement("div");
+            usernameElement.classList.add("message-username");
+            usernameElement.textContent = isOwnMessage ? "Me" : msg.senderName;
+
+            const textElement = document.createElement("div");
+            textElement.classList.add("message-text");
+            textElement.textContent = msg.text;
+
+            messageElement.appendChild(usernameElement);
+            messageElement.appendChild(textElement);
 
             chatMessages.appendChild(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
+
     </script>
 </body>
 </html>
