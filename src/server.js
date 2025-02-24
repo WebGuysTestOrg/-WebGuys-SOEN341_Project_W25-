@@ -87,6 +87,7 @@ io.on("connection", (socket) => {
     });
 });
 
+
 app.get('/get-user-chats', (req, res) => {
     const { userId } = req.query;
     const query = `
@@ -729,5 +730,31 @@ app.post("/sendChannelMessage", (req, res) => {
             return res.status(500).json({ error: "Failed to save message." });
         }
         res.json({ success: true });
+    });
+});
+io.on("connection", (socket) => {
+    socket.on("ChannelMessages", (msg) => {
+        const query = `
+        INSERT INTO channels_messages (team_name, channel_name, sender, text) 
+        VALUES (?, ?, ?, ?)
+    `;
+
+    connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text], (err,result) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Failed to save message." });
+        }
+        else{
+            const messageWithId = {
+                id: result.insertId,  
+                teamName: msg.teamName,
+                channelName: msg.channelName,
+                sender: msg.sender,
+                text: msg.text
+            };
+            io.emit("ChannelMessages",messageWithId)
+        }
+       
+    });
     });
 });

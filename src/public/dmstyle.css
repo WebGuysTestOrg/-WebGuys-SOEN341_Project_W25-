@@ -107,12 +107,19 @@ body {
 
 
 .my-message {
-    color: black;
+    background-color: var(--yellow);
+    color: var(--text-dark);
+    padding: 10px;
+    margin: 10px 0;
+    max-width: 75%;
+    border-radius: 8px;
     align-self: flex-end;
-    text-align: right;
-    border-bottom-right-radius: 0;
+    text-align: left;
+    word-wrap: break-word;
+    box-sizing: border-box;
 }
 
+/* Style for messages sent by others */
 .other-message {
     background: #dedede;
     color: black;
@@ -128,6 +135,7 @@ body {
 .message-text {
     font-size: 14px;
 }
+
 
 
 .chat-input {
