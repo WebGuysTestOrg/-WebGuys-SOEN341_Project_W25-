@@ -152,14 +152,28 @@
         function displayMessage(msg, isOwnMessage) {
             const chatMessages = document.getElementById("chat-messages");
             const messageElement = document.createElement("div");
-            console.log("LoggedInUser",loggedInUserId)
-            console.log("SendingUser",msg)
-            messageElement.classList.add(isOwnMessage ? "my-message" : "other-message");
-            messageElement.textContent = isOwnMessage ? `Me: ${msg.text}` : `${msg.senderName}: ${msg.text}`;
+            
+            // Differentiate between own message and message from others
+            messageElement.classList.add("message", isOwnMessage ? "my-message" : "other-message");
+            
+            // Create div for username
+            const usernameElement = document.createElement("div");
+            usernameElement.classList.add("message-username");
+            usernameElement.textContent = isOwnMessage ? "Me" : msg.senderName;
+            
+            // Create div for text element of message
+            const textElement = document.createElement("div");
+            textElement.classList.add("message-text");
+            textElement.textContent = msg.text;
+            
+            // Add username and text element to message class
+            messageElement.appendChild(usernameElement);
+            messageElement.appendChild(textElement);
 
             chatMessages.appendChild(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
+
     </script>
 </body>
 </html>
