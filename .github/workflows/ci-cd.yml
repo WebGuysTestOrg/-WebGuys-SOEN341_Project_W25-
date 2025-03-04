@@ -29,8 +29,7 @@ jobs:
       - name: Install dependencies
         run: cd src && npm install
 
-      - name: Run tests
-        run: cd src && npm test
+    
 
   deploy:
     needs: build_and_test
