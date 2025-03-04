@@ -1,4 +1,4 @@
-name: Simple CI/CD Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -13,30 +13,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get the code from GitHub
+      - name: Checkout the repository
         uses: actions/checkout@v3
+
+      - name: Move into src directory
+        run: cd src && ls -la  # List files to verify package.json is found
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
+          cache: npm
+          cache-dependency-path: src/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: cd src && npm install
 
       - name: Run tests
-        run: npm test
+        run: cd src && npm test
 
   deploy:
     needs: build_and_test
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get the code from GitHub
+      - name: Checkout the repository
         uses: actions/checkout@v3
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
-          folder: public
+          folder: src/public  # Adjust this path if needed
