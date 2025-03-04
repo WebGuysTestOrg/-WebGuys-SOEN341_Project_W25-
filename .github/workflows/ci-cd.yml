@@ -29,8 +29,7 @@ jobs:
       - name: Install dependencies
         run: cd src && npm install
 
-    
-
+  
   deploy:
     needs: build_and_test
     runs-on: ubuntu-latest
