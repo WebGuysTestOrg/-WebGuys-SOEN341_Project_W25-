@@ -29,8 +29,21 @@ jobs:
       - name: Install dependencies
         run: cd src && npm install
 
-  
+
+
   deploy:
     needs: build_and_test
     runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Deploy to GitHub Pages
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        branch: gh-pages
+        folder: src
+
+
 
