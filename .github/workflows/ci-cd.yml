@@ -41,13 +41,19 @@ jobs:
       - name: Install dependencies
         run: cd src && npm install
       - name: Wait for MySQL to Start
-        run:
+      - name: Wait for MySQL to Start
+        run: |
           sudo apt-get install -y mysql-client
-          until mysql -h 127.0.0.1 -u testuser -ptestpassword -e "SELECT 1"; do
+          for i in {1..10}; do
+            if mysql -h 127.0.0.1 -u testuser -ptestpassword -e "SELECT 1"; then
+              echo "MySQL is ready."
+              exit 0
+            fi
             echo "Waiting for MySQL..."
             sleep 2
           done
-          echo "MySQL is ready."
+          echo "MySQL did not start in time." && exit 1
+
 
       - name: Run Tests
         env:
