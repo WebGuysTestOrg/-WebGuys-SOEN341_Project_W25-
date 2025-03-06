@@ -54,7 +54,7 @@ jobs:
           echo "MySQL did not start in time." && exit 1
       - name: Run Database Migrations
         run: |
-          mysql -h 127.0.0.1 -u testuser -ptestpassword chathaven < src/database/schema.sql
+          mysql -h 127.0.0.1 -u testuser -ptestpassword chathaven < src/schema.sql
 
 
       - name: Run Jest Tests
