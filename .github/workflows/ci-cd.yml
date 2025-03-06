@@ -40,6 +40,22 @@ jobs:
 
       - name: Install dependencies
         run: cd src && npm install
+      - name: Wait for MySQL to Start
+        run:
+          sudo apt-get install -y mysql-client
+          until mysql -h 127.0.0.1 -u testuser -ptestpassword -e "SELECT 1"; do
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+          echo "MySQL is ready."
+
+      - name: Run Tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: testuser
+          DB_PASSWORD: testpassword
+          DB_DATABASE: chathaven
+        run: npm test
 
 
 
