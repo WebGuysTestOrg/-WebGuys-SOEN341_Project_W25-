@@ -20,9 +20,8 @@ jobs:
           MYSQL_USER: testuser
           MYSQL_PASSWORD: testpassword
         ports:
-          - 3000:3000
+          - 3306:3306  # Fix MySQL port (was mistakenly 3000)
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-
 
     steps:
       - name: Checkout the repository
@@ -40,7 +39,7 @@ jobs:
 
       - name: Install dependencies
         run: cd src && npm install
-      - name: Wait for MySQL to Start
+
       - name: Wait for MySQL to Start
         run: |
           sudo apt-get install -y mysql-client
@@ -54,16 +53,13 @@ jobs:
           done
           echo "MySQL did not start in time." && exit 1
 
-
-      - name: Run Tests
+      - name: Run Jest Tests
         env:
           DB_HOST: 127.0.0.1
           DB_USER: testuser
           DB_PASSWORD: testpassword
           DB_DATABASE: chathaven
-        run: npm test
-
-
+        run: cd src && npm test  # Ensure Jest runs inside src
 
   deploy:
     needs: build_and_test
@@ -79,6 +75,7 @@ jobs:
         branch: gh-pages
         folder: src/public
         token: ${{ secrets.GH_TOKEN }}
+
 
 
 
