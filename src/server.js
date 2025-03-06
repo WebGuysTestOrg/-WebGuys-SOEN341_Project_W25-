@@ -62,15 +62,18 @@ io.on('connection',socket =>{
 
 // Database Connection
 const connection = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "chathaven",
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "",
+    database: process.env.DB_DATABASE || "chathaven",
 });
 
 connection.connect((err) => {
-    if (err) throw err;
-    console.log("Connected to the database.");
+    if (err) {
+        console.error("Database connection failed:", err);
+        process.exit(1);
+    }
+    console.log("Connected to MySQL");
 });
 
 
