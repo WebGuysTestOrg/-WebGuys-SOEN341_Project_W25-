@@ -63,7 +63,17 @@ jobs:
           DB_USER: testuser
           DB_PASSWORD: testpassword
           DB_DATABASE: chathaven
-        run: cd src && npm test  # Ensure Jest runs inside src
+        run: |
+          cd src
+          mkdir -p ../test-results  # Ensure the directory exists
+          npm test --verbose > ../test-results/test-results.txt  # Save readable results
+
+      - name: Upload Test Results as an Artifact
+        if: always()  # Ensures results are saved even if tests fail
+        uses: actions/upload-artifact@v3
+        with:
+          name: jest-test-results
+          path: test-results/test-results.txt
 
   deploy:
     needs: build_and_test
