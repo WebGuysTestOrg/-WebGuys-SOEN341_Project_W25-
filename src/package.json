@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "jest --forceExit"
+    "test": "jest --forceExit --verbose > test-results/test-results.txt"
   },
   "dependencies": {
     "body-parser": "^1.20.3",
