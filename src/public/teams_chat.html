@@ -29,94 +29,90 @@
         const teamName = params.get("team");
         let channelClicked = "";
         let currentUser = "";
+        let currentUserD = "";
+        let channels_ids = "";
 
         fetch('/user-info')
-            .then(response => {
-                if (!response.ok) throw new Error('Unauthorized');
-                return response.json();
-            })
-            .then(data => {
-                currentUser = data.name;
-            })
-            .catch(() => window.location.href = '/login_form.html');
+    .then(response => {
+        if (!response.ok) throw new Error('Unauthorized');
+        return response.json();
+    })
+    .then(data => {
+        currentUser = data.name;
+        currentUserD = data.id;
+        console.log("Current user id:", currentUserD);
 
-           
-        document.getElementById("chat-header").textContent = teamName;
-        
-        fetch("/get-team-id-from-name", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ teamName }) 
+       
+        return fetch("/get-user-channels", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ user_id: currentUserD }) 
+        });
     })
     .then(response => response.json())
     .then(data => {
-        if (!data.teamId) throw new Error("Team ID not found");
+        if (!data.channel_ids) throw new Error("Team ID not found");
 
-        const teamId = data.teamId;
-        console.log("Fetched Team ID:", teamId);
+        channels_ids = data.channel_ids;
+        console.log("Fetched channels IDS:", channels_ids);
 
-        
         return fetch("/get-channels", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ teamId })
+            body: JSON.stringify({ channel_id: channels_ids })  
         });
     })
     .then(response => response.json())
     .then(data => {
         const chatList = document.getElementById("chat-list");
+        chatList.innerHTML = "";
 
+        data.channels.forEach(channel => {
+            const listItem = document.createElement("li");
+            listItem.textContent = channel;
+            listItem.classList.add("channel-item");
 
-    chatList.innerHTML = "";
+            listItem.addEventListener("click", () => {
+                channelClicked = channel;
+                document.getElementById("chat-header").textContent = `${teamName} - ${channelClicked}`;
+                getChannelMessages(teamName, channel);
+            });
 
-
-    data.channels.forEach(channel => {
-        const listItem = document.createElement("li"); 
-        listItem.textContent = channel; 
-        listItem.classList.add("channel-item"); 
-
-        listItem.addEventListener("click", () => {
-            channelClicked = channel;
-            document.getElementById("chat-header").textContent = `${teamName} - ${channelClicked}`;
-            getChannelMessages(teamName, channel);
+            chatList.appendChild(listItem);
         });
 
-        
-
-        chatList.appendChild(listItem); 
-    });
-
-        document.getElementById("send").addEventListener("click", function(){
+        document.getElementById("send").addEventListener("click", function () {
             sendMessage(teamName, channelClicked);
-        })
+        });
 
-        document.getElementById("message").addEventListener("keypress", function(e){
-            if(e.key === "Enter"){
+        document.getElementById("message").addEventListener("keypress", function (e) {
+            if (e.key === "Enter") {
                 sendMessage(teamName, channelClicked);
             }
-        })
+        });
     })
     .catch(error => console.error("Fetch Error:", error));
-    
 
-    function getChannelMessages(teamName, channelName) {
+
+
+function getChannelMessages(teamName, channelName) {
     return fetch("/get-channel-messages", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ teamName, channelName }) 
+        body: JSON.stringify({ teamName, channelName })
     })
     .then(response => response.json())
     .then(messages => {
         const chatContainer = document.getElementById("chat-messages");
-        chatContainer.innerHTML = ""; 
+        chatContainer.innerHTML = "";
 
-        if (!messages || messages.length === 0)  {
+        if (!messages || messages.length === 0) {
             return;
         }
 
@@ -127,10 +123,11 @@
             chatContainer.appendChild(messageDiv);
         });
 
-        chatContainer.scrollTop = chatContainer.scrollHeight; 
+        chatContainer.scrollTop = chatContainer.scrollHeight;
     })
     .catch(error => console.error("Error fetching messages:", error));
 }
+
 
 function sendMessage(teamName, channelName) {
     const messageInput = document.getElementById("message");
@@ -148,7 +145,7 @@ function sendMessage(teamName, channelName) {
         body: JSON.stringify({
             teamName,
             channelName,
-            sender: currentUser, 
+            sender: currentUser,
             text: messageText
         })
     })
@@ -163,6 +160,7 @@ function sendMessage(teamName, channelName) {
     })
     .catch(error => console.error("Fetch Error:", error));
 }
+
     </script>
 </body>
 

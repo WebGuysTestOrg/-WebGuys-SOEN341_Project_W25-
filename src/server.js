@@ -5,7 +5,8 @@ const crypto = require("crypto");
 const session = require("express-session");
 const path = require("path");
 const sharedSession = require("express-socket.io-session"); 
-const {Server} =require("socket.io") 
+const {Server} =require("socket.io"); 
+const { channel } = require("diagnostics_channel");
 
 
 
@@ -646,14 +647,16 @@ app.post("/get-team-id-from-name", (req, res) => {
 });
 
 app.post("/get-channels", (req, res) => {
-    const { teamId } = req.body; // Get teamId from request body
-    if (!teamId) {
-        return res.status(400).json({ error: "Team ID is required." }); // Handle missing teamId
+    const { channel_id } = req.body; 
+    
+    if (!channel_id || !Array.isArray(channel_id) || channel_id.length === 0) {
+        return res.status(400).json({ error: "Channel ID(s) are required." });
     }
 
-    const query = "SELECT name FROM channels WHERE team_id = ?"; // Adjust table/column names if necessary
+    
 
-    connection.query(query, [teamId], (err, results) => {
+    const query = `SELECT name FROM channels WHERE id IN (?)`;
+    connection.query(query, [channel_id], (err, results) => {
         if (err) {
             console.error("Database error:", err);
             return res.status(500).json({ error: "Internal Server Error: Database query failed." });
@@ -709,3 +712,34 @@ app.post("/sendChannelMessage", (req, res) => {
         res.json({ success: true });
     });
 });
+
+app.post("/get-user-channels", (req, res) => {
+    const { user_id } = req.body;
+
+    if (!user_id) {
+        return res.status(400).json({ error: "Missing user_id" });
+    }
+
+    const query = `
+        SELECT channel_id 
+        FROM user_channels 
+        WHERE user_id = ?`;
+
+    connection.query(query, [user_id], (err, results) => {
+        if (err) {
+            console.error("Error fetching user channels:", err);
+            return res.status(500).json({ error: "Internal server error" });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "No channels found for this user" });
+        }
+
+        const channel_ids = results.map(row => row.channel_id);
+
+        res.json({ channel_ids });
+    });
+});
+
+    
+
