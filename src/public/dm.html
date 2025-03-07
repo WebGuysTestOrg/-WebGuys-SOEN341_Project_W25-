@@ -159,7 +159,7 @@
             // Create div for username
             const usernameElement = document.createElement("div");
             usernameElement.classList.add("message-username");
-            usernameElement.textContent = isOwnMessage ? "Me" : msg.senderName;
+            usernameElement.textContent = isOwnMessage ? "" : msg.senderName;
             
             // Create div for text element of message
             const textElement = document.createElement("div");
