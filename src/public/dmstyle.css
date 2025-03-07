@@ -108,6 +108,7 @@ body {
 
 .my-message {
     background-color: #00ffae;
+    border: 3px solid #000000;
     padding: 10px;
     margin: 10px 0;
     max-width: 75%;
@@ -173,26 +174,27 @@ body {
     font-weight: bold;
     border-radius: 5px;
     text-transform: uppercase;
-    
+
 }
 
 #back-btn:hover {
     background: #e6c200;
 }
+
 .remove-btn {
-    background: #ff4d4d; 
+    background: #ff8585;
     color: white;
     border: none;
-    margin-left: 2px;
-    padding: 8px 16px;
+    margin-left: 5px;
+    padding: 5px 5px;
     cursor: pointer;
     font-weight: bold;
     border-radius: 5px;
     text-transform: uppercase;
-    font-size: 14px;
+    font-size: 8px;
     transition: background 0.3s ease;
 }
 
 .remove-btn:hover {
-    background: #e60000; 
+    background: #ff4c4c;
 }
