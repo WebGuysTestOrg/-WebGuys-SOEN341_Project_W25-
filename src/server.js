@@ -63,15 +63,18 @@ io.on('connection',socket =>{
 
 // Database Connection
 const connection = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "chathaven",
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "",
+    database: process.env.DB_DATABASE || "chathaven",
 });
 
 connection.connect((err) => {
-    if (err) throw err;
-    console.log("Connected to the database.");
+    if (err) {
+        console.error("Database connection failed:", err);
+        process.exit(1);
+    }
+    console.log("Connected to MySQL");
 });
 
 
@@ -87,6 +90,7 @@ io.on("connection", (socket) => {
         });
     });
 });
+
 
 app.get('/get-user-chats', (req, res) => {
     const { userId } = req.query;
@@ -678,7 +682,7 @@ app.post("/get-channel-messages", (req, res) => {
     }
 
     const query = `
-        SELECT sender, text FROM channels_messages 
+        SELECT id, sender, text FROM channels_messages 
         WHERE team_name = ? AND channel_name = ? 
         ORDER BY created_at ASC
     `;
@@ -689,6 +693,28 @@ app.post("/get-channel-messages", (req, res) => {
             return res.status(500).json({ error: "Internal Server Error: Database query failed." });
         }
         res.json(results);
+    });
+});
+app.post("/remove-message", (req, res) => {
+    const { messageId } = req.body;
+
+    if (!messageId) {
+        return res.status(400).json({ error: "Message ID is required." });
+    }
+
+    const query = `
+        UPDATE channels_messages
+        SET text = 'Removed by Admin'
+        WHERE id = ?
+    `;
+
+    connection.query(query, [messageId], (err, result) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Database update failed." });
+        }
+
+        res.json({ success: true });
     });
 });
 
@@ -712,6 +738,7 @@ app.post("/sendChannelMessage", (req, res) => {
         res.json({ success: true });
     });
 });
+<<<<<<< HEAD
 
 app.post("/get-user-channels", (req, res) => {
     const { user_id } = req.body;
@@ -743,3 +770,32 @@ app.post("/get-user-channels", (req, res) => {
 
     
 
+=======
+io.on("connection", (socket) => {
+    socket.on("ChannelMessages", (msg) => {
+        const query = `
+        INSERT INTO channels_messages (team_name, channel_name, sender, text) 
+        VALUES (?, ?, ?, ?)
+    `;
+
+    connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text], (err,result) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Failed to save message." });
+        }
+        else{
+            const messageWithId = {
+                id: result.insertId,  
+                teamName: msg.teamName,
+                channelName: msg.channelName,
+                sender: msg.sender,
+                text: msg.text
+            };
+            io.emit("ChannelMessages",messageWithId)
+        }
+       
+    });
+    });
+});
+module.exports = { app, connection };
+>>>>>>> 440b08c3f5a406da34d750360e7d9cdc48995962

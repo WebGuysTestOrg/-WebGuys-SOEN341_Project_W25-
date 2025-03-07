@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
     <link rel="stylesheet" href="dmstyle.css">
 </head>
+
 <body>
     <button onclick="history.back()" id="back-btn">← Back</button>
     <div class="dm-container">
@@ -25,13 +27,18 @@
     </div>
 
     <script>
+        const socket = io('ws://localhost:3000')
         const params = new URLSearchParams(window.location.search);
         const teamName = params.get("team");
         let channelClicked = "";
         let currentUser = "";
+<<<<<<< HEAD
         let currentUserD = "";
         let channels_ids = "";
 
+=======
+        let currentUserRole = "";
+>>>>>>> 440b08c3f5a406da34d750360e7d9cdc48995962
         fetch('/user-info')
     .then(response => {
         if (!response.ok) throw new Error('Unauthorized');
@@ -42,6 +49,7 @@
         currentUserD = data.id;
         console.log("Current user id:", currentUserD);
 
+<<<<<<< HEAD
        
         return fetch("/get-user-channels", {
             method: "POST",
@@ -59,10 +67,17 @@
         console.log("Fetched channels IDS:", channels_ids);
 
         return fetch("/get-channels", {
+=======
+
+        document.getElementById("chat-header").textContent = teamName;
+
+        fetch("/get-team-id-from-name", {
+>>>>>>> 440b08c3f5a406da34d750360e7d9cdc48995962
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
+<<<<<<< HEAD
             body: JSON.stringify({ channel_id: channels_ids })  
         });
     })
@@ -114,15 +129,167 @@ function getChannelMessages(teamName, channelName) {
 
         if (!messages || messages.length === 0) {
             return;
+=======
+            body: JSON.stringify({ teamName })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.teamId) throw new Error("Team ID not found");
+
+                const teamId = data.teamId;
+                console.log("Fetched Team ID:", teamId);
+
+
+                return fetch("/get-channels", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ teamId })
+                });
+            })
+            .then(response => response.json())
+            .then(data => {
+                const chatList = document.getElementById("chat-list");
+
+
+                chatList.innerHTML = "";
+
+
+                data.channels.forEach(channel => {
+                    const listItem = document.createElement("li");
+                    listItem.textContent = channel;
+                    listItem.classList.add("channel-item");
+
+                    listItem.addEventListener("click", () => {
+                        channelClicked = channel;
+                        document.getElementById("chat-header").textContent = `${teamName} - ${channelClicked}`;
+                        getChannelMessages(teamName, channel);
+                    });
+
+
+
+                    chatList.appendChild(listItem);
+                });
+
+                document.getElementById("send").addEventListener("click", function () {
+                    sendMessage(teamName, channelClicked);
+                })
+
+                document.getElementById("message").addEventListener("keypress", function (e) {
+                    if (e.key === "Enter") {
+                        sendMessage(teamName, channelClicked);
+                    }
+                })
+            })
+            .catch(error => console.error("Fetch Error:", error));
+
+
+        function getChannelMessages(teamName, channelName) {
+            return fetch("/get-channel-messages", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ teamName, channelName })
+            })
+                .then(response => response.json())
+                .then(messages => {
+                    const chatContainer = document.getElementById("chat-messages");
+                    chatContainer.innerHTML = "";
+
+                    if (!messages || messages.length === 0) {
+                        return;
+                    }
+
+                    // Fetch user info once before processing messages
+                    return fetch('/user-info')
+                        .then(response => {
+                            if (!response.ok) throw new Error('Unauthorized');
+                            return response.json();
+                        })
+                        .then(data => {
+                            // const currentUser = data.role;
+
+                            // Process each message after getting the user info
+                            messages.forEach(msg => {
+                                const messageDiv = document.createElement("div");
+                                messageDiv.classList.add("message");
+                                messageDiv.textContent = `${msg.sender}: ${msg.text}`;
+                                messageDiv.dataset.id = msg.id;
+
+                                console.log(msg.sender === currentUser)
+                                messageDiv.classList.add(msg.sender === currentUser ? "my-message" : "other-message");
+
+                                messageDiv.textContent = msg.sender === currentUser ? `${msg.text}` : `${msg.sender}: ${msg.text}`;
+
+                                // If the user is an admin, add the remove button unless the message was already removed.
+                                if (currentUserRole === "admin" && msg.text !== "Removed by Admin") {
+                                    const removeButton = document.createElement("button");
+                                    removeButton.textContent = "❌";
+                                    removeButton.classList.add("remove-btn");
+                                    removeButton.addEventListener("click", () => {
+                                        removeMessage(msg.id, messageDiv);
+                                    });
+                                    messageDiv.appendChild(removeButton); // Append the remove button to the message
+                                }
+
+                                chatContainer.appendChild(messageDiv);
+                            });
+
+                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                        })
+                        .catch(() => window.location.href = '/login_form.html');
+                })
+                .catch(error => console.error("Error fetching messages:", error));
         }
 
-        messages.forEach(msg => {
-            const messageDiv = document.createElement("div");
-            messageDiv.classList.add("message");
-            messageDiv.textContent = `${msg.sender}: ${msg.text}`;
-            chatContainer.appendChild(messageDiv);
+        // Remove a message from the chat
+        function removeMessage(messageId, messageDiv) {
+            fetch("/remove-message", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ messageId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        messageDiv.textContent = "Removed by Admin";
+                    } else {
+                        console.error("Error removing message:", data.error);
+                    }
+                })
+                .catch(error => console.error("Fetch Error:", error));
+        }
+
+        // Fetch the user role from the server
+        async function fetchUserRole() {
+            try {
+                const response = await fetch("/user-info");
+                if (!response.ok) throw new Error("Failed to fetch user role");
+
+                const data = await response.json();
+                currentUserRole = data.role;
+                console.log("User role loaded:", currentUserRole);
+            } catch (error) {
+                console.error("Error fetching user role:", error);
+            }
+>>>>>>> 440b08c3f5a406da34d750360e7d9cdc48995962
+        }
+
+
+        fetchUserRole();
+
+        socket.on("ChannelMessages", (msg) => {
+
+            displayMessage(msg, msg.sender == currentUser);
+            console.log("Message is being displayed")
+
         });
 
+<<<<<<< HEAD
         chatContainer.scrollTop = chatContainer.scrollHeight;
     })
     .catch(error => console.error("Error fetching messages:", error));
@@ -132,11 +299,20 @@ function getChannelMessages(teamName, channelName) {
 function sendMessage(teamName, channelName) {
     const messageInput = document.getElementById("message");
     const messageText = messageInput.value.trim();
+=======
+        // Display a message in the chat window
+        function displayMessage(msg, isOwnMessage) {
+            const chatMessages = document.getElementById("chat-messages");
+            const messageElement = document.createElement("div");
 
-    if (messageText === "") {
-        return;
-    }
+            console.log("LoggedInUser", currentUser);
+            console.log("SendingUser", msg);
+>>>>>>> 440b08c3f5a406da34d750360e7d9cdc48995962
 
+            // Apply message class first
+            messageElement.classList.add("message");
+
+<<<<<<< HEAD
     fetch("/sendChannelMessage", {
         method: "POST",
         headers: {
@@ -161,6 +337,75 @@ function sendMessage(teamName, channelName) {
     .catch(error => console.error("Fetch Error:", error));
 }
 
+=======
+            // Apply message class
+            messageElement.classList.add(isOwnMessage ? "my-message" : "other-message");
+
+            // Set message text
+            messageElement.textContent = isOwnMessage ? `${msg.text}` : `${msg.sender}: ${msg.text}`;
+
+            console.log("ROLE", currentUserRole)
+            
+            // Add remove button if the user is an admin
+            if (currentUserRole === "admin") {
+                const removeButton = document.createElement("button");
+                removeButton.textContent = "❌";
+                removeButton.classList.add("remove-btn");
+                removeButton.addEventListener("click", () => {
+                    removeMessage(msg.id, messageElement);
+                });
+
+                messageElement.appendChild(removeButton);
+            }
+
+            // Append the message to the chat window
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Send message to the server
+        function sendMessage(teamName, channelName) {
+            const messageInput = document.getElementById("message");
+            const messageText = messageInput.value.trim();
+
+            if (messageText === "") {
+                return;
+            }
+
+            const messageData = {
+                teamName: teamName,
+                channelName: channelName,
+                sender: currentUser,
+                text: messageText
+            };
+
+            socket.emit("ChannelMessages", messageData);
+            messageInput.value = "";
+
+            // fetch("/sendChannelMessage", {
+            //     method: "POST",
+            //     headers: {
+            //         "Content-Type": "application/json",
+            //     },
+            //     body: JSON.stringify({
+            //         teamName,
+            //         channelName,
+            //         sender: currentUser, 
+            //         text: messageText
+            //     })
+            // })
+            // .then(response => response.json())
+            // .then(data => {
+            //     if (data.success) {
+            //         messageInput.value = "";
+            //         getChannelMessages(teamName, channelName);
+            //     } else {
+            //         console.error("Error sending message:", data.error);
+            //     }
+            // })
+            // .catch(error => console.error("Fetch Error:", error));
+        }
+>>>>>>> 440b08c3f5a406da34d750360e7d9cdc48995962
     </script>
 </body>
 
