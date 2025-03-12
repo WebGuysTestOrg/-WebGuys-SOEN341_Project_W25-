@@ -29,7 +29,9 @@ const sessionMiddleware=
 app.use(sessionMiddleware)
 app.use(express.static(path.join(__dirname, "public")));
 
-
+const onlineUsers = new Map();
+const awayUsers = new Map();
+const INACTIVITY_TIME = 30000; 
 const io= new Server(expressServer,{
     cors:{
         origin:process.env.NODE_ENV==="production"? false :["http://localhost:3000","http://127.0.0.1:3000"]
@@ -38,6 +40,7 @@ const io= new Server(expressServer,{
 io.use(sharedSession(sessionMiddleware, {
     autoSave: true,  // Automatically save session on socket events
 }));
+
 io.on('connection',socket =>{
     const session = socket.handshake.session;
 
@@ -46,16 +49,61 @@ io.on('connection',socket =>{
     } else {
         console.log(`User with no session connected`);
     }
+    
     socket.on('message',data=>{
         const message = data.text;
          
         const user = session.user && session.user.name ? `${session.user.name}[${session.user.user_type}_${session.user.id.toString().padStart(3, '0')}]`:"Anonymous"; 
         io.emit('message',{SSocketId:socket.id,user:user,text:message, userID:session.user.id})
     })
+    let inactivityTimer;
+    socket.on("userOnline", (userId) => {
+        onlineUsers.set(userId, socket.id);
+        awayUsers.delete(userId);
+        io.emit("updateUserStatus", {
+            online: Array.from(onlineUsers.keys()),
+            away: Array.from(awayUsers.keys())
+        });
 
-    socket.on("disconnect", (reason) => {
-        console.log(`User ${socket.id} disconnected: ${reason}`);
+        resetInactivityTimer(userId);
     });
+    socket.on("userAway", (userId) => {
+        awayUsers.set(userId, socket.id);
+        console.log(userId)
+        onlineUsers.delete(userId);
+        io.emit("updateUserStatus", {
+            online: Array.from(onlineUsers.keys()),
+            away: Array.from(awayUsers.keys())
+        });
+        
+    });
+    socket.on("disconnect", (reason) => {
+        console.log(`User ${socket.id} disconnected`);
+
+        onlineUsers.forEach((socketId, userId) => {
+            if (socketId === socket.id) {
+                onlineUsers.delete(userId);
+                awayUsers.delete(userId);
+            }
+        });
+        io.emit("updateUserStatus", {
+            online: Array.from(onlineUsers.keys()),
+            away: Array.from(awayUsers.keys())
+        });
+    });
+    function startInactivityTimer(userId) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = setTimeout(() => {
+            console.log(`User ${userId} is now away`);
+            socket.emit("userAway", userId);
+        }, INACTIVITY_TIME);
+    }
+
+    function resetInactivityTimer(userId) {
+        clearTimeout(inactivityTimer);
+        startInactivityTimer(userId);
+        console.log(`User ${userId} is now online`);
+    }
 })
 
 
@@ -506,6 +554,16 @@ app.get("/get-teams-with-members", (req, res) => {
     });
 });
 
+app.get("/api/users", (req, res) => {
+    const sql = "SELECT name FROM user_form"; 
+    connection.query(sql, (err, results) => {
+        if (err) {
+            console.error("Error fetching users:", err);
+            return res.status(500).json({ error: "Database error" });
+        }
+        res.json(results); 
+    });
+});
 
 
 app.get("/get-user-teams", (req, res) => {
