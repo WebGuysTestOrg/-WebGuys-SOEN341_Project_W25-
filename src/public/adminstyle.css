@@ -221,6 +221,7 @@ h2 {
     transition: all 0.3s ease;
 }
 
+
 #chat-toggle:hover {
     background-color: var(--button-hover);
     color: var(--text-light);
@@ -240,7 +241,36 @@ h2 {
     flex-direction: column;
     z-index: 999;
 }
-
+#status-container{
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 300px;
+    height: 100%;
+    background: var(--light-grey);
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+    transition: left 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    z-index: 999;
+}
+#status-toggle{
+    position: fixed;
+    top: 80px;
+    left: 20px;
+    background-color: var(--yellow);
+    color: var(--text-dark);
+    border: 3px solid var(--dark-grey);
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+#status-toggle:hover {
+    background-color: var(--button-hover);
+    color: var(--text-light);
+}
 /* Chat header */
 #chat-header {
     background: var(--dark-grey);
@@ -304,7 +334,39 @@ h2 {
     right: 10px;
     top: 10px;
 }
-
+#close-status {
+    background: transparent;
+    border: none;
+    color: var(--text-light);
+    font-size: 16px;
+    cursor: pointer;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
+.user-status {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+}
+.user-name{
+color :black;
+font-weight: bold;
+}
+.status {
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 5px;
+}
+.online {
+    color: green;
+    font-weight: bold;
+}
+.offline {
+    color: grey;
+    font-weight: bold;
+}
 #Chat-title {
     color: var(--text-light);
 }
