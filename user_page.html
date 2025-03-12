@@ -56,15 +56,26 @@
             <button id="send">Send</button>
         </div>
     </div>
-
+    <div id="status-toggle">
+        <i class="fa-solid fa-globe"></i>
+</div>
+    <div id="status-container">
+        <div id="chat-header">
+            <span id="Chat-title"> Users</span>
+            <button id="close-status">✖</button>
+        </div>
+        <div id="users-status"></div> 
+    </div>
+    
     <div class="settings-button">
         <a href="settings_page.html">
             <i class="fa-solid fa-cog"></i>
         </a>
     </div>
      <script>
+        
          let userTeams = {};
-
+         const socket=io('ws://localhost:3000')
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -82,6 +93,10 @@ fetch('/user-info')
             .then(response => response.json())
             .then(data => {
                 document.getElementById('username').textContent = data.name;
+                document.addEventListener("click", () => resetInactivityTimer(data.name));
+                document.addEventListener("keydown", () => resetInactivityTimer(data.name));
+                socket.emit("userOnline", data.name);
+                
                 fetchUserTeams();
             })
             .catch(() => window.location.href = '/login_form.html');
@@ -184,8 +199,62 @@ fetch('/user-info')
 document.addEventListener('DOMContentLoaded', fetchUserTeams);
 
 
+socket.on("updateUserStatus", ({ online, away }) => {
+    console.log("Online users:", online);
+    console.log("Away users:", away);
 
-        const socket=io('ws://localhost:3000')
+    fetch("/api/users") 
+        .then(response => response.json())
+        .then(allUsers => {
+            updateUserStatusUI(allUsers, online, away);
+        });
+});
+        
+function updateUserStatusUI(allUsers,onlineUsers,awayUsers) {
+    const usersStatusDiv = document.getElementById("users-status");
+
+    usersStatusDiv.innerHTML = "";
+console.log("allusers",allUsers)
+console.log("onlineUsers",onlineUsers)
+console.log("away user",awayUsers)
+    allUsers.forEach(user => {
+        const isOnline = onlineUsers.some(onlineUser => onlineUser === user.name);
+        const isAway = awayUsers.includes(user.name);
+        
+        const userDiv = document.createElement("div");
+        userDiv.classList.add("user-status");
+
+        let statusText = "Offline";
+        let statusClass = "offline";
+
+        if (isOnline) {
+            statusText = "Available";
+            statusClass = "online";
+        } else if (isAway) {
+            statusText = "Away";
+            statusClass = "away";
+        }
+        userDiv.innerHTML = `
+            <span class="user-name">${user.name}</span>
+            <span class="status ${statusClass}">${statusText}</span>
+        `;
+
+        usersStatusDiv.appendChild(userDiv);
+    });
+}
+let inactivityTimer;
+const INACTIVITY_TIME = 30000; 
+
+function resetInactivityTimer(userId) {
+    clearTimeout(inactivityTimer);
+    socket.emit("userOnline", userId);
+    inactivityTimer = setTimeout(() => {
+        console.log("User is now away");
+        console.log("userID",userId)
+        socket.emit("userAway", userId);
+    }, INACTIVITY_TIME);
+}
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -195,19 +264,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const sendButton = document.getElementById("send");
     const messageInput = document.getElementById("message");
     const chatMessages = document.getElementById("chat-messages");
-
+    const statusToggle=document.getElementById("status-toggle")
+    const statusContainer=document.getElementById("status-container");
+    const closeStatus = document.getElementById("close-status");
     // Toggle chat visibility
     chatToggle.addEventListener("click", () => {
             chatContainer.style.left = "0";
             chatToggle.style.display = "none"; 
+            statusToggle.style.display="none"
         });
 
         closeChat.addEventListener("click", () => {
             chatContainer.style.left = "-700px";
             setTimeout(() => {
-        chatToggle.style.display = "block";  // Show button after animation ends
+        chatToggle.style.display = "block";  
+        statusToggle.style.display="block";
     }, 300);
         });
+        statusToggle.addEventListener("click", () => {
+            statusContainer.style.left = "0";
+            chatToggle.style.display = "none"; 
+            statusToggle.style.display="none"
+        });
+        closeStatus.addEventListener("click", () => {
+            statusContainer.style.left = "-300px";
+            setTimeout(() => {
+        chatToggle.style.display = "block";  
+        statusToggle.style.display="block";
+    }, 300)});
 
     // Send message
     sendButton.addEventListener("click", () => {
@@ -260,7 +344,7 @@ displayMessage(messages)
     const newMessage = {
         id: messages.length + 1,
         text: text,
-        sender: sender, // "Me" if it's your message
+        sender: sender, 
         senderID:senderID,
         timestamp: Date.now()
     };
