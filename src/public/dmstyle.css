@@ -49,10 +49,24 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-#chat-list li:hover {
-    background: rgba(255, 255, 255, 0.2);
+#group-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    border: 1px solid #ffffff;
+    border-radius: 20px;
+    flex: 1;
 }
 
+#group-list li {
+    padding: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
 #new-chat-btn {
     background: #ffd700;
     color: black;
@@ -197,4 +211,112 @@ body {
 
 .remove-btn:hover {
     background: #ff4c4c;
+}
+
+#create-group-btn {
+    background: #ffd700;
+    color: black;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    margin-top: 15px;
+    border-radius: 5px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+#group-details {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+#add-user-input {
+    width: 200px;
+    padding: 10px;
+    margin-right: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+#request-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+#request-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8f9fa;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+button {
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+}
+
+#group-chat {
+    display: none; /* Hidden by default */
+    padding: 15px;
+    border-top: 2px solid #ccc;
+    background: white;
+}
+
+#chat-box {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+    background: #f9f9f9;
+}
+
+#chat-message {
+    width: 80%;
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    outline: none;
+    margin-right: 10px;
+}
+
+#chat-message::placeholder {
+    color: #aaa;
+    font-style: italic;
+}
+
+button[onclick="sendMessage()"] {
+    background: #fcb900;
+    color: black;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background 0.3s, transform 0.2s;
+}
+
+button[onclick="sendMessage()"]:hover {
+    background: #e6a500;
+    transform: scale(1.05);
+}
+
+button[onclick="sendMessage()"]:active {
+    background: #d48c00;
+    transform: scale(0.95);
 }
