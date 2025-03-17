@@ -261,6 +261,12 @@ app.post("/login", (req, res) => {
                 user_type: user.user_type,
             };
 
+            // Log login time
+            const logQuery = "INSERT INTO user_activity_log (user_id, name) VALUES (?, ?)";
+            connection.query(logQuery, [user.id, user.name], (logErr) => {
+                if (logErr) console.error("Error logging login:", logErr);
+            });
+
             if (user.user_type === "admin") {
                 return res.json({ redirect: "/admin_page.html" });
             } else {
@@ -271,6 +277,7 @@ app.post("/login", (req, res) => {
         }
     });
 });
+
 
 
 app.get("/user-info", (req, res) => {
@@ -555,15 +562,33 @@ app.get("/get-teams-with-members", (req, res) => {
 });
 
 app.get("/api/users", (req, res) => {
-    const sql = "SELECT name FROM user_form"; 
-    connection.query(sql, (err, results) => {
+    const sqlAllUsers = `SELECT DISTINCT name FROM user_activity_log`;
+    const sqlLogoutTimes = `
+        SELECT name, MAX(logout_time) AS last_logout 
+        FROM user_activity_log 
+        GROUP BY name
+    `;
+
+    connection.query(sqlAllUsers, (err, allUsers) => {
         if (err) {
             console.error("Error fetching users:", err);
             return res.status(500).json({ error: "Database error" });
         }
-        res.json(results); 
+
+        connection.query(sqlLogoutTimes, (err, logoutTimes) => {
+            if (err) {
+                console.error("Error fetching logout times:", err);
+                return res.status(500).json({ error: "Database error" });
+            }
+
+            res.json({
+                all_users: allUsers,
+                user_logout_times: logoutTimes
+            });
+        });
     });
 });
+
 
 
 app.get("/get-user-teams", (req, res) => {
@@ -652,14 +677,37 @@ app.get("/get-user-teams", (req, res) => {
 
 
 app.get("/logout", (req, res) => {
-    req.session.destroy((err) => {
+    if (!req.session.user) {
+        return res.redirect("/login_form.html");
+    }
+
+    const userId = req.session.user.id;
+
+    // Update the logout timestamp for the latest login
+    const updateLogoutQuery = `
+        UPDATE user_activity_log 
+        SET logout_time = CURRENT_TIMESTAMP 
+        WHERE user_id = ? 
+        ORDER BY login_time DESC 
+        LIMIT 1
+    `;
+
+    connection.query(updateLogoutQuery, [userId], (err) => {
         if (err) {
-            console.error("Error destroying session:", err);
+            console.error("Error logging logout:", err);
             return res.status(500).json({ error: "Error logging out." });
         }
-        res.redirect("/login_form.html"); 
+
+        req.session.destroy((sessionErr) => {
+            if (sessionErr) {
+                console.error("Error destroying session:", sessionErr);
+                return res.status(500).json({ error: "Error logging out." });
+            }
+            res.redirect("/login_form.html");
+        });
     });
 });
+
 app.post("/update-password", (req, res) => {
 
     const {newPassword, confirmPassword} = req.body;

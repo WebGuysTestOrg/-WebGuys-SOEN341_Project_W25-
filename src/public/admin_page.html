@@ -338,27 +338,30 @@ socket.on("updateUserStatus", ({ online, away }) => {
 
     fetch("/api/users") 
         .then(response => response.json())
-        .then(allUsers => {
-            updateUserStatusUI(allUsers, online, away);
+        .then(data => {
+            updateUserStatusUI(data.all_users, online, away, data.user_logout_times);
         });
 });
         
-function updateUserStatusUI(allUsers,onlineUsers,awayUsers) {
+function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
     const usersStatusDiv = document.getElementById("users-status");
-
     usersStatusDiv.innerHTML = "";
-console.log("allusers",allUsers)
-console.log("onlineUsers",onlineUsers)
-console.log("away user",awayUsers)
+
+    console.log("All users:", allUsers);
+    console.log("Online users:", onlineUsers);
+    console.log("Away users:", awayUsers);
+    console.log("Logout times:", logoutTimes);
+
     allUsers.forEach(user => {
-        const isOnline = onlineUsers.some(onlineUser => onlineUser === user.name);
+        const isOnline = onlineUsers.includes(user.name);
         const isAway = awayUsers.includes(user.name);
-        
+
         const userDiv = document.createElement("div");
         userDiv.classList.add("user-status");
 
         let statusText = "Offline";
         let statusClass = "offline";
+        let logoutTimestamp = "";
 
         if (isOnline) {
             statusText = "Available";
@@ -366,10 +369,17 @@ console.log("away user",awayUsers)
         } else if (isAway) {
             statusText = "Away";
             statusClass = "away";
+        } else {
+            // Get last logout timestamp for this user
+            const userLogout = logoutTimes.find(logout => logout.name === user.name);
+            if (userLogout && userLogout.last_logout) {
+                logoutTimestamp = ` (Last logout: ${new Date(userLogout.last_logout).toLocaleString()})`;
+            }
         }
+
         userDiv.innerHTML = `
             <span class="user-name">${user.name}</span>
-            <span class="status ${statusClass}">${statusText}</span>
+            <span class="status ${statusClass}">${statusText}${logoutTimestamp}</span>
         `;
 
         usersStatusDiv.appendChild(userDiv);
