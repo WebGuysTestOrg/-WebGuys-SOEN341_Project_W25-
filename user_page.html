@@ -229,10 +229,12 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
         let statusText = "Offline";
         let statusClass = "offline";
         let logoutTimestamp = "";
+        let statusIcon = "fa-circle-xmark";
 
         if (isOnline) {
             statusText = "Available";
             statusClass = "online";
+            statusIcon = "fa-circle-check";
         } else if (isAway) {
             statusText = "Away";
             statusClass = "away";
@@ -244,9 +246,16 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
             }
         }
 
+             statusIcon = "fa-circle-half-stroke";
+        }
         userDiv.innerHTML = `
             <span class="user-name">${user.name}</span>
-            <span class="status ${statusClass}">${statusText}${logoutTimestamp}</span>
+            <span class="status ${statusClass}">
+                 <i class="fa-solid ${statusIcon}"       
+                    style="color: ${statusClass === 'online' ? 'green' : (statusClass === 'away' ? 'yellow' : 'gray')}">  
+                </i>
+                ${statusText}${logoutTimestamp}
+                </span>
         `;
 
         usersStatusDiv.appendChild(userDiv);

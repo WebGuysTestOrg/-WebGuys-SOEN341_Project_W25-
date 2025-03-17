@@ -359,6 +359,9 @@ font-weight: bold;
     padding: 2px 6px;
     border-radius: 5px;
 }
+.status i {
+    margin-right: 8px;
+}
 .online {
     color: green;
     font-weight: bold;
