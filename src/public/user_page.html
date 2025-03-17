@@ -226,17 +226,25 @@ console.log("away user",awayUsers)
 
         let statusText = "Offline";
         let statusClass = "offline";
+        let statusIcon = "fa-circle-xmark";
 
         if (isOnline) {
             statusText = "Available";
             statusClass = "online";
+            statusIcon = "fa-circle-check";
         } else if (isAway) {
             statusText = "Away";
             statusClass = "away";
+             statusIcon = "fa-circle-half-stroke";
         }
         userDiv.innerHTML = `
             <span class="user-name">${user.name}</span>
-            <span class="status ${statusClass}">${statusText}</span>
+            <span class="status ${statusClass}">
+                 <i class="fa-solid ${statusIcon}"       
+                    style="color: ${statusClass === 'online' ? 'green' : (statusClass === 'away' ? 'yellow' : 'gray')}">  
+                </i>
+                ${statusText}
+                </span>
         `;
 
         usersStatusDiv.appendChild(userDiv);
