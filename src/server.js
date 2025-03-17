@@ -261,6 +261,12 @@ app.post("/login", (req, res) => {
                 user_type: user.user_type,
             };
 
+            // Log login time
+            const logQuery = "INSERT INTO user_activity_log (user_id, name) VALUES (?, ?)";
+            connection.query(logQuery, [user.id, user.name], (logErr) => {
+                if (logErr) console.error("Error logging login:", logErr);
+            });
+
             if (user.user_type === "admin") {
                 return res.json({ redirect: "/admin_page.html" });
             } else {
@@ -271,6 +277,7 @@ app.post("/login", (req, res) => {
         }
     });
 });
+
 
 
 app.get("/user-info", (req, res) => {
@@ -555,15 +562,33 @@ app.get("/get-teams-with-members", (req, res) => {
 });
 
 app.get("/api/users", (req, res) => {
-    const sql = "SELECT name FROM user_form"; 
-    connection.query(sql, (err, results) => {
+    const sqlAllUsers = `SELECT DISTINCT name FROM user_activity_log`;
+    const sqlLogoutTimes = `
+        SELECT name, MAX(logout_time) AS last_logout 
+        FROM user_activity_log 
+        GROUP BY name
+    `;
+
+    connection.query(sqlAllUsers, (err, allUsers) => {
         if (err) {
             console.error("Error fetching users:", err);
             return res.status(500).json({ error: "Database error" });
         }
-        res.json(results); 
+
+        connection.query(sqlLogoutTimes, (err, logoutTimes) => {
+            if (err) {
+                console.error("Error fetching logout times:", err);
+                return res.status(500).json({ error: "Database error" });
+            }
+
+            res.json({
+                all_users: allUsers,
+                user_logout_times: logoutTimes
+            });
+        });
     });
 });
+
 
 
 app.get("/get-user-teams", (req, res) => {
@@ -652,14 +677,37 @@ app.get("/get-user-teams", (req, res) => {
 
 
 app.get("/logout", (req, res) => {
-    req.session.destroy((err) => {
+    if (!req.session.user) {
+        return res.redirect("/login_form.html");
+    }
+
+    const userId = req.session.user.id;
+
+    // Update the logout timestamp for the latest login
+    const updateLogoutQuery = `
+        UPDATE user_activity_log 
+        SET logout_time = CURRENT_TIMESTAMP 
+        WHERE user_id = ? 
+        ORDER BY login_time DESC 
+        LIMIT 1
+    `;
+
+    connection.query(updateLogoutQuery, [userId], (err) => {
         if (err) {
-            console.error("Error destroying session:", err);
+            console.error("Error logging logout:", err);
             return res.status(500).json({ error: "Error logging out." });
         }
-        res.redirect("/login_form.html"); 
+
+        req.session.destroy((sessionErr) => {
+            if (sessionErr) {
+                console.error("Error destroying session:", sessionErr);
+                return res.status(500).json({ error: "Error logging out." });
+            }
+            res.redirect("/login_form.html");
+        });
     });
 });
+
 app.post("/update-password", (req, res) => {
 
     const {newPassword, confirmPassword} = req.body;
@@ -793,6 +841,272 @@ app.post("/sendChannelMessage", (req, res) => {
         res.json({ success: true });
     });
 });
+
+app.post("/create-group", (req, res) => {
+    const { name, description } = req.body;
+    const createdBy = req.session.user.id;
+
+    if (!name || !description) {
+        return res.status(400).json({ error: "Group name and description are required." });
+    }
+
+    const query = "INSERT INTO groups (name, description, created_by) VALUES (?, ?, ?)";
+    connection.query(query, [name, description, createdBy], (err, result) => {
+        if (err) {
+            console.error("Error creating group:", err);
+            return res.status(500).json({ error: "Error creating group." });
+        }
+        const groupId = result.insertId;
+        const insertCreatorQuery = "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)";
+        connection.query(insertCreatorQuery, [groupId, createdBy], (err) => {
+            if (err) {
+                console.error("Error adding creator to group:", err);
+                return res.status(500).json({ error: "Group created, but error adding creator." });
+            }
+
+            res.json({ message: "Group created successfully!", groupId });
+        });
+    });
+});
+app.post("/add-user", (req, res) => {
+    const { groupId, username } = req.body;
+
+    // Get user ID by username
+    const userQuery = "SELECT id FROM user_form WHERE name = ?";
+    connection.query(userQuery, [username], (err, results) => {
+        if (err || results.length === 0) {
+            return res.status(400).json({ error: "User not found." });
+        }
+        
+        const userId = results[0].id;
+
+        // Check if already a member
+        const checkQuery = "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?";
+        connection.query(checkQuery, [groupId, userId], (err, checkResults) => {
+            if (err) return res.status(500).json({ error: "Database error." });
+            if (checkResults.length > 0) return res.status(400).json({ error: "User is already a member." });
+
+            // Add user
+            const insertQuery = "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)";
+            connection.query(insertQuery, [groupId, userId], (err) => {
+                if (err) return res.status(500).json({ error: "Error adding user to group." });
+                res.json({ message: "User added successfully!" });
+            });
+        });
+    });
+});
+
+app.get("/get-groups", (req, res) => {
+    const query = "SELECT id, name, description FROM groups ORDER BY created_at DESC";
+    connection.query(query, (err, results) => {
+        if (err) {
+            console.error("Error fetching groups:", err);
+            return res.status(500).json({ error: "Error fetching groups." });
+        }
+        res.json(results);
+    });
+});
+
+app.get("/group-members/:groupId", (req, res) => {
+    const { groupId } = req.params;
+
+    const query = `
+       SELECT u.id, u.name, g.created_by AS owner_id
+        FROM group_members gm 
+        JOIN user_form u ON gm.user_id = u.id 
+        JOIN groups g ON g.id = gm.group_id
+        WHERE gm.group_id = ?
+    `;
+
+    connection.query(query, [groupId], (err, results) => {
+        if (err) {
+            console.error("Error fetching group members:", err);
+            return res.status(500).json({ error: "Error fetching group members." });
+        }
+        res.json(results);
+    });
+});
+app.get("/group-owner/:groupId", (req, res) => {
+    const { groupId } = req.params;
+    
+    const query = "SELECT created_by AS owner_id FROM groups WHERE id = ?";
+    connection.query(query, [groupId], (err, results) => {
+        if (err) {
+            console.error("Error fetching group owner:", err);
+            return res.status(500).json({ error: "Error fetching group owner." });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Group not found." });
+        }
+        res.json(results[0]); 
+    });
+});
+
+app.get("/group-requests/:groupId", (req, res) => {
+    const { groupId } = req.params;
+    const userId = req.session.user ? req.session.user.id : null;
+
+    if (!userId) {
+        console.error("Unauthorized request: No user ID found.");
+        return res.status(401).json({ error: "Unauthorized request." });
+    }
+
+    // Check if the user is the owner of the group
+    const checkOwnerQuery = "SELECT created_by FROM groups WHERE id = ?";
+    connection.query(checkOwnerQuery, [groupId], (err, results) => {
+        if (err) {
+            console.error("Database error checking group owner:", err);
+            return res.status(500).json({ error: "Database error." });
+        }
+        if (results.length === 0) {
+            console.error("Group not found:", groupId);
+            return res.status(404).json({ error: "Group not found." });
+        }
+
+        const isOwner = results[0].created_by === userId;
+        if (!isOwner) {
+            console.error("User is not the group owner:", userId);
+            return res.status(403).json({ error: "You are not authorized to view this." });
+        }
+
+        // Fetch pending requests
+        const query = `
+            SELECT u.id, u.name 
+            FROM group_requests gr 
+            JOIN user_form u ON gr.user_id = u.id 
+            WHERE gr.group_id = ?
+        `;
+
+        connection.query(query, [groupId], (err, results) => {
+            if (err) {
+                console.error("Error fetching join requests:", err);
+                return res.status(500).json({ error: "Error fetching join requests." });
+            }
+            res.json(results);
+        });
+    });
+});
+
+
+app.post("/request-join", (req, res) => {
+    const { groupId } = req.body;
+    const userId = req.session.user.id;
+
+    if (!userId) {
+        return res.status(401).json({ error: "You must be logged in to request to join a group." });
+    }
+
+    // Check if the user is already a member
+    const checkMembershipQuery = "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?";
+    connection.query(checkMembershipQuery, [groupId, userId], (err, results) => {
+        if (err) return res.status(500).json({ error: "Database error while checking membership." });
+        if (results.length > 0) return res.status(400).json({ error: "You are already a member of this group." });
+
+        // Check if user is the group owner
+        const checkOwnerQuery = "SELECT created_by FROM groups WHERE id = ?";
+        connection.query(checkOwnerQuery, [groupId], (err, ownerResults) => {
+            if (err) return res.status(500).json({ error: "Database error while checking owner." });
+
+            const isOwner = ownerResults.length > 0 && ownerResults[0].created_by === userId;
+            if (isOwner) return res.status(400).json({ error: "You are the group owner and cannot request to join." });
+
+            // Check if user has already requested to join
+            const checkRequestQuery = "SELECT * FROM group_requests WHERE group_id = ? AND user_id = ?";
+            connection.query(checkRequestQuery, [groupId, userId], (err, requestResults) => {
+                if (err) return res.status(500).json({ error: "Database error while checking join request." });
+                if (requestResults.length > 0) return res.status(400).json({ error: "You have already requested to join this group." });
+
+                // Insert join request
+                const insertRequestQuery = "INSERT INTO group_requests (group_id, user_id) VALUES (?, ?)";
+                connection.query(insertRequestQuery, [groupId, userId], (err) => {
+                    if (err) return res.status(500).json({ error: "Error submitting join request." });
+                    res.json({ message: "Request to join sent successfully!" });
+                });
+            });
+        });
+    });
+});
+
+
+app.post("/approve-user", (req, res) => {
+    const { groupId, userId } = req.body;
+
+    // Remove from requests
+    const deleteQuery = "DELETE FROM group_requests WHERE group_id = ? AND user_id = ?";
+    connection.query(deleteQuery, [groupId, userId], (err) => {
+        if (err) return res.status(500).json({ error: "Error processing request." });
+
+        // Add user to group
+        const insertQuery = "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)";
+        connection.query(insertQuery, [groupId, userId], (err) => {
+            if (err) return res.status(500).json({ error: "Error adding user to group." });
+            res.json({ message: "User added successfully!" });
+        });
+    });
+});
+
+
+
+app.post("/leave-group", (req, res) => {
+    const { groupId } = req.body;
+    const userId = req.session.user.id;
+
+    const query = "DELETE FROM group_members WHERE group_id = ? AND user_id = ?";
+    connection.query(query, [groupId, userId], (err, result) => {
+        if (err) {
+            console.error("Error leaving group:", err);
+            return res.status(500).json({ error: "Error leaving group." });
+        }
+        if (result.affectedRows === 0) {
+            return res.status(400).json({ error: "You are not a member of this group." });
+        }
+        res.json({ message: "You have left the group." });
+    });
+});
+io.on("connection", (socket) => {
+socket.on("send-message", (data) => {
+    const { groupId, userId, message } = data;
+
+    // Get sender's name
+    const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
+    connection.query(getUserQuery, [userId], (err, result) => {
+        if (err || result.length === 0) return;
+        const senderName = result[0].name;
+
+        
+        const insertQuery = "INSERT INTO group_messages (group_id, user_id, text) VALUES (?, ?, ?)";
+        connection.query(insertQuery, [groupId, userId, message], (err) => {
+            if (err) {
+                console.error("Error storing message:", err);
+                return;
+            }
+
+            
+            io.emit(`group-message-${groupId}`, { sender: senderName, text: message });
+        });
+    });
+});
+});
+
+// Fetch previous messages
+app.get("/group-messages/:groupId", (req, res) => {
+const { groupId } = req.params;
+
+const query = `
+    SELECT u.name AS sender, gm.text 
+    FROM group_messages gm 
+    JOIN user_form u ON gm.user_id = u.id 
+    WHERE gm.group_id = ?
+    ORDER BY gm.created_at ASC
+`;
+
+connection.query(query, [groupId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Error fetching messages." });
+    res.json(results);
+});
+});
+
+
 io.on("connection", (socket) => {
     socket.on("ChannelMessages", (msg) => {
         const query = `
