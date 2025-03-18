@@ -229,15 +229,16 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
         let statusText = "Offline";
         let statusClass = "offline";
         let logoutTimestamp = "";
-        let statusIcon = "fa-circle-xmark";
+        let statusIcon = `<i class="fas fa-circle-xmark offline-icon"></i>`; //default offline
 
         if (isOnline) {
             statusText = "Available";
             statusClass = "online";
-            statusIcon = "fa-circle-check";
+            statusIcon = `<i class="fas fa-circle-check online-icon"></i>`; 
         } else if (isAway) {
             statusText = "Away";
             statusClass = "away";
+            statusIcon = `<i class="fas fa-clock away-icon"></i>`; 
         } else {
             // Get last logout timestamp for this user
             const userLogout = logoutTimes.find(logout => logout.name === user.name);
@@ -246,21 +247,17 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
             }
         }
 
-             statusIcon = "fa-circle-half-stroke";
-        }
         userDiv.innerHTML = `
             <span class="user-name">${user.name}</span>
             <span class="status ${statusClass}">
-                 <i class="fa-solid ${statusIcon}"       
-                    style="color: ${statusClass === 'online' ? 'green' : (statusClass === 'away' ? 'yellow' : 'gray')}">  
-                </i>
-                ${statusText}${logoutTimestamp}
-                </span>
+                ${statusIcon} ${statusText}${logoutTimestamp}
+            </span>
         `;
 
         usersStatusDiv.appendChild(userDiv);
     });
 }
+
 let inactivityTimer;
 const INACTIVITY_TIME = 30000; 
 
