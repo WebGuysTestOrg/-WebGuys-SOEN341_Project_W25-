@@ -354,6 +354,20 @@ h2 {
 color :black;
 font-weight: bold;
 }
+
+/* status icons */
+.online-icon {
+    color: green;
+}
+
+.away-icon {
+    color:  #FBCA1F;
+}
+
+.offline-icon {
+    color: grey;
+}
+
 .status {
     font-size: 14px;
     padding: 2px 6px;
