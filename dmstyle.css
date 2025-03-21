@@ -264,10 +264,26 @@ button {
     padding: 10px 15px;
     font-size: 14px;
     font-weight: bold;
-    border: none;
+    border: 2px solid #000000;
     border-radius: 5px;
     cursor: pointer;
     transition: background 0.3s, transform 0.2s;
+}
+
+.join-btn {
+    background: #00912e;
+    padding: 15px;
+    width: 80%;
+    max-width: 200px;
+    text-align: center;    
+}
+
+.leave-btn {
+    background: #ff4f4f;
+    padding: 15px;
+    width: 80%;
+    max-width: 200px;
+    text-align: center;    
 }
 
 #group-chat {
@@ -278,7 +294,10 @@ button {
 }
 
 #chat-box {
-    height: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 350px;
     overflow-y: auto;
     border: 1px solid #ccc;
     padding: 10px;
@@ -293,6 +312,7 @@ button {
     font-size: 14px;
     outline: none;
     margin-right: 10px;
+    margin-top: 10px;
 }
 
 #chat-message::placeholder {
@@ -300,10 +320,18 @@ button {
     font-style: italic;
 }
 
+#group-actions {
+    display: flex;  
+    justify-content: center;
+    align-items: center;
+    margin: 10px;
+
+}
+
 button[onclick="sendMessage()"] {
     background: #fcb900;
     color: black;
-    border: none;
+    border: 2px solid #000000;
     padding: 10px 15px;
     cursor: pointer;
     border-radius: 5px;
