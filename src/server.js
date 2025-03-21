@@ -127,13 +127,19 @@ connection.connect((err) => {
 
 io.on("connection", (socket) => {
     socket.on("private-message", (msg) => {
-        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text) VALUES (?, ?, ?)";
-        connection.query(insertQuery, [msg.senderId, msg.recipientId, msg.text], (err) => {
+        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text, quoted_message) VALUES (?, ?, ?, ?)";
+        const quotedText = msg.quoted ? msg.quoted.text : null;
+        connection.query(insertQuery, [msg.senderId, msg.recipientId, msg.text, quotedText], (err) => {
             if (err) {
                 console.error("Error saving message:", err);
                 return;
             }
-            io.emit("private-message", msg);
+            const fullMessage = {
+                ...msg,
+                quoted: msg.quoted
+            };
+
+            io.emit("private-message", fullMessage);
         });
     });
 });
@@ -162,7 +168,7 @@ app.get('/get-messages', (req, res) => {
     const { senderId, recipientId } = req.query;
     
     const query = `
-        SELECT dm.text, dm.sender_id, dm.recipient_id, uf.name AS senderName
+        SELECT dm.text, dm.quoted_message, dm.sender_id, dm.recipient_id, uf.name AS senderName
         FROM direct_messages dm
         JOIN user_form uf ON dm.sender_id = uf.id
         WHERE (dm.sender_id = ? AND dm.recipient_id = ?)
@@ -174,7 +180,16 @@ app.get('/get-messages', (req, res) => {
         if (err) {
             return res.status(500).json({ error: "Error fetching messages." });
         }
-        res.json(results);
+        const formattedResults = results.map(msg => ({
+            id: msg.id,
+            senderId: msg.sender_id,
+            recipientId: msg.recipient_id,
+            senderName: msg.senderName,
+            text: msg.text,
+            quoted: msg.quoted_message ? { text: msg.quoted_message } : null
+        }));
+
+        res.json(formattedResults);
     });
 });
 
@@ -785,7 +800,7 @@ app.post("/get-channel-messages", (req, res) => {
     }
 
     const query = `
-        SELECT id, sender, text FROM channels_messages 
+        SELECT id, sender, text, quoted_message FROM channels_messages 
         WHERE team_name = ? AND channel_name = ? 
         ORDER BY created_at ASC
     `;
@@ -795,7 +810,15 @@ app.post("/get-channel-messages", (req, res) => {
             console.error("Database error:", err);
             return res.status(500).json({ error: "Internal Server Error: Database query failed." });
         }
-        res.json(results);
+
+        const formattedResults = results.map(msg => ({
+            id: msg.id,
+            sender: msg.sender,
+            text: msg.text,
+            quoted: msg.quoted_message
+        }));
+
+        res.json(formattedResults);
     });
 });
 app.post("/remove-message", (req, res) => {
@@ -822,18 +845,22 @@ app.post("/remove-message", (req, res) => {
 });
 
 app.post("/sendChannelMessage", (req, res) => {
-    const { teamName, channelName, sender, text } = req.body;
+    const { teamName, channelName, sender, text, quoted } = req.body;
+
+    console.log("🟦 Quoted Message Received:", quoted);
 
     if (!teamName || !channelName || !sender || !text) {
         return res.status(400).json({ error: "All fields are required." });
     }
 
+    const quotedMessageText = quoted;
+
     const query = `
-        INSERT INTO channels_messages (team_name, channel_name, sender, text) 
-        VALUES (?, ?, ?, ?)
+        INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
+        VALUES (?, ?, ?, ?, ?)
     `;
 
-    connection.query(query, [teamName, channelName, sender, text], (err, results) => {
+    connection.query(query, [teamName, channelName, sender, text, quotedMessageText], (err, results) => {
         if (err) {
             console.error("Database error:", err);
             return res.status(500).json({ error: "Failed to save message." });
@@ -1110,11 +1137,11 @@ connection.query(query, [groupId], (err, results) => {
 io.on("connection", (socket) => {
     socket.on("ChannelMessages", (msg) => {
         const query = `
-        INSERT INTO channels_messages (team_name, channel_name, sender, text) 
-        VALUES (?, ?, ?, ?)
+        INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
+        VALUES (?, ?, ?, ?, ?)
     `;
 
-    connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text], (err,result) => {
+    connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted], (err,result) => {
         if (err) {
             console.error("Database error:", err);
             return res.status(500).json({ error: "Failed to save message." });
@@ -1125,7 +1152,8 @@ io.on("connection", (socket) => {
                 teamName: msg.teamName,
                 channelName: msg.channelName,
                 sender: msg.sender,
-                text: msg.text
+                text: msg.text,
+                quoted: msg.quoted
             };
             io.emit("ChannelMessages",messageWithId)
         }

@@ -7,6 +7,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" integrity="sha512-8ExARjWWkIllMlNzVg7JKq9RKWPlJABQUNq6YvAjE/HobctjH/NA+bSiDMDvouBVjp4Wwnf1VP1OEv7Zgjtuxw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="adminstyle.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
+    <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
+    
 </head>
 <body>
     <h3>Hi, <span id="username">User</span></h3>
@@ -53,6 +56,8 @@
         <div id="chat-messages"></div> 
         <div id="chat-input">
             <input type="text" id="message" placeholder="Type a message...">
+            <button id="emoji-btn">😊</button> 
+            <div id="emoji-picker-container" style="display: none;"></div>
             <button id="send">Send</button>
         </div>
     </div>
@@ -398,6 +403,47 @@ displayMessage(messages)
         messageInput.value = "";
     });
 });
+
+document.getElementById("emoji-btn").addEventListener("click", function (event) {
+        console.log("Emoji Clieked");
+        event.stopPropagation(); 
+
+        const pickerContainer = document.getElementById("emoji-picker-container");
+
+        if (pickerContainer.style.display === "none" || pickerContainer.innerHTML === "") {
+            pickerContainer.style.display = "block";
+
+    
+            pickerContainer.innerHTML = "";
+
+            const picker = new EmojiMart.Picker({
+                set: 'apple',
+                onEmojiSelect: (emoji) => {
+                    const messageInput = document.getElementById("message");
+                    messageInput.value += emoji.native || emoji.colons || emoji.id;
+                    pickerContainer.style.display = "none"; 
+            }
+        });
+
+            pickerContainer.appendChild(picker);
+        } else {
+            pickerContainer.style.display = "none";
+        }
+    });
+
+
+    document.addEventListener("click", function (event) {
+        const pickerContainer = document.getElementById("emoji-picker-container");
+        const emojiButton = document.getElementById("emoji-btn");
+
+        if (
+            pickerContainer.style.display === "block" &&
+            !pickerContainer.contains(event.target) &&
+            event.target !== emojiButton
+        ) {
+            pickerContainer.style.display = "none";
+        }
+    });
     </script>
 </body>
 </html>
