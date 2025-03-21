@@ -264,28 +264,10 @@ button {
     padding: 10px 15px;
     font-size: 14px;
     font-weight: bold;
-    border: 2px solid #000000;
+    border: none;
     border-radius: 5px;
     cursor: pointer;
     transition: background 0.3s, transform 0.2s;
-}
-
-/* Style for join group button */
-.join-btn {
-    background: #00912e;
-    padding: 15px;
-    width: 80%;
-    max-width: 200px;
-    text-align: center;    
-}
-
-/* Style for leave group button */
-.leave-btn {
-    background: #ff4f4f;
-    padding: 15px;
-    width: 80%;
-    max-width: 200px;
-    text-align: center;    
 }
 
 #group-chat {
@@ -296,10 +278,7 @@ button {
 }
 
 #chat-box {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    height: 350px;
+    height: 300px;
     overflow-y: auto;
     border: 1px solid #ccc;
     padding: 10px;
@@ -314,7 +293,6 @@ button {
     font-size: 14px;
     outline: none;
     margin-right: 10px;
-    margin-top: 10px;
 }
 
 #chat-message::placeholder {
@@ -322,18 +300,10 @@ button {
     font-style: italic;
 }
 
-#group-actions {
-    display: flex;  
-    justify-content: center;
-    align-items: center;
-    margin: 10px;
-
-}
-
 button[onclick="sendMessage()"] {
     background: #fcb900;
     color: black;
-    border: 2px solid #000000;
+    border: none;
     padding: 10px 15px;
     cursor: pointer;
     border-radius: 5px;
@@ -349,4 +319,61 @@ button[onclick="sendMessage()"]:hover {
 button[onclick="sendMessage()"]:active {
     background: #d48c00;
     transform: scale(0.95);
+}
+
+#emoji-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    margin: 0 5px;
+}
+
+#emoji-picker-container {
+    position: absolute;
+    bottom: 60px;     
+    right: 70px;       
+    z-index: 10;      
+    background: #fff;  
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    max-height: 300px;  
+    overflow-y: auto;  
+}
+
+.emoji-mart {
+    width: 100%;       
+}
+
+.quoted-message {
+    padding: 5px 10px;
+    margin-bottom: 5px;
+    font-style: italic;
+    color: #555;
+}
+
+#quoted-message-container {
+    padding: 5px 10px;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#quoted-text {
+    flex: 1;
+}
+
+.quote-btn {
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+    padding: 2px 8px;
+    margin-left: 10px;
+}
+
+.quote-btn:hover {
+    background-color: #e0e0e0;
 }
