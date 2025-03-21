@@ -378,7 +378,7 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
             // Get last logout timestamp for this user
             const userLogout = logoutTimes.find(logout => logout.name === user.name);
             if (userLogout && userLogout.last_logout) {
-                logoutTimestamp = ` (Last logout: ${new Date(userLogout.since).toLocaleString()})`;
+                logoutTimestamp = ` (Since: ${new Date(userLogout.last_logout).toLocaleString()})`;
             }
         }
 
