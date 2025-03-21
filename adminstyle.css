@@ -494,3 +494,28 @@ font-weight: bold;
     color: var(--text-light);
 }
 
+#emoji-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    margin: 0 5px;
+}
+
+#emoji-picker-container {
+    position: absolute;
+    bottom: 60px;     
+    right: 70px;     
+    z-index: 10;      
+    background: #fff; 
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    max-height: 300px;  
+    overflow-y: auto;  
+}
+
+.emoji-mart {
+    width: 100%;        
+}
+
