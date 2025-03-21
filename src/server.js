@@ -243,6 +243,11 @@ app.post("/register", (req, res) => {
 
 app.post("/login", (req, res) => {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required." });
+    }
+
     const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
     const query = "SELECT * FROM user_form WHERE email = ? AND password = ?";
 
