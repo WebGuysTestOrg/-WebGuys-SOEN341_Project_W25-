@@ -7,6 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
     <link rel="stylesheet" href="dmstyle.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
+    <link rel="icon" type="image/png" href="ChatHavenLogo.png">
     <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
 </head>
 <body>
@@ -228,20 +229,26 @@
                 messageElement.appendChild(quotedElement);
             
             }
+
             // Create div for text element of message
             const textElement = document.createElement("div");
             textElement.classList.add("message-text");
             textElement.textContent = msg.text;
             
+
+            messageElement.appendChild(usernameElement);
+            messageElement.appendChild(textElement);
+
+            if(!isOwnMessage){
             const quoteButton = document.createElement("button");
             quoteButton.textContent = "Reply";
+            quoteButton.classList.add("quote-btn");
             quoteButton.onclick = () => quoteMessage(msg.id, msg.text);
 
             // Add username and text element to message class
-            messageElement.appendChild(usernameElement);
-            messageElement.appendChild(textElement);
+            
             messageElement.appendChild(quoteButton);
-
+            }
             chatMessages.appendChild(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }

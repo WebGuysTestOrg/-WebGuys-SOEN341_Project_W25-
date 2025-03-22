@@ -121,6 +121,7 @@ body {
 
 
 .my-message {
+    display: flex;
     background-color: #00ffae;
     border: 3px solid #000000;
     padding: 10px;
@@ -135,6 +136,7 @@ body {
 
 /* Style for messages sent by others */
 .other-message {
+    display: flex;
     background: #dedede;
     color: black;
     align-self: flex-start;
@@ -142,12 +144,15 @@ body {
 }
 
 .message-username {
+    padding-right: 5px;
     font-weight: bold;
     margin-bottom: 5px;
+    line-height: 28px;
 }
 
 .message-text {
     font-size: 14px;
+    line-height: 28px;
 }
 
 .chat-input {
@@ -196,6 +201,8 @@ body {
 }
 
 .remove-btn {
+    width: 30px;
+    height: 30px;
     background: #ff8585;
     color: white;
     border: none;
@@ -378,7 +385,6 @@ button[onclick="sendMessage()"]:active {
 
 .quoted-message {
     padding: 5px 10px;
-    margin-bottom: 5px;
     font-style: italic;
     color: #555;
 }
@@ -396,6 +402,9 @@ button[onclick="sendMessage()"]:active {
 }
 
 .quote-btn {
+    width: 60px;
+    height: 30px;
+    font-size: 12px;
     background-color: #f0f0f0;
     border: 1px solid #ccc;
     border-radius: 5px;
