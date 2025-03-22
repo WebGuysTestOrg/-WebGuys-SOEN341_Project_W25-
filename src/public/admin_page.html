@@ -8,6 +8,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" integrity="sha512-8ExARjWWkIllMlNzVg7JKq9RKWPlJABQUNq6YvAjE/HobctjH/NA+bSiDMDvouBVjp4Wwnf1VP1OEv7Zgjtuxw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="styles/adminstyle.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
+    <link rel="icon" type="image/png" href="ChatHavenLogo.png">
+    <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -24,7 +27,7 @@
         <p>Manage teams, channels, and users.</p>
         <a href="/logout" class="btn">Logout</a>
         <a href="dm.html" class="btn">Direct Messages</a>
-        <a href="groups.html" class="btn">Join a group</a>
+        <a href="groups.html" class="btn">Groups</a>
 
 
         <!-- Create Team Section -->
@@ -89,11 +92,13 @@
         <div id="chat-messages"></div>
         <div id="chat-input">
             <input type="text" id="message" placeholder="Type a message...">
+            <button id="emoji-btn">😊</button> 
+            <div id="emoji-picker-container" style="display: none;"></div>
             <button id="send">Send</button>
         </div>
     </div>
-    <div id="status-toggle">
-        <i class="fa-solid fa-globe"></i>
+    <div id="status-toggle" >
+        <i class="fa-solid fa-users"></i>
 </div>
     <div id="status-container">
         <div id="chat-header">
@@ -378,7 +383,7 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
             // Get last logout timestamp for this user
             const userLogout = logoutTimes.find(logout => logout.name === user.name);
             if (userLogout && userLogout.last_logout) {
-                logoutTimestamp = ` (Last logout: ${new Date(userLogout.last_logout).toLocaleString()})`;
+                logoutTimestamp = ` (Since: ${new Date(userLogout.last_logout).toLocaleString()})`;
             }
         }
 
@@ -533,6 +538,47 @@ document.addEventListener("DOMContentLoaded", () => {
         chatMessages.scrollTop = chatMessages.scrollHeight; 
         messageInput.value = "";
     });
+    });
+
+    document.getElementById("emoji-btn").addEventListener("click", function (event) {
+        console.log("Emoji Clieked");
+        event.stopPropagation(); 
+
+        const pickerContainer = document.getElementById("emoji-picker-container");
+
+        if (pickerContainer.style.display === "none" || pickerContainer.innerHTML === "") {
+            pickerContainer.style.display = "block";
+
+    
+            pickerContainer.innerHTML = "";
+
+            const picker = new EmojiMart.Picker({
+                set: 'apple',
+                onEmojiSelect: (emoji) => {
+                    const messageInput = document.getElementById("message");
+                    messageInput.value += emoji.native || emoji.colons || emoji.id;
+                    pickerContainer.style.display = "none"; 
+            }
+        });
+
+            pickerContainer.appendChild(picker);
+        } else {
+            pickerContainer.style.display = "none";
+        }
+    });
+
+
+    document.addEventListener("click", function (event) {
+        const pickerContainer = document.getElementById("emoji-picker-container");
+        const emojiButton = document.getElementById("emoji-btn");
+
+        if (
+            pickerContainer.style.display === "block" &&
+            !pickerContainer.contains(event.target) &&
+            event.target !== emojiButton
+        ) {
+            pickerContainer.style.display = "none";
+        }
     });
 
     </script>

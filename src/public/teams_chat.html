@@ -4,9 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Direct Messages</title>
+    <title>Team Channel</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
     <link rel="stylesheet" href="styles/dmstyle.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
+    <link rel="icon" type="image/png" href="assets/ChatHavenLogo.png">
+    <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
+    
+    
+
 </head>
 
 <body>
@@ -20,19 +26,28 @@
             <div id="chat-header">Select a chat to start messaging</div>
             <div id="chat-messages"></div>
             <div class="chat-input">
+                <div id="quoted-message-container" style="display: none;">
+                    <span id="quoted-text"></span>
+                    <button id="cancel-quote">x</button>
+                </div>
                 <input type="text" id="message" placeholder="Type a message...">
+                <button id="emoji-btn">😊</button> 
+                <div id="emoji-picker-container" style="display: none;"></div>
                 <button id="send">Send</button>
             </div>
         </div>
     </div>
 
     <script>
+
         const socket = io('ws://localhost:3000')
         const params = new URLSearchParams(window.location.search);
         const teamName = params.get("team");
         let channelClicked = "";
         let currentUser = "";
         let currentUserRole = "";
+        let quotedMessage = null;
+
         fetch('/user-info')
             .then(response => {
                 if (!response.ok) throw new Error('Unauthorized');
@@ -134,28 +149,7 @@
 
                             // Process each message after getting the user info
                             messages.forEach(msg => {
-                                const messageDiv = document.createElement("div");
-                                messageDiv.classList.add("message");
-                                messageDiv.textContent = `${msg.sender}: ${msg.text}`;
-                                messageDiv.dataset.id = msg.id;
-
-                                console.log(msg.sender === currentUser)
-                                messageDiv.classList.add(msg.sender === currentUser ? "my-message" : "other-message");
-
-                                messageDiv.textContent = msg.sender === currentUser ? `${msg.text}` : `${msg.sender}: ${msg.text}`;
-
-                                // If the user is an admin, add the remove button unless the message was already removed.
-                                if (currentUserRole === "admin" && msg.text !== "Removed by Admin") {
-                                    const removeButton = document.createElement("button");
-                                    removeButton.textContent = "❌";
-                                    removeButton.classList.add("remove-btn");
-                                    removeButton.addEventListener("click", () => {
-                                        removeMessage(msg.id, messageDiv);
-                                    });
-                                    messageDiv.appendChild(removeButton); // Append the remove button to the message
-                                }
-
-                                chatContainer.appendChild(messageDiv);
+                                displayMessage(msg, msg.sender === currentUser);
                             });
 
                             chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -204,6 +198,7 @@
 
         socket.on("ChannelMessages", (msg) => {
 
+
             displayMessage(msg, msg.sender == currentUser);
             console.log("Message is being displayed")
 
@@ -214,21 +209,36 @@
             const chatMessages = document.getElementById("chat-messages");
             const messageElement = document.createElement("div");
 
-            console.log("LoggedInUser", currentUser);
-            console.log("SendingUser", msg);
-
-            // Apply message class first
-            messageElement.classList.add("message");
-
             // Apply message class
-            messageElement.classList.add(isOwnMessage ? "my-message" : "other-message");
+            messageElement.classList.add("message", isOwnMessage ? "my-message" : "other-message");
 
-            // Set message text
-            messageElement.textContent = isOwnMessage ? `${msg.text}` : `${msg.sender}: ${msg.text}`;
+            // Add username styling
+            if (!isOwnMessage) {
+                const usernameElement = document.createElement("div");
+                usernameElement.classList.add("message-username");
+                usernameElement.textContent = msg.sender;
+                if (msg.text != "Removed by Admin") {
+                    messageElement.appendChild(usernameElement);
+                }
+            }
 
-            console.log("ROLE", currentUserRole)
-            
-            // Add remove button if the user is an admin
+            // Add quoted message if it exists
+            if (msg.quoted) {
+                const quotedElement = document.createElement("div");
+                quotedElement.classList.add("quoted-message");
+                quotedElement.textContent = `Replying to: "${msg.quoted}"`;
+                if (msg.text != "Removed by Admin") {
+                    messageElement.appendChild(quotedElement);
+                }
+            }
+
+            // Add message text
+            const textElement = document.createElement("div");
+            textElement.classList.add("message-text");
+            textElement.textContent = msg.text;
+            messageElement.appendChild(textElement);
+
+            // Add remove button for admin
             if (currentUserRole === "admin") {
                 const removeButton = document.createElement("button");
                 removeButton.textContent = "❌";
@@ -236,8 +246,20 @@
                 removeButton.addEventListener("click", () => {
                     removeMessage(msg.id, messageElement);
                 });
+                if (msg.text != "Removed by Admin") {
+                    messageElement.appendChild(removeButton);
+                }
+            }
 
-                messageElement.appendChild(removeButton);
+            // Add reply button
+            if (msg.id ) {
+                const quoteButton = document.createElement("button");
+                quoteButton.textContent = "Reply";
+                quoteButton.classList.add("quote-btn");
+                quoteButton.onclick = () => quoteMessage(msg.id, msg.text);
+                if (msg.text != "Removed by Admin" && !isOwnMessage) {
+                    messageElement.appendChild(quoteButton);
+                }
             }
 
             // Append the message to the chat window
@@ -249,6 +271,7 @@
         function sendMessage(teamName, channelName) {
             const messageInput = document.getElementById("message");
             const messageText = messageInput.value.trim();
+        
 
             if (messageText === "") {
                 return;
@@ -258,9 +281,9 @@
                 teamName: teamName,
                 channelName: channelName,
                 sender: currentUser,
-                text: messageText
-            };
-
+                text: messageText,
+                quoted: quotedMessage
+            }; 
             socket.emit("ChannelMessages", messageData);
             messageInput.value = "";
 
@@ -287,6 +310,63 @@
             // })
             // .catch(error => console.error("Fetch Error:", error));
         }
+
+        document.getElementById("emoji-btn").addEventListener("click", function (event) {
+
+event.stopPropagation(); 
+
+const pickerContainer = document.getElementById("emoji-picker-container");
+
+if (pickerContainer.style.display === "none" || pickerContainer.innerHTML === "") {
+    pickerContainer.style.display = "block";
+
+
+    pickerContainer.innerHTML = "";
+
+    const picker = new EmojiMart.Picker({
+        set: 'apple',
+        onEmojiSelect: (emoji) => {
+            const messageInput = document.getElementById("message");
+            messageInput.value += emoji.native || emoji.colons || emoji.id;
+            pickerContainer.style.display = "none"; 
+        }
+    });
+
+    pickerContainer.appendChild(picker);
+} else {
+    pickerContainer.style.display = "none";
+}
+});
+
+
+document.addEventListener("click", function (event) {
+const pickerContainer = document.getElementById("emoji-picker-container");
+const emojiButton = document.getElementById("emoji-btn");
+
+if (
+    pickerContainer.style.display === "block" &&
+    !pickerContainer.contains(event.target) &&
+    event.target !== emojiButton
+) {
+    pickerContainer.style.display = "none";
+}
+});
+
+function quoteMessage(msgId, messageText) {
+    quotedMessage = messageText;
+
+    const quoteContainer = document.getElementById('quoted-message-container');
+    const quotedText = document.getElementById('quoted-text');
+
+    quotedText.textContent = `Replying to: "${messageText}"`;
+    quoteContainer.style.display = 'block';
+}
+
+       
+        document.getElementById('cancel-quote').addEventListener('click', () => {
+            quotedMessage = null;
+            document.getElementById('quoted-message-container').style.display = 'none';
+        });
     </script>
 </body>
 
