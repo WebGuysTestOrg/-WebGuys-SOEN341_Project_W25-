@@ -12,9 +12,14 @@ const {Server} =require("socket.io")
 const app = express();
 
 const PORT= process.env.PORT|| 3000
-const expressServer=app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-});
+let expressServer;
+
+if (process.env.NODE_ENV !== "test") {
+    expressServer = app.listen(PORT, () => {
+        console.log(`Server running at http://localhost:${PORT}`);
+    });
+}
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
@@ -273,9 +278,15 @@ app.post("/login", (req, res) => {
             });
 
             if (user.user_type === "admin") {
-                return res.json({ redirect: "/admin_page.html" });
+                return res.json({ 
+                    redirect: "/admin_page.html",
+                    user: req.session.user // <- Include this
+                });
             } else {
-                return res.json({ redirect: "/user_page.html" });
+                return res.json({ 
+                    redirect: "/user_page.html",
+                    user: req.session.user // <- Include this
+                });
             }
         } else {
             res.status(401).json({ error: "Invalid email or password." });
@@ -1138,4 +1149,4 @@ io.on("connection", (socket) => {
     });
     });
 });
-module.exports = { app, connection };
+module.exports = { app, connection, expressServer };

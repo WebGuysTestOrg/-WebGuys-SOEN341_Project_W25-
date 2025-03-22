@@ -1,7 +1,7 @@
 const request = require("supertest");
 const { app, connection } = require("../server"); // Adjust path if needed
 const crypto = require("crypto");
-
+process.env.NODE_ENV = "test";
 // Server reference
 let server;
 
