@@ -147,10 +147,12 @@ body {
     padding-right: 5px;
     font-weight: bold;
     margin-bottom: 5px;
+    line-height: 28px;
 }
 
 .message-text {
     font-size: 14px;
+    line-height: 28px;
 }
 
 .chat-input {
@@ -383,7 +385,6 @@ button[onclick="sendMessage()"]:active {
 
 .quoted-message {
     padding: 5px 10px;
-    margin-bottom: 5px;
     font-style: italic;
     color: #555;
 }
