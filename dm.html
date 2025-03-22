@@ -235,16 +235,20 @@
             textElement.classList.add("message-text");
             textElement.textContent = msg.text;
             
+
+            messageElement.appendChild(usernameElement);
+            messageElement.appendChild(textElement);
+
+            if(!isOwnMessage){
             const quoteButton = document.createElement("button");
             quoteButton.textContent = "Reply";
             quoteButton.classList.add("quote-btn");
             quoteButton.onclick = () => quoteMessage(msg.id, msg.text);
 
             // Add username and text element to message class
-            messageElement.appendChild(usernameElement);
-            messageElement.appendChild(textElement);
+            
             messageElement.appendChild(quoteButton);
-
+            }
             chatMessages.appendChild(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }

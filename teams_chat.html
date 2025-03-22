@@ -252,12 +252,12 @@
             }
 
             // Add reply button
-            if (msg.id) {
+            if (msg.id ) {
                 const quoteButton = document.createElement("button");
                 quoteButton.textContent = "Reply";
                 quoteButton.classList.add("quote-btn");
                 quoteButton.onclick = () => quoteMessage(msg.id, msg.text);
-                if (msg.text != "Removed by Admin") {
+                if (msg.text != "Removed by Admin" && !isOwnMessage) {
                     messageElement.appendChild(quoteButton);
                 }
             }
