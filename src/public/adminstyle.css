@@ -519,3 +519,36 @@ font-weight: bold;
     width: 100%;        
 }
 
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.form-row .form-container {
+    flex: 1;
+    min-width: 320px;
+    max-width: 500px;
+    background-color: var(--medium-grey);
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 19px 19px 100px #666666;
+}
+
+/* Responsive stacking for mobile */
+@media (max-width: 600px) {
+    .form-row {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+.logout-button {
+    position: fixed;
+    top: 80px; /* places it right under settings button */
+    right: 20px;
+    z-index: 1000;
+}
+
+
