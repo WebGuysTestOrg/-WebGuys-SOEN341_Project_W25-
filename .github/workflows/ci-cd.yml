@@ -1,16 +1,15 @@
-name: CI/CD Pipeline
+name: Node.js Test Runner
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  build_and_test:
+  test:
     runs-on: ubuntu-latest
+
     services:
       mysql:
         image: mysql:latest
@@ -20,51 +19,46 @@ jobs:
           MYSQL_USER: testuser
           MYSQL_PASSWORD: testpassword
         ports:
-          - 3306:3306  # Fix MySQL port (was mistakenly 3000)
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u testuser -ptestpassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
-      - name: Checkout the repository
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Move into src directory
-        run: cd src && ls -la  # List files to verify package.json is found
-
-      - name: Set up Node.js
+      - name:  Node.js Setup
         uses: actions/setup-node@v3
         with:
           node-version: 18
           cache: npm
           cache-dependency-path: src/package-lock.json
 
-      - name: Install dependencies
+      - name:  Install deps
         run: cd src && npm install
 
-      - name: Wait for MySQL to Start
+      - name:  Run DB Schema (like your XAMPP background does)
         run: |
-          sudo apt-get install -y mysql-client
-          for i in {1..10}; do
-            if mysql -h 127.0.0.1 -u testuser -ptestpassword -e "SELECT 1"; then
-              echo "MySQL is ready."
-              exit 0
-            fi
-            echo "Waiting for MySQL..."
-            sleep 2
-          done
-          echo "MySQL did not start in time." && exit 1
-      - name: Run Database Migrations
-        run: |
-          mysql -h 127.0.0.1 -u testuser -ptestpassword chathaven < src/schema.sql
-      - name: Run Jest Tests
+          sudo apt-get update && sudo apt-get install -y mysql-client
+          echo "Loading schema..."
+          mysql -h 127.0.0.1 -u testuser -ptestpassword chathaven < src/database/schema.sql
+
+      - name:  Run Jest Tests (you handle ports, sockets, DB in test files)
         env:
           DB_HOST: 127.0.0.1
           DB_USER: testuser
           DB_PASSWORD: testpassword
           DB_DATABASE: chathaven
-        run: cd src && npm test  # Ensure Jest runs inside src
+        run: |
+          cd src
+          npm test -- --ci --runInBand --detectOpenHandles
+
 
   deploy:
-    needs: build_and_test
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
