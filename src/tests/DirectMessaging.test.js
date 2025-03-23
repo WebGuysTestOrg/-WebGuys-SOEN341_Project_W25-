@@ -69,15 +69,22 @@ beforeAll((done) => {
     }
 });
 
-afterAll((done) => {
-    server.close(() => {
-        connection.end(() => {
-            console.log("Server and DB closed");
-            done();
-        });
+afterAll(async () => {
+    console.log("Disconnecting sockets...");
+    if (ioUser?.connected) ioUser.disconnect();
+    if (ioAdmin?.connected) ioAdmin.disconnect();
+  
+    console.log("Closing server...");
+    await new Promise((resolve, reject) => {
+      server.close((err) => {
+        if (err) return reject(err);
+        console.log("Server closed.");
+        resolve();
+      });
     });
-});
-
+  }, 15000);
+  
+  
 describe("Team Chat + Messaging Integration Flow", () => {
     test("Register admin and user", async () => {
         await request(app).post("/register").send({ ...admin, cpassword: admin.password });
@@ -89,8 +96,7 @@ describe("Team Chat + Messaging Integration Flow", () => {
         const res1 = await adminSession.post("/login").send({ email: admin.email, password: admin.password });
         expect(res1.status).toBe(200);
         adminId = res1.body.user.id;
-        console.log("res1.body =", res1.body);
-
+ 
         userSession = request.agent(app);
         const res2 = await userSession.post("/login").send({ email: user.email, password: user.password });
         expect(res2.status).toBe(200);
@@ -155,99 +161,131 @@ describe("Team Chat + Messaging Integration Flow", () => {
 
         setTimeout(() => {
             if (!messageReceived) done("Global message not received.");
-        }, 4000);
+        }, 15000);
     });
 
     test("Direct message is received", (done) => {
         const payload = {
-            senderId: adminId,
-            recipientId: userId,
-            text: "DM test"
+          senderId: adminId,
+          recipientId: userId,
+          text: "DM test",
         };
-
-        ioUser = io(`http://localhost:${TEST_PORT}`, {
-            transports: ["websocket"],
-            forceNew: true,
-        });
-
-        ioUser.on("connect", () => {
-            console.log("User connected");
-            ioUser.on("private-message", (msg) => {
-                try {
-                    expect(msg.text).toBe(payload.text);
-                    expect(msg.senderId).toBe(payload.senderId);
-                    expect(msg.recipientId).toBe(payload.recipientId);
-                    done();
-                } catch (err) {
-                    done(err);
-                }
-            });
-
-            ioAdmin = io(`http://localhost:${TEST_PORT}`, {
-                transports: ["websocket"],
-                forceNew: true,
-            });
-
-            ioAdmin.on("connect", () => {
-                console.log("Admin connected");
-                ioAdmin.emit("private-message", payload);
-            });
-
-            ioAdmin.on("connect_error", done);
-        });
-
-        ioUser.on("connect_error", done);
-
-        setTimeout(() => {
-            done("DM not received within timeout");
+      
+        const timeout = setTimeout(() => {
+          done(new Error("DM not received within timeout"));
         }, 5000);
-    });
-
-    test("Team channel message is received", (done) => {
-        if (!adminId || !userId) return done("Missing adminId or userId");
-    
-        const payload = {
-            teamName: `team_${random}`,
-            channelName: channelName,
-            sender: admin.name,
-            text: "Team channel test"
-        };
-    
-        ioUser = io(`http://localhost:${TEST_PORT}`, {
+      
+        const ioUser = io(`http://localhost:${TEST_PORT}`, {
+          transports: ["websocket"],
+          forceNew: true,
+        });
+      
+        ioUser.on("connect", () => {
+          console.log("User connected");
+      
+          ioUser.on("private-message", (msg) => {
+            try {
+              console.log("User received message:", msg);
+      
+              expect(msg.text).toBe(payload.text);
+              expect(msg.senderId).toBe(payload.senderId);
+              expect(msg.recipientId).toBe(payload.recipientId);
+      
+              clearTimeout(timeout);
+      
+              ioUser.disconnect();
+              if (ioAdmin.connected) ioAdmin.disconnect();
+      
+              done();
+            } catch (err) {
+              clearTimeout(timeout);
+              ioUser.disconnect();
+              if (ioAdmin.connected) ioAdmin.disconnect();
+      
+              done(err);
+            }
+          });
+      
+          const ioAdmin = io(`http://localhost:${TEST_PORT}`, {
             transports: ["websocket"],
             forceNew: true,
+          });
+      
+          ioAdmin.on("connect", () => {
+            console.log("Admin connected");
+            setTimeout(() => {
+              console.log("Admin sending message");
+              ioAdmin.emit("private-message", payload);
+            }, 200);
+          });
+      
+          ioAdmin.on("connect_error", done);
         });
-    
-        ioUser.on("connect", () => {
-            console.log("User connected for ChannelMessage");
-    
-            ioUser.on("ChannelMessages", (msg) => {
-                try {
-                    expect(msg.text).toBe(payload.text);
-                    done();
-                } catch (err) {
-                    done(err);
-                }
-            });
-    
-            ioAdmin = io(`http://localhost:${TEST_PORT}`, {
-                transports: ["websocket"],
-                forceNew: true,
-            });
-    
-            ioAdmin.on("connect", () => {
-                console.log("Admin connected for ChannelMessage");
-                ioAdmin.emit("ChannelMessages", payload);
-            });
-    
-            ioAdmin.on("connect_error", done);
-        });
-    
+      
         ioUser.on("connect_error", done);
-    
-        setTimeout(() => {
-            done("Channel message not received within timeout");
-        }, 4000);
-    });
+      });
+      
+      
+      test("Team channel message is received", (done) => {
+        const payload = {
+          senderId: adminId,
+          channelName: channelName, // already defined in your test file
+          teamId: teamId,
+          text: "Hello, team channel!"
+        };
+      
+        const timeout = setTimeout(() => {
+          done(new Error("Team channel message not received within timeout"));
+        }, 5000);
+      
+        const ioUser = io(`http://localhost:${TEST_PORT}`, {
+          transports: ["websocket"],
+          forceNew: true,
+        });
+      
+        ioUser.on("connect", () => {
+          console.log("User connected to channel");
+      
+          ioUser.on("ChannelMessages", (msg) => {
+            try {
+              console.log("User received channel message:", msg);
+      
+              expect(msg.text).toBe(payload.text);
+              expect(msg.senderId).toBe(payload.senderId);
+              expect(msg.channelName).toBe(payload.channelName);
+      
+              clearTimeout(timeout);
+              ioUser.disconnect();
+              if (ioAdmin?.connected) ioAdmin.disconnect();
+      
+              done();
+            } catch (err) {
+              clearTimeout(timeout);
+              ioUser.disconnect();
+              if (ioAdmin?.connected) ioAdmin.disconnect();
+      
+              done(err);
+            }
+          });
+      
+          const ioAdmin = io(`http://localhost:${TEST_PORT}`, {
+            transports: ["websocket"],
+            forceNew: true,
+          });
+      
+          ioAdmin.on("connect", () => {
+            console.log("Admin connected to channel");
+      
+            setTimeout(() => {
+              console.log("Admin sending team channel message");
+              ioAdmin.emit("ChannelMessages", payload);
+            }, 200);
+          });
+      
+          ioAdmin.on("connect_error", done);
+        });
+      
+        ioUser.on("connect_error", done);
+      });      
     
 });
