@@ -16,10 +16,12 @@
     <h3>Hi, <span id="username">User</span></h3>
     <h1>Welcome</h1>
     <p>This is the user page</p>
-    <a href="/logout" class="btn">Logout</a>
     <a href="dm.html" class="btn">Direct Messages</a>
     <a href="groups.html" class="btn">Groups</a>
     
+    <!-- Row: Create Channel & Assign User to Channel -->
+<div class="form-row">
+    <!-- Create Channel -->
     <div class="form-container">
         <h2>Create Channel</h2>
         <form id="createChannelForm">
@@ -29,6 +31,7 @@
         </form>
     </div>
 
+    <!-- Assign User to Channel -->
     <div class="form-container">
         <h2>Assign User to Channel</h2>
         <form id="assignUserForm">
@@ -38,7 +41,8 @@
             <button type="submit" class="btn">Assign User</button>
         </form>
     </div>
-    
+</div>
+
 <div class="form-container">
         <h2>Teams, Channels, and Members</h2>
         <div id="teams-container"></div>
@@ -78,6 +82,10 @@
             <i class="fa-solid fa-cog"></i>
         </a>
     </div>
+    <div class = "logout-button"> 
+        <a href="/logout" class="btn">Logout</a>
+    </div>
+    
      <script>
         
          let userTeams = {};
