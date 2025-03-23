@@ -25,51 +25,56 @@
         <h3>Hi, <span id="admin-name">Admin</span></h3>
         <h1>Welcome to the Moderator Page</h1>
         <p>Manage teams, channels, and users.</p>
-        <a href="/logout" class="btn">Logout</a>
         <a href="dm.html" class="btn">Direct Messages</a>
         <a href="groups.html" class="btn">Groups</a>
 
 
-        <!-- Create Team Section -->
-        <div class="form-container">
-            <h2>Create Team</h2>
-            <form id="createTeamForm">
-                <input type="text" id="teamName" placeholder="Enter Team Name" required>
-                <button type="submit" class="btn">Create Team</button>
-            </form>
-        </div>
-       
-        <div class="form-container">
-            <h2>Assign User to Team</h2>
-            <form id="assignUserFormForTeams">
-                <input type="text" id="userNameAssign" placeholder="Enter User Name" required>
-                <input type="number" id="teamIdAssign" placeholder="Enter Team ID" required>
-                <button type="submit" class="btn">Assign User</button>
-            </form>
-        </div>
-        
-        
-        
-        <!-- Create Channel Section -->
-        <div class="form-container">
-            <h2>Create Channel</h2>
-            <form id="createChannelForm">
-                <input type="text" id="channelName" placeholder="Enter Channel Name" required>
-                <input type="number" id="teamId" placeholder="Enter Team ID" required>
-                <button type="submit" class="btn">Create Channel</button>
-            </form>
-        </div>
+    <!-- Row 1: Create Team & Assign User to Team -->
+<div class="form-row">
+    <!-- Create Team -->
+    <div class="form-container">
+        <h2>Create Team</h2>
+        <form id="createTeamForm">
+            <input type="text" id="teamName" placeholder="Enter Team Name" required>
+            <button type="submit" class="btn">Create Team</button>
+        </form>
+    </div>
 
-        <!-- Assign User Section -->
-        <div class="form-container">
-            <h2>Assign User to Channel</h2>
-            <form id="assignUserFormChannel">
-                <input type="number" id="teamIdAssign1" placeholder="Enter Team ID" required>
-                <input type="text" id="channelNameAssign1" placeholder="Enter Channel Name" required>
-                <input type="text" id="userNameAssign1" placeholder="Enter User Name" required>
-                <button type="submit" class="btn">Assign User</button>
-            </form>
-        </div>
+    <!-- Assign User to Team -->
+    <div class="form-container">
+        <h2>Assign User to Team</h2>
+        <form id="assignUserFormForTeams">
+            <input type="text" id="userNameAssign" placeholder="Enter User Name" required>
+            <input type="number" id="teamIdAssign" placeholder="Enter Team ID" required>
+            <button type="submit" class="btn">Assign User</button>
+        </form>
+    </div>
+</div>
+
+<!-- Row 2: Create Channel & Assign User to Channel -->
+<div class="form-row">
+    <!-- Create Channel -->
+    <div class="form-container">
+        <h2>Create Channel</h2>
+        <form id="createChannelForm">
+            <input type="text" id="channelName" placeholder="Enter Channel Name" required>
+            <input type="number" id="teamId" placeholder="Enter Team ID" required>
+            <button type="submit" class="btn">Create Channel</button>
+        </form>
+    </div>
+
+    <!-- Assign User to Channel -->
+    <div class="form-container">
+        <h2>Assign User to Channel</h2>
+        <form id="assignUserFormChannel">
+            <input type="number" id="teamIdAssign1" placeholder="Enter Team ID" required>
+            <input type="text" id="channelNameAssign1" placeholder="Enter Channel Name" required>
+            <input type="text" id="userNameAssign1" placeholder="Enter User Name" required>
+            <button type="submit" class="btn">Assign User</button>
+        </form>
+    </div>
+</div>
+
 
         <!-- Teams, Channels, and Members Section -->
         <div class="form-container">
@@ -113,7 +118,10 @@
             <i class="fa-solid fa-cog"></i>
         </a>
     </div>
-
+    <div class = "logout-button"> 
+        <a href="/logout" class="btn">Logout</a>
+    </div>
+    
     <div id="toast-container"></div>
 
     <script>
