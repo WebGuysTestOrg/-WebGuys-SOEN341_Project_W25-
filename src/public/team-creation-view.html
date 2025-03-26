@@ -1,0 +1,45 @@
+<!-- Team Creation View -->
+<div class="content-header">
+    <div class="header-title">
+        <i class="fas fa-users"></i>
+        <h2>Create New Team</h2>
+    </div>
+</div>
+
+<div class="team-creation-section">
+    <div class="team-creation-form">
+        <div class="form-group">
+            <label for="team-name">Team Name</label>
+            <input type="text" id="team-name" placeholder="Enter team name" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Add Team Members</label>
+            <div class="member-input-container">
+                <input type="text" id="member-search" placeholder="Search users by username">
+                <button id="search-user-btn">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <div id="user-search-results" class="user-search-results"></div>
+        </div>
+
+        <div class="selected-members">
+            <h3>Selected Members</h3>
+            <div id="selected-members-list" class="selected-members-list"></div>
+        </div>
+
+        <div class="form-actions">
+            <button id="create-team-btn" class="create-team-btn">
+                <i class="fas fa-plus"></i>
+                Create Team
+            </button>
+            <button id="cancel-creation-btn" class="cancel-btn">
+                <i class="fas fa-times"></i>
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div> 

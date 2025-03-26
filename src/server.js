@@ -280,47 +280,37 @@ app.post("/login", (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required." });
+        return res.status(400).json({ error: "Please fill in all fields!" });
     }
 
-    const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
-    const query = "SELECT * FROM user_form WHERE email = ? AND password = ?";
-
-    connection.query(query, [email, hashedPassword], (err, results) => {
+    const query = "SELECT * FROM user_form WHERE email = ?";
+    connection.query(query, [email], (err, results) => {
         if (err) {
-            console.error(err);
+            console.error("Login error:", err);
             return res.status(500).json({ error: "Server error. Please try again later." });
         }
 
-        if (results.length > 0) {
-            const user = results[0];
-            req.session.user = {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                user_type: user.user_type,
-            };
-
-            // Log login time
-            const logQuery = "INSERT INTO user_activity_log (user_id, name) VALUES (?, ?)";
-            connection.query(logQuery, [user.id, user.name], (logErr) => {
-                if (logErr) console.error("Error logging login:", logErr);
-            });
-
-            if (user.user_type === "admin") {
-                return res.json({ 
-                    redirect: "/admin_page.html",
-                    user: req.session.user // <- Include this
-                });
-            } else {
-                return res.json({ 
-                    redirect: "/user_page.html",
-                    user: req.session.user // <- Include this
-                });
-            }
-        } else {
-            res.status(401).json({ error: "Invalid email or password." });
+        if (results.length === 0) {
+            return res.status(401).json({ error: "Invalid email or password!" });
         }
+
+        const user = results[0];
+        // In a real application, you should use proper password hashing
+        if (password !== user.password) {
+            return res.status(401).json({ error: "Invalid email or password!" });
+        }
+
+        // Set user session
+        req.session.user = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            user_type: user.user_type
+        };
+
+        // Redirect based on user type
+        const redirectPath = user.user_type === 'admin' ? '/admin_page.html' : '/user_page.html';
+        res.json({ redirect: redirectPath });
     });
 });
 
@@ -1192,4 +1182,70 @@ io.on("connection", (socket) => {
     });
     });
 });
+
+app.get("/api/teams", (req, res) => {
+    console.log('Fetching teams for user:', req.session.user);
+    
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = req.session.user.id;
+    const isAdmin = req.session.user.user_type === "admin";
+    console.log('User ID:', userId, 'Is Admin:', isAdmin);
+
+    // If admin, get all teams. If regular user, get only their teams
+    const query = isAdmin ? 
+        `SELECT t.id, t.name, u.name as creator_name 
+         FROM teams t 
+         JOIN user_form u ON t.created_by = u.id` :
+        `SELECT t.id, t.name, u.name as creator_name 
+         FROM teams t 
+         JOIN user_form u ON t.created_by = u.id
+         JOIN user_teams ut ON t.id = ut.team_id 
+         WHERE ut.user_id = ?`;
+
+    const queryParams = isAdmin ? [] : [userId];
+    console.log('Query:', query);
+    console.log('Query params:', queryParams);
+
+    connection.query(query, queryParams, (err, results) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Error fetching teams" });
+        }
+        console.log('Teams found:', results);
+        res.json(results);
+    });
+});
+
+// Debug endpoint to check teams table
+app.get("/debug/teams", (req, res) => {
+    if (!req.session.user || req.session.user.user_type !== "admin") {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const query = `
+        SELECT 
+            t.id,
+            t.name,
+            t.created_by,
+            u.name as creator_name,
+            GROUP_CONCAT(DISTINCT m.name) as members
+        FROM teams t
+        JOIN user_form u ON t.created_by = u.id
+        LEFT JOIN user_teams ut ON t.id = ut.team_id
+        LEFT JOIN user_form m ON ut.user_id = m.id
+        GROUP BY t.id, t.name, t.created_by, u.name
+    `;
+
+    connection.query(query, (err, results) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Error fetching teams debug info" });
+        }
+        res.json(results);
+    });
+});
+
 module.exports = { app, io,connection, expressServer };

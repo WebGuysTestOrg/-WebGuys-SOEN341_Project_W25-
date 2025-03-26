@@ -3,593 +3,579 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Admin Page</title>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" integrity="sha512-8ExARjWWkIllMlNzVg7JKq9RKWPlJABQUNq6YvAjE/HobctjH/NA+bSiDMDvouBVjp4Wwnf1VP1OEv7Zgjtuxw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <title>Chat Haven Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="styles/adminstyle.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
-    <link rel="icon" type="image/png" href="ChatHavenLogo.png">
-    <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
 </head>
 <body>
-    <!-- Navigation Bar -->
-    <nav class="navbar">
-        <div class="navbar-content">
-            <h1 class="navbar-title">Chat Haven - Admin</h1>
+    <div class="app-container">
+        <!-- Left Sidebar - Navigation -->
+        <nav class="servers-bar">
+            <div class="home-button">
+                <i class="fas fa-home"></i>
+            </div>
+            <div class="server-separator"></div>
+            <div class="global-chat" title="Global Chat">
+                <i class="fas fa-globe"></i>
+            </div>
+            <div class="teams-list" id="teams-list"></div>
+            <div class="add-server" title="Create Team">
+                <i class="fas fa-plus"></i>
+            </div>
+        </nav>
+
+        <!-- Middle Bar - Friends List -->
+        <aside class="channels-sidebar">
+            <div class="friends-header">
+                <h3>Friends</h3>
+                <i class="fas fa-user-plus add-friend-icon"></i>
+            </div>
+
+            <div class="friends-section">
+                <!-- Online Friends Category -->
+                <div class="friends-category">
+                    <div class="category-header">
+                        <span>ONLINE — <span id="online-count">0</span></span>
+                    </div>
+                    <div class="friends-list" id="online-friends"></div>
+                </div>
+
+                <!-- Offline Friends Category -->
+                <div class="friends-category">
+                    <div class="category-header">
+                        <span>OFFLINE — <span id="offline-count">0</span></span>
+                    </div>
+                    <div class="friends-list" id="offline-friends"></div>
+                </div>
+
+                <!-- Other Users Section -->
+                <div class="other-users-section">
+                    <div class="category-header">
+                        <span>OTHER USERS</span>
+                        <button class="view-all-btn">View All</button>
+                    </div>
+                    <div class="other-users-list" id="other-users"></div>
+                </div>
+            </div>
+
+            <!-- User Profile -->
+            <div class="user-profile">
+                <div class="profile-info">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user"></i>
+                        <div class="status-indicator status-online"></div>
+                    </div>
+                    <div class="profile-details">
+                        <div class="profile-name">
+                            <span id="admin-name">jnnj</span>
+                            <span class="role-badge role-admin">Admin</span>
+                        </div>
+                        <div class="profile-status">
+                            <i class="fas fa-circle status-online"></i>
+                            Online
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-actions">
+                    <button class="action-btn" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="action-btn" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <div class="content-header">
+                <div class="header-title">
+                    <i class="fas fa-user-friends"></i>
+                    <h2>Friends</h2>
+                </div>
+                <div class="header-tabs">
+                    <button class="tab-btn active">Add Friend</button>
+                    <button class="tab-btn">Pending</button>
+                </div>
+            </div>
+
+            <!-- Add Friend Section -->
+            <div class="add-friend-section">
+                <h2>ADD FRIEND</h2>
+                <p>You can add friends with their Chat Haven username.</p>
+                <div class="add-friend-form">
+                    <input type="text" id="friend-username" placeholder="Enter a username">
+                    <button class="send-friend-request">Send Friend Request</button>
+                </div>
+            </div>
+
+            <!-- Friends Display -->
+            <div class="friends-display">
+                <!-- Friends will be listed here -->
+            </div>
+        </main>
+    </div>
+    <!-- Chat Container -->
+    <div id="chat-container" class="chat-container">
+        <div class="chat-backdrop"></div>
+        <div class="chat-content">
+            <div id="chat-header">
+                <h3 id="Chat-title">Global Chat</h3>
+                <button id="close-chat">×</button>
+            </div>
+            <div id="chat-messages" class="messages-area"></div>
+            <div id="chat-input">
+                <input type="text" id="message" placeholder="Type a message...">
+                <button id="emoji-btn">😊</button>
+                <button id="send">Send</button>
+            </div>
         </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="content-container">
-        <h3>Hi, <span id="admin-name">Admin</span></h3>
-        <h1>Welcome to the Moderator Page</h1>
-        <p>Manage teams, channels, and users.</p>
-        <a href="dm.html" class="btn">Direct Messages</a>
-        <a href="groups.html" class="btn">Groups</a>
-
-
-    <!-- Row 1: Create Team & Assign User to Team -->
-<div class="form-row">
-    <!-- Create Team -->
-    <div class="form-container">
-        <h2>Create Team</h2>
-        <form id="createTeamForm">
-            <input type="text" id="teamName" placeholder="Enter Team Name" required>
-            <button type="submit" class="btn">Create Team</button>
-        </form>
+        <div id="emoji-picker-container" style="display: none;"></div>
     </div>
-
-    <!-- Assign User to Team -->
-    <div class="form-container">
-        <h2>Assign User to Team</h2>
-        <form id="assignUserFormForTeams">
-            <input type="text" id="userNameAssign" placeholder="Enter User Name" required>
-            <input type="number" id="teamIdAssign" placeholder="Enter Team ID" required>
-            <button type="submit" class="btn">Assign User</button>
-        </form>
-    </div>
-</div>
-
-<!-- Row 2: Create Channel & Assign User to Channel -->
-<div class="form-row">
-    <!-- Create Channel -->
-    <div class="form-container">
-        <h2>Create Channel</h2>
-        <form id="createChannelForm">
-            <input type="text" id="channelName" placeholder="Enter Channel Name" required>
-            <input type="number" id="teamId" placeholder="Enter Team ID" required>
-            <button type="submit" class="btn">Create Channel</button>
-        </form>
-    </div>
-
-    <!-- Assign User to Channel -->
-    <div class="form-container">
-        <h2>Assign User to Channel</h2>
-        <form id="assignUserFormChannel">
-            <input type="number" id="teamIdAssign1" placeholder="Enter Team ID" required>
-            <input type="text" id="channelNameAssign1" placeholder="Enter Channel Name" required>
-            <input type="text" id="userNameAssign1" placeholder="Enter User Name" required>
-            <button type="submit" class="btn">Assign User</button>
-        </form>
-    </div>
-</div>
-
-
-        <!-- Teams, Channels, and Members Section -->
-        <div class="form-container">
-            <h2>Teams, Channels, and Members</h2>
-            <div id="teams-container"></div>
-        </div>
-    </div>
-
-    <!-- Chat Icon Button -->
-    <div id="chat-toggle">
-        <i class="fa-solid fa-globe"></i>
-    </div>
-
-    <!-- Chatbox -->
-    <div id="chat-container">
-        <div id="chat-header">
-            <span id="Chat-title">Global Chat</span>
-            <button id="close-chat">✖</button>
-        </div>
-        <div id="chat-messages"></div>
-        <div id="chat-input">
-            <input type="text" id="message" placeholder="Type a message...">
-            <button id="emoji-btn">😊</button> 
-            <div id="emoji-picker-container" style="display: none;"></div>
-            <button id="send">Send</button>
-        </div>
-    </div>
-    <div id="status-toggle" >
-        <i class="fa-solid fa-users"></i>
-</div>
-    <div id="status-container">
-        <div id="chat-header">
-            <span id="Chat-title"> Users</span>
-            <button id="close-status">✖</button>
-        </div>
-        <div id="users-status"></div> 
-    </div>
-    <!--Settings button-->
-    <div class="settings-button">
-        <a href="settings_page.html">
-            <i class="fa-solid fa-cog"></i>
-        </a>
-    </div>
-    <div class = "logout-button"> 
-        <a href="/logout" class="btn">Logout</a>
-    </div>
-    
+    <!-- Toast Container -->
     <div id="toast-container"></div>
 
+    <!-- Team Creation View (Initially Hidden) -->
+    <div id="team-creation-view" class="team-creation-view">
+        <div class="content-header">
+            <div class="header-title">
+                <i class="fas fa-users"></i>
+                <h2>Create New Team</h2>
+            </div>
+        </div>
+
+        <div class="team-creation-section">
+            <div class="team-creation-form">
+                <div class="form-group">
+                    <label for="team-name">Team Name</label>
+                    <input type="text" id="team-name" placeholder="Enter team name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Add Team Members</label>
+                    <div class="member-input-container">
+                        <input type="text" id="member-search" placeholder="Search users by username">
+                        <button id="search-user-btn">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div id="user-search-results" class="user-search-results"></div>
+                </div>
+
+                <div class="selected-members">
+                    <h3>Selected Members</h3>
+                    <div id="selected-members-list" class="selected-members-list"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button id="create-team-btn" class="create-team-btn">
+                        <i class="fas fa-plus"></i>
+                        Create Team
+                    </button>
+                    <button id="cancel-creation-btn" class="cancel-btn">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-const socket=io('ws://localhost:3000')
-        function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerText = message;
-
-            document.getElementById('toast-container').appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.add('hide');
-                toast.addEventListener('transitionend', () => {toast.remove()});
-            }, 500);
-        }
-       
-        fetch('/admin-info')
-            .then(response => {
-                if (!response.ok) throw new Error('Unauthorized');
-                return response.json();
-            })
-            .then(data => {
-                document.getElementById('admin-name').textContent = data.name;
-
-                document.addEventListener("click", () => resetInactivityTimer(data.name));
-                document.addEventListener("keydown", () => resetInactivityTimer(data.name));
-                socket.emit("userOnline", data.name);
-                if (data.role === "user" && window.location.pathname !== "/user_page.html") {
-            window.location.href = "/user_page.html";
-        }
-            })
-            .catch(() => window.location.href = '/login_form.html');
-
-        
-        document.getElementById("createTeamForm").addEventListener("submit", (e) => {
-            e.preventDefault();
-            const teamName = document.getElementById("teamName").value;
-
-            fetch("/create-team", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ teamName }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    showToast(data.error, 'error');
+        const socket = io('ws://localhost:3000');
+        let loggedInUser, loggedInUserId;
+    
+        // Toast functionality
+            function showToast(message, type = 'success') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.innerText = message;
+                document.getElementById('toast-container').appendChild(toast);
+                setTimeout(() => {
+                    toast.classList.add('hide');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 3000);
+            }
+           
+        // Fetch admin info and setup user status
+            fetch('/admin-info')
+                .then(response => {
+                    if (!response.ok) throw new Error('Unauthorized');
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('admin-name').textContent = data.name;
+                    document.addEventListener("click", () => resetInactivityTimer(data.name));
+                    document.addEventListener("keydown", () => resetInactivityTimer(data.name));
+                    socket.emit("userOnline", data.name);
+                })
+                .catch(() => window.location.href = '/login_form.html');
+    
+        // Chat and Status functionality
+    document.addEventListener("DOMContentLoaded", () => {
+        const chatContainer = document.getElementById("chat-container");
+        const closeChat = document.getElementById("close-chat");
+        const sendButton = document.getElementById("send");
+        const messageInput = document.getElementById("message");
+        const chatMessages = document.getElementById("chat-messages");
+            const statusContainer = document.getElementById("status-container");
+        const closeStatus = document.getElementById("close-status");
+    
+            // Global chat button functionality
+            const globalChatBtn = document.querySelector('.global-chat');
+            globalChatBtn.addEventListener("click", () => {
+                chatContainer.style.left = "0";
+                document.body.style.overflow = 'hidden'; // Prevent scrolling of background
+            });
+    
+            closeChat.addEventListener("click", () => {
+                chatContainer.style.left = "-100%";
+                document.body.style.overflow = 'auto'; // Re-enable scrolling
+            });
+    
+            // Message sending functionality
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (message) {
+                    socket.emit('message', { text: message });
+                    messageInput.value = '';
+                }
+            }
+    
+            sendButton.addEventListener("click", sendMessage);
+        messageInput.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") sendMessage();
+            });
+    
+            // Load and display stored messages
+            let messages = JSON.parse(sessionStorage.getItem("chatMessages")) || [];
+            
+        function displayMessage(msg) {
+            fetch('/user-info')
+                    .then(response => response.json())
+                .then(data => {
+                    loggedInUser = data.name;
+                    loggedInUserId = data.id;
+                        messages.forEach((msg) => {
+        const messageElement = document.createElement("div");
+                            messageElement.classList.add(
+                                msg.senderID === loggedInUserId ? "my-message" : "other-message"
+                            );
+                            messageElement.textContent = msg.senderID === loggedInUserId ? 
+                                msg.text : `${msg.sender}: ${msg.text}`;
+        chatMessages.appendChild(messageElement);
+                        });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    });
+            }
+    
+            displayMessage(messages);
+    
+            // Handle incoming messages
+        socket.on("message", (msg) => {
+            const messageElement = document.createElement("div");
+                if (loggedInUserId === msg.userID) {
+                messageElement.classList.add("my-message");
+                    messageElement.textContent = msg.text;
                 } else {
-                    showToast("Team created successfully!");
-                    setTimeout(() => {
-                        window.location.href = '/admin_page.html';
-                    }, 1000);
+                messageElement.classList.add("other-message");
+                messageElement.textContent = `${msg.user}: ${msg.text}`;
+                }
+                messages.push({
+                    id: messages.length + 1,
+                    text: msg.text,
+                    sender: msg.user,
+                    senderID: msg.userID,
+                    timestamp: Date.now()
+                });
+                sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight; 
+            messageInput.value = "";
+        });
+    
+            // Emoji picker functionality
+            const emojiBtn = document.getElementById("emoji-btn");
+            const pickerContainer = document.getElementById("emoji-picker-container");
+    
+            emojiBtn.addEventListener("click", (event) => {
+                event.stopPropagation();
+                if (pickerContainer.style.display === "none") {
+                    pickerContainer.style.display = "block";
+                    if (pickerContainer.innerHTML === "") {
+                        const picker = new EmojiMart.Picker({
+                            set: 'apple',
+                            onEmojiSelect: (emoji) => {
+                                messageInput.value += emoji.native;
+                                pickerContainer.style.display = "none";
+                            }
+                        });
+                        pickerContainer.appendChild(picker);
+                    }
+                } else {
+                    pickerContainer.style.display = "none";
+                }
+            });
+    
+            // Close emoji picker when clicking outside
+            document.addEventListener("click", (event) => {
+                if (!pickerContainer.contains(event.target) && event.target !== emojiBtn) {
+                    pickerContainer.style.display = "none";
+                }
+            });
+    
+            // User status updates
+            socket.on("updateUserStatus", ({ online, away }) => {
+                fetch("/api/users")
+                    .then(response => response.json())
+                    .then(data => {
+                        updateUserStatusUI(data.all_users, online, away, data.user_logout_times);
+                    });
+            });
+        });
+    
+        // Inactivity timer
+        let inactivityTimer;
+        const INACTIVITY_TIME = 30000;
+    
+        function resetInactivityTimer(userId) {
+            clearTimeout(inactivityTimer);
+            socket.emit("userOnline", userId);
+            inactivityTimer = setTimeout(() => {
+                socket.emit("userAway", userId);
+            }, INACTIVITY_TIME);
+        }
+
+        // Team creation functionality
+        document.querySelector('.add-server').addEventListener('click', () => {
+            const teamCreationView = document.getElementById('team-creation-view');
+            teamCreationView.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        });
+
+        function createTeamIcon(teamName) {
+            const teamIcon = document.createElement('div');
+            teamIcon.className = 'team-icon';
+            teamIcon.textContent = teamName.substring(0, 2).toUpperCase();
+            teamIcon.title = teamName;
+            
+            teamIcon.addEventListener('click', () => {
+                // Remove active class from all team icons
+                document.querySelectorAll('.team-icon').forEach(icon => icon.classList.remove('active'));
+                // Add active class to clicked icon
+                teamIcon.classList.add('active');
+                
+                // Here you can add the logic to show team functionality
+                // For example, updating the main content area with team chat, members, etc.
+            });
+            
+            return teamIcon;
+        }
+
+        function loadTeams() {
+            console.log('Loading teams...');
+            fetch('/api/teams', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
                 }
             })
-            .catch(err => console.error("Error creating team:", err));
-        });
-
-        document.getElementById("assignUserFormForTeams").addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    const userName = document.getElementById("userNameAssign").value;
-    const teamId = document.getElementById("teamIdAssign").value;
-
-    if (!userName || !teamId) {
-        showToast("Please provide both User Name and Team ID.", "error");
-        return;
-    }
-
-    fetch("/assign-user-to-team", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userName, teamId }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            showToast(data.error, 'error');
-        } else {
-            showToast("User assigned successfully!");
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        }
-    })
-    .catch(err => console.error("Error assigning user:", err));
-});
-
-
-document.getElementById('createChannelForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const channelName = document.getElementById('channelName').value;
-    const teamId = document.getElementById('teamId').value;
-
-    if (!channelName || !teamId) {
-        showToast("Please provide both Channel Name and Team ID.", 'error');
-        return;
-    }
-
-    fetch('/create-channel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelName, teamId }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            showToast(data.error, 'error');
-        } else {
-            showToast("Channel created successfully!");
-            setTimeout(() => {
-                window.location.href = '/admin_page.html';
-            }, 1000);
-        }
-    })
-    .catch(err => console.error('Error:', err));
-});
-
-        
-document.getElementById('assignUserFormChannel').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const teamId = document.getElementById('teamIdAssign1').value;
-    const channelName = document.getElementById('channelNameAssign1').value;
-    const userName = document.getElementById('userNameAssign1').value;
-
-    if (!teamId || !channelName || !userName) {
-        showToast("Please provide Team ID, Channel Name, and User Name.", 'error');
-        return;
-    }
-
-    fetch('/assign-user', { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId, channelName, userName }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            showToast(data.error, 'error');
-        } else {
-            showToast("User assigned successfully!");
-            setTimeout(() => {
-                window.location.href = '/admin_page.html';
-            }, 1000);
-        }
-    })
-    .catch(err => console.error('Error:', err));
-});
-
-function fetchTeamsWithMembers() {
-    fetch('/get-teams-with-members')
-        .then(response => response.json())
-        .then(teams => {
-            const teamsContainer = document.getElementById('teams-container');
-            teamsContainer.innerHTML = '';
-
-            if (teams.length === 0) {
-                teamsContainer.innerHTML = '<p>No teams available.</p>';
-                return;
-            }
-
-            teams.forEach(team => {
-                console.log("Processing team:", team);
-
-                const teamDiv = document.createElement('div');
-                teamDiv.classList.add('team-card');
-                
-                const teamsButton = document.createElement("button");
-                teamsButton.textContent = "Open Chat";
-                teamsButton.classList.add("teamsButton");
-
-                const teamTitle = document.createElement('h3');
-                teamTitle.innerHTML = `(${team.teamId || 'N/A'}) ${team.teamName || 'Unnamed Team'}`;
-                teamTitle.style.color = '#007BFF';
-
-
-                const createdBy = document.createElement('p');
-                createdBy.innerHTML = `<strong>Created by:</strong> ${team.creatorName || 'Unknown'}`;
-
-                const membersList = document.createElement('p');
-                membersList.innerHTML = `<strong>Members:</strong> ${team.members?.join(', ') || 'No members'}`;
-
-                
-                const channelContainer = document.createElement('div');
-                channelContainer.classList.add('channel-container');
-
-                Object.values(team.channels).forEach(channel => {
-                    const channelDiv = document.createElement('div');
-                    channelDiv.style.marginLeft = '20px';
-
-                    const channelName = document.createElement('h4');
-                    channelName.textContent = `Channel: ${channel.channelName}`;
-                    channelName.style.color = '#555';
-                    
-                    
-                    const channelMembersList = document.createElement('p');
-                    if (channel.members && channel.members.length > 0) {
-                        channelMembersList.innerHTML = `<strong>Members:</strong> ${channel.members.join(', ')}`;
-                    } else {
-                        channelMembersList.innerHTML = `<strong>Members:</strong> No members`;
-                    }
-
-                    channelDiv.appendChild(channelName);
-                    channelDiv.appendChild(channelMembersList);
-                    channelContainer.appendChild(channelDiv);
-                    
-                });
-
-                teamDiv.appendChild(teamTitle);
-                teamDiv.appendChild(createdBy);
-                teamDiv.appendChild(membersList);
-                teamDiv.appendChild(channelContainer);
-                teamDiv.appendChild(teamsButton);
-
-                teamsButton.addEventListener("click", function(){
-                        window.location.href = `teams_chat.html?team=${encodeURIComponent(team.teamName)}`;
-                    })
-
-                teamsContainer.appendChild(teamDiv);
-            });
-        })
-        .catch(err => console.error('Error fetching teams:', err));
-}
-socket.on("updateUserStatus", ({ online, away }) => {
-    console.log("Online users:", online);
-    console.log("Away users:", away);
-
-    fetch("/api/users") 
-        .then(response => response.json())
-        .then(data => {
-            updateUserStatusUI(data.all_users, online, away, data.user_logout_times);
-        });
-});
-        
-function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
-    const usersStatusDiv = document.getElementById("users-status");
-    usersStatusDiv.innerHTML = "";
-
-    console.log("All users:", allUsers);
-    console.log("Online users:", onlineUsers);
-    console.log("Away users:", awayUsers);
-    console.log("Logout times:", logoutTimes);
-
-    allUsers.forEach(user => {
-        const isOnline = onlineUsers.includes(user.name);
-        const isAway = awayUsers.includes(user.name);
-
-        const userDiv = document.createElement("div");
-        userDiv.classList.add("user-status");
-
-        let statusText = "Offline";
-        let statusClass = "offline";
-        let logoutTimestamp = "";
-        let statusIcon = `<i class="fas fa-circle-xmark offline-icon"></i>`; //default offline
-
-
-        if (isOnline) {
-            statusText = "Available";
-            statusClass = "online";
-            statusIcon = `<i class="fas fa-circle-check online-icon"></i>`;
-
-        } else if (isAway) {
-            statusText = "Away";
-            statusClass = "away";
-            statusIcon = `<i class="fas fa-clock away-icon"></i>`;
-        } else {
-            // Get last logout timestamp for this user
-            const userLogout = logoutTimes.find(logout => logout.name === user.name);
-            if (userLogout && userLogout.last_logout) {
-                logoutTimestamp = ` (Since: ${new Date(userLogout.last_logout).toLocaleString()})`;
-            }
-        }
-
-        userDiv.innerHTML = `
-            <span class="user-name">${user.name}</span>
-            <span class="status ${statusClass}">
-                ${statusIcon} ${statusText}${logoutTimestamp}
-            </span>
-        `;
-
-        usersStatusDiv.appendChild(userDiv);
-    });
-}
-let inactivityTimer;
-const INACTIVITY_TIME = 30000; 
-
-function resetInactivityTimer(userId) {
-    clearTimeout(inactivityTimer);
-    socket.emit("userOnline", userId);
-    inactivityTimer = setTimeout(() => {
-        console.log("User is now away");
-        console.log("userID",userId)
-        socket.emit("userAway", userId);
-    }, INACTIVITY_TIME);
-}
-document.addEventListener('DOMContentLoaded', fetchTeamsWithMembers);
-
-
-
-
-
-document.addEventListener("DOMContentLoaded", () => {
-    const chatToggle = document.getElementById("chat-toggle");
-    const chatContainer = document.getElementById("chat-container");
-    const closeChat = document.getElementById("close-chat");
-    const sendButton = document.getElementById("send");
-    const messageInput = document.getElementById("message");
-    const chatMessages = document.getElementById("chat-messages");
-    const statusToggle=document.getElementById("status-toggle")
-    const statusContainer=document.getElementById("status-container");
-    const closeStatus = document.getElementById("close-status");
-    // Toggle chat visibility
-    chatToggle.addEventListener("click", () => {
-            chatContainer.style.left = "0";
-            chatToggle.style.display = "none"; 
-            statusToggle.style.display="none"
-        });
-
-        closeChat.addEventListener("click", () => {
-            chatContainer.style.left = "-700px";
-            setTimeout(() => {
-        chatToggle.style.display = "block";  
-        statusToggle.style.display="block";
-    }, 300);
-        });
-        statusToggle.addEventListener("click", () => {
-            statusContainer.style.left = "0";
-            chatToggle.style.display = "none"; 
-            statusToggle.style.display="none"
-        });
-        closeStatus.addEventListener("click", () => {
-            statusContainer.style.left = "-300px";
-            setTimeout(() => {
-        chatToggle.style.display = "block";  
-        statusToggle.style.display="block";
-    }, 300)});
-    // Send message
-    sendButton.addEventListener("click", () => {
-        sendMessage();
-    });
-
-    messageInput.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
-            sendMessage();
-        }
-    });
-    let messages = [];
-    //load messages
-    const storedMessages = JSON.parse(sessionStorage.getItem("chatMessages")) || [];
-    messages = storedMessages;
-    console.log("LoadedMessage",messages)
-    displayMessage(messages)
-    //display messages
-    function displayMessage(msg) {
-        fetch('/user-info')
             .then(response => {
-                if (!response.ok) throw new Error('Unauthorized');
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`Failed to load teams: ${response.status}`);
+                }
                 return response.json();
             })
-            .then(data => {
-                loggedInUser = data.name;
-                loggedInUserId = data.id;
-                messages.forEach((msg)=>{
-    const messageElement = document.createElement("div");
-    console.log("LoggedInUser",loggedInUserId)
-    if (msg.senderID === loggedInUserId) {
-        messageElement.classList.add("my-message");
-        messageElement.textContent = `${msg.text}`;
-    }else {
-        messageElement.classList.add("other-message");
-        messageElement.textContent = `${msg.sender}: ${msg.text}`;
-    }
-    chatMessages.appendChild(messageElement);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-})
+            .then(teams => {
+                console.log('Teams received:', teams);
+                if (!Array.isArray(teams)) {
+                    throw new Error('Invalid teams data received');
+                }
+                
+                const teamsList = document.getElementById('teams-list');
+                if (!teamsList) {
+                    throw new Error('Teams list container not found');
+                }
+                
+                teamsList.innerHTML = ''; // Clear existing teams
+                
+                if (teams.length === 0) {
+                    console.log('No teams available');
+                    return;
+                }
+                
+                teams.forEach(team => {
+                    console.log('Creating icon for team:', team.name);
+                    const teamIcon = createTeamIcon(team.name);
+                    teamsList.appendChild(teamIcon);
+                });
             })
-            .catch(() => window.location.href = '/login_form.html');
-
-  
-    }
-
-
-
-    function addMessage(sender,text, senderID) {
-    const newMessage = {
-        id: messages.length + 1,
-        text: text,
-        sender: sender, // "Me" if it's your message
-        senderID:senderID,
-        timestamp: Date.now()
-    };
-
-    messages.push(newMessage); // Store message in the array
-    sessionStorage.setItem("chatMessages", JSON.stringify(messages));
-    }
-    function sendMessage() {
-    
-    const input =document.getElementById("message")
-    if (input.value){
-        socket.emit('message',{text:input.value})
-    }
-    input.focus()
-        const message = input.value;
-          
-    }
-    socket.on("message", (msg) => {
-        const messageElement = document.createElement("div");
-        if(loggedInUserId===msg.userID){
-            messageElement.classList.add("my-message");
-            messageElement.textContent = `${msg.text}`;
-            addMessage(msg.user,msg.text,msg.userID)
-            sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+            .catch(error => {
+                console.error('Error loading teams:', error);
+                showToast('Error loading teams. Please refresh the page.', 'error');
+            });
         }
-        else{
-            messageElement.classList.add("other-message");
-            messageElement.textContent = `${msg.user}: ${msg.text}`;
-            addMessage(msg.user,msg.text,msg.userID)
-            sessionStorage.setItem("chatMessages", JSON.stringify(messages));
-        }
-        console.log("SavedMessages",messages)
-        chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight; 
-        messageInput.value = "";
-    });
-    });
 
-    document.getElementById("emoji-btn").addEventListener("click", function (event) {
-        console.log("Emoji Clieked");
-        event.stopPropagation(); 
+        function initializeTeamCreation() {
+            const teamNameInput = document.getElementById('team-name');
+            const memberSearch = document.getElementById('member-search');
+            const searchBtn = document.getElementById('search-user-btn');
+            const userResults = document.getElementById('user-search-results');
+            const selectedMembersList = document.getElementById('selected-members-list');
+            const createTeamBtn = document.getElementById('create-team-btn');
+            const cancelBtn = document.getElementById('cancel-creation-btn');
+            const teamCreationView = document.getElementById('team-creation-view');
 
-        const pickerContainer = document.getElementById("emoji-picker-container");
+            const selectedMembers = new Set();
 
-        if (pickerContainer.style.display === "none" || pickerContainer.innerHTML === "") {
-            pickerContainer.style.display = "block";
+            // Search users functionality
+            searchBtn.addEventListener('click', () => {
+                const searchTerm = memberSearch.value.trim();
+                if (searchTerm) {
+                    fetch('/api/users')
+                        .then(response => response.json())
+                        .then(data => {
+                            const filteredUsers = data.all_users.filter(user => 
+                                user.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+                                !selectedMembers.has(user.name)
+                            );
+                            
+                            userResults.innerHTML = '';
+                            filteredUsers.forEach(user => {
+                                const userItem = document.createElement('div');
+                                userItem.className = 'user-result-item';
+                                userItem.innerHTML = `
+                                    <span>${user.name}</span>
+                                    <button class="add-member-btn">Add</button>
+                                `;
+                                
+                                userItem.querySelector('button').addEventListener('click', () => {
+                                    addMember(user.name);
+                                    userResults.removeChild(userItem);
+                                });
+                                
+                                userResults.appendChild(userItem);
+                            });
+                        })
+                        .catch(error => showToast('Error searching users', 'error'));
+                }
+            });
 
-    
-            pickerContainer.innerHTML = "";
-
-            const picker = new EmojiMart.Picker({
-                set: 'apple',
-                onEmojiSelect: (emoji) => {
-                    const messageInput = document.getElementById("message");
-                    messageInput.value += emoji.native || emoji.colons || emoji.id;
-                    pickerContainer.style.display = "none"; 
+            // Add member function
+            function addMember(username) {
+                if (!selectedMembers.has(username)) {
+                    selectedMembers.add(username);
+                    const memberTag = document.createElement('div');
+                    memberTag.className = 'selected-member-tag';
+                    memberTag.innerHTML = `
+                        <span>${username}</span>
+                        <button class="remove-member-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    
+                    memberTag.querySelector('button').addEventListener('click', () => {
+                        selectedMembers.delete(username);
+                        selectedMembersList.removeChild(memberTag);
+                    });
+                    
+                    selectedMembersList.appendChild(memberTag);
+                }
             }
+
+            // Updated create team functionality
+            createTeamBtn.addEventListener('click', async () => {
+                const teamName = teamNameInput.value.trim();
+                if (!teamName) {
+                    showToast('Please enter a team name', 'error');
+                    return;
+                }
+
+                try {
+                    const createTeamResponse = await fetch('/create-team', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ teamName })
+                    });
+                    const teamData = await createTeamResponse.json();
+
+                    if (teamData.error) {
+                        throw new Error(teamData.error);
+                    }
+
+                    const teamIdResponse = await fetch(`/get-team-id?teamName=${encodeURIComponent(teamName)}`);
+                    const { teamId } = await teamIdResponse.json();
+
+                    // Add members to the team
+                    for (const member of selectedMembers) {
+                        await fetch('/assign-user-to-team', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ teamId, userName: member })
+                        });
+                    }
+
+                    // Create and add the team icon
+                    const teamsList = document.getElementById('teams-list');
+                    const teamIcon = createTeamIcon(teamName);
+                    teamsList.appendChild(teamIcon);
+
+                    showToast('Team created successfully!', 'success');
+                    teamCreationView.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                    
+                    // Clear form
+                    teamNameInput.value = '';
+                    selectedMembers.clear();
+                    selectedMembersList.innerHTML = '';
+                    
+                } catch (error) {
+                    showToast(error.message || 'Error creating team', 'error');
+                }
+            });
+
+            // Cancel button functionality
+            cancelBtn.addEventListener('click', () => {
+                teamCreationView.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            });
+        }
+
+        // Load teams when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Page loaded, checking authentication...');
+            // First check if user is authenticated
+            fetch('/admin-info')
+                .then(response => {
+                    console.log('Auth response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('Unauthorized');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('User authenticated:', data);
+                    // User is authenticated, initialize everything
+                    document.getElementById('admin-name').textContent = data.name;
+                    initializeTeamCreation();
+                    loadTeams(); // Load teams after confirming authentication
+                    
+                    // Set up activity listeners
+                    document.addEventListener("click", () => resetInactivityTimer(data.name));
+                    document.addEventListener("keydown", () => resetInactivityTimer(data.name));
+                    socket.emit("userOnline", data.name);
+                })
+                .catch(error => {
+                    console.error('Authentication error:', error);
+                    if (error.message === 'Unauthorized') {
+                        window.location.href = '/login_form.html';
+                    }
+                });
         });
-
-            pickerContainer.appendChild(picker);
-        } else {
-            pickerContainer.style.display = "none";
-        }
-    });
-
-
-    document.addEventListener("click", function (event) {
-        const pickerContainer = document.getElementById("emoji-picker-container");
-        const emojiButton = document.getElementById("emoji-btn");
-
-        if (
-            pickerContainer.style.display === "block" &&
-            !pickerContainer.contains(event.target) &&
-            event.target !== emojiButton
-        ) {
-            pickerContainer.style.display = "none";
-        }
-    });
-
     </script>
-
 </body>
 </html>
