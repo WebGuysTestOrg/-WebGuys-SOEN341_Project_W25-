@@ -28,14 +28,72 @@ body {
 
 .navbar {
     width: 100%;
-    background-color: var(--dark-grey);
+    background: rgba(58, 58, 58, 0.95);
     color: var(--text-color-light);
-    padding: 20px 40px;
+    padding: 15px 40px;
     position: fixed;
     top: 0;
     left: 0;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1000;
+}
+
+.navbar-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.navbar-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    background: linear-gradient(45deg, #fff, #fbca1f);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-buttons {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.nav-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.signup-btn {
+    background: #fbca1f;
+    color: var(--text-color-dark);
+    border: 2px solid transparent;
+}
+
+.signup-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(251, 202, 31, 0.3);
+}
+
+.learn-more-btn {
+    background: transparent;
+    color: var(--text-color-light);
+    border: 2px solid #fbca1f;
+}
+
+.learn-more-btn:hover {
+    background: rgba(251, 202, 31, 0.1);
+    transform: translateY(-2px);
 }
 
 .container {
@@ -68,31 +126,52 @@ body {
 }
 
 .form-container {
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     margin-left: 300px;
     padding: 50px 40px;
     border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     max-width: 500px;
     width: 90%;
     text-align: center;
     margin-top: 0;
-    backdrop-filter: blur(10px);
-    animation: float 6s ease-in-out infinite, slideIn 0.6s ease-out;
     position: relative;
+    backdrop-filter: blur(10px);
+    animation: slideIn 0.6s ease-out;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.1),
+        0 1px 8px rgba(0, 0, 0, 0.05),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.form-container::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(
+        45deg,
+        rgba(251, 202, 31, 0.3),
+        rgba(255, 255, 255, 0.1),
+        rgba(251, 202, 31, 0.3)
+    );
+    border-radius: 20px;
+    z-index: -1;
+    animation: borderRotate 4s linear infinite;
 }
 
 .form-container::after {
     content: '';
     position: absolute;
-    top: -15px;
-    left: -15px;
-    right: -15px;
-    bottom: -15px;
-    border-radius: 25px;
-    background: linear-gradient(45deg, #fbca1f33, transparent, #fbca1f33);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
     z-index: -1;
-    animation: borderGlow 3s ease-in-out infinite;
 }
 
 .form-group {
@@ -278,6 +357,15 @@ body::before {
     50% {
         opacity: 0.8;
         transform: scale(1.02);
+    }
+}
+
+@keyframes borderRotate {
+    0% {
+        filter: hue-rotate(0deg);
+    }
+    100% {
+        filter: hue-rotate(360deg);
     }
 }
 
