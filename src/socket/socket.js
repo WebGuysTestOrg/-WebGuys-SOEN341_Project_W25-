@@ -8,28 +8,37 @@ const awayUsers = new Map();
 function initializeSocket(server, sessionMiddleware) {
     const io = new Server(server, {
         cors: {
-            origin: "http://localhost:3000",
-            credentials: true
+            origin: config.CORS_ORIGINS,
+            credentials: true,
+            methods: ["GET", "POST"]
         },
-        pingTimeout: 60000,
-        pingInterval: 25000
+        ...config.SOCKET_CONFIG,
+        allowEIO3: true
     });
 
+    // Wrap session middleware
+    const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
+
     // Use session middleware for socket connections
+    io.use(wrap(sessionMiddleware));
+
+    // Add authentication middleware
     io.use((socket, next) => {
-        sessionMiddleware(socket.request, {}, next);
+        const session = socket.request.session;
+        if (session && session.user) {
+            next();
+        } else {
+            next(new Error('Unauthorized'));
+        }
     });
 
     io.on('connection', (socket) => {
         const session = socket.request.session;
         
         if (!session || !session.user) {
-            console.log('Unauthorized socket connection attempt');
             socket.disconnect();
             return;
         }
-
-        console.log(`User ${session.user.name}(${session.user.id}) connected`);
         
         // Store user info in socket
         socket.userId = session.user.id;
@@ -39,6 +48,12 @@ function initializeSocket(server, sessionMiddleware) {
         onlineUsers.set(session.user.id, socket.id);
         awayUsers.delete(session.user.id);
 
+        // Send initial connection success
+        socket.emit('connect_success', {
+            userId: socket.userId,
+            userName: socket.userName
+        });
+
         // Emit updated user status
         io.emit('updateUserStatus', {
             online: Array.from(onlineUsers.keys()),
@@ -47,7 +62,6 @@ function initializeSocket(server, sessionMiddleware) {
 
         // Handle disconnection
         socket.on('disconnect', () => {
-            console.log(`User ${socket.userName}(${socket.userId}) disconnected`);
             onlineUsers.delete(socket.userId);
             awayUsers.delete(socket.userId);
             
@@ -60,6 +74,8 @@ function initializeSocket(server, sessionMiddleware) {
 
         // Handle messages
         socket.on('message', (data) => {
+            if (!socket.userId) return;
+            
             io.emit('message', {
                 text: data.text,
                 user: socket.userName,
@@ -69,6 +85,8 @@ function initializeSocket(server, sessionMiddleware) {
 
         // Handle user status
         socket.on('userOnline', (userId) => {
+            if (userId !== socket.userId) return;
+            
             onlineUsers.set(userId, socket.id);
             awayUsers.delete(userId);
             io.emit('updateUserStatus', {
@@ -78,6 +96,8 @@ function initializeSocket(server, sessionMiddleware) {
         });
 
         socket.on('userAway', (userId) => {
+            if (userId !== socket.userId) return;
+            
             awayUsers.set(userId, socket.id);
             onlineUsers.delete(userId);
             io.emit('updateUserStatus', {
@@ -88,13 +108,12 @@ function initializeSocket(server, sessionMiddleware) {
 
         // Private messaging
         socket.on("private-message", (msg) => {
+            if (!socket.userId) return;
+            
             const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text, quoted_message) VALUES (?, ?, ?, ?)";
             const quotedText = msg.quoted ? msg.quoted.text : null;
             connection.query(insertQuery, [msg.senderId, msg.recipientId, msg.text, quotedText], (err) => {
-                if (err) {
-                    console.error("Error saving message:", err);
-                    return;
-                }
+                if (err) return;
                 const fullMessage = {
                     ...msg,
                     quoted: msg.quoted
@@ -105,16 +124,15 @@ function initializeSocket(server, sessionMiddleware) {
 
         // Channel messages
         socket.on("ChannelMessages", (msg) => {
+            if (!socket.userId) return;
+            
             const query = `
                 INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
                 VALUES (?, ?, ?, ?, ?)
             `;
 
             connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted], (err, result) => {
-                if (err) {
-                    console.error("Database error:", err);
-                    return;
-                }
+                if (err) return;
                 const messageWithId = {
                     id: result.insertId,
                     teamName: msg.teamName,
@@ -129,7 +147,10 @@ function initializeSocket(server, sessionMiddleware) {
 
         // Group messages
         socket.on("send-message", (data) => {
+            if (!socket.userId) return;
+            
             const { groupId, userId, message } = data;
+            if (userId !== socket.userId) return;
 
             const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
             connection.query(getUserQuery, [userId], (err, result) => {
@@ -138,13 +159,22 @@ function initializeSocket(server, sessionMiddleware) {
 
                 const insertQuery = "INSERT INTO group_messages (group_id, user_id, text) VALUES (?, ?, ?)";
                 connection.query(insertQuery, [groupId, userId, message], (err) => {
-                    if (err) {
-                        console.error("Error storing message:", err);
-                        return;
-                    }
+                    if (err) return;
                     io.emit(`group-message-${groupId}`, { sender: senderName, text: message });
                 });
             });
+        });
+
+        // Keep session alive
+        const keepAliveInterval = setInterval(() => {
+            if (socket.request.session) {
+                socket.request.session.touch();
+                socket.request.session.save();
+            }
+        }, 5 * 60 * 1000);
+
+        socket.on('disconnect', () => {
+            clearInterval(keepAliveInterval);
         });
     });
 

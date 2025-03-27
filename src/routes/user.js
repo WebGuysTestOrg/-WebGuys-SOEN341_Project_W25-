@@ -1,23 +1,35 @@
 const express = require('express');
 const router = express.Router();
 const connection = require('../database/connection');
+const { protectRoute } = require('../middleware/routeProtection');
 
-// Get user info
-router.get("/user-info", (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ error: "Unauthorized" });
+// Get user info for session verification
+router.get('/user-info', protectRoute, (req, res) => {
+    console.log('User-info route accessed. Session:', req.session);
+    
+    if (!req.session || !req.session.user) {
+        console.log('No session or user found in user-info route');
+        return res.status(401).json({ error: 'No active session' });
     }
-    res.json({ 
-        name: req.session.user.name, 
-        email: req.session.user.email, 
-        id: req.session.user.id,
-        role: req.session.user.user_type
-    });
+
+    try {
+        const userInfo = {
+            id: req.session.user.id,
+            name: req.session.user.name,
+            email: req.session.user.email,
+            user_type: req.session.user.user_type
+        };
+        console.log('Sending user info:', userInfo);
+        res.json(userInfo);
+    } catch (error) {
+        console.error('Error in user-info route:', error);
+        res.status(500).json({ error: 'Error retrieving user info' });
+    }
 });
 
 // Get admin info
-router.get("/admin-info", (req, res) => {
-    if (!req.session.user || req.session.user.user_type !== "admin") {
+router.get("/admin-info", protectRoute, (req, res) => {
+    if (req.session.user.user_type !== "admin") {
         return res.status(401).json({ error: "Unauthorized" });
     }
     res.json({ name: req.session.user.name });

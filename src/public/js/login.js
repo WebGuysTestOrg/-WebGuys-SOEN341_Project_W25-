@@ -1,3 +1,13 @@
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Login page loaded');
+    
+    // Check if we were redirected here
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('reason')) {
+        console.log('Redirected to login. Reason:', urlParams.get('reason'));
+    }
+});
+
 document.getElementById('loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
 
@@ -19,13 +29,11 @@ document.getElementById('loginForm').addEventListener('submit', function (e) {
                 errorMessage.style.display = 'block';
                 errorMessage.textContent = data.error;
             } else if (data.redirect) {
-                // Store user info in sessionStorage for socket connection
                 sessionStorage.setItem('user', JSON.stringify(data.user));
                 window.location.href = data.redirect;
             }
         })
         .catch((error) => {
-            console.error('Error:', error);
             const errorMessage = document.getElementById('error-message');
             errorMessage.style.display = 'block';
             errorMessage.textContent = 'An error occurred during login. Please try again.';

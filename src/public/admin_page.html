@@ -3,127 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Admin Page</title>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" integrity="sha512-8ExARjWWkIllMlNzVg7JKq9RKWPlJABQUNq6YvAjE/HobctjH/NA+bSiDMDvouBVjp4Wwnf1VP1OEv7Zgjtuxw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <title>Chat Haven Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="styles/adminstyle.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
-    <link rel="icon" type="image/png" href="ChatHavenLogo.png">
-    <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
 </head>
 <body>
-    <!-- Navigation Bar -->
-    <nav class="navbar">
-        <div class="navbar-content">
-            <h1 class="navbar-title">Chat Haven - Admin</h1>
+    <div class="app-container">
+        <!-- Left Sidebar - Navigation -->
+        <nav class="servers-bar">
+            <div class="home-button" id="homeButton">
+                <i class="fas fa-home"></i>
+            </div>
+            <div class="server-separator"></div>
+            <div class="global-chat" id="globalChatButton" title="Global Chat">
+                <i class="fas fa-globe"></i>
+            </div>
+            <div class="teams-list" id="teamsList">
+                <!-- Teams will be dynamically populated -->
+            </div>
+            <div class="add-server" id="addTeamButton" title="Create Team">
+                <i class="fas fa-plus"></i>
+            </div>
+        </nav>
+
+        <!-- Middle Bar - Friends List -->
+        <aside class="channels-sidebar">
+            <div class="friends-header">
+                <h3>Friends</h3>
+                <i class="fas fa-user-plus add-friend-icon" id="addFriendButton"></i>
+            </div>
+
+            <div class="friends-section">
+                <!-- Online Friends Category -->
+                <div class="friends-category">
+                    <div class="category-header">
+                        <span>ONLINE — <span id="onlineCount">0</span></span>
+                    </div>
+                    <div class="friends-list" id="onlineFriends">
+                        <!-- Online friends will be dynamically populated -->
+                    </div>
+                </div>
+
+                <!-- Offline Friends Category -->
+                <div class="friends-category">
+                    <div class="category-header">
+                        <span>OFFLINE — <span id="offlineCount">0</span></span>
+                    </div>
+                    <div class="friends-list" id="offlineFriends">
+                        <!-- Offline friends will be dynamically populated -->
+                    </div>
+                </div>
+
+                <!-- Other Users Section -->
+                <div class="other-users-section">
+                    <div class="category-header">
+                        <span>OTHER USERS</span>
+                        <button class="view-all-btn" id="viewAllUsers">View All</button>
+                    </div>
+                    <div class="other-users-list" id="otherUsers">
+                        <!-- Other users will be dynamically populated -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Profile -->
+            <div class="user-profile">
+                <div class="profile-info">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user"></i>
+                        <div class="status-indicator status-online" id="adminStatus"></div>
+                    </div>
+                    <div class="profile-details">
+                        <div class="profile-name">
+                            <span id="adminName">Loading...</span>
+                            <span class="role-badge role-admin">Admin</span>
+                        </div>
+                        <div class="profile-status">
+                            <i class="fas fa-circle status-online"></i>
+                            <span id="adminStatusText">Online</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-actions">
+                    <button class="action-btn" id="settingsButton" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="action-btn" id="logoutButton" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <div class="content-header">
+                <div class="header-title">
+                    <i class="fas fa-user-friends"></i>
+                    <h2>Friends</h2>
+                </div>
+                <div class="header-tabs">
+                    <button class="tab-btn active" id="addFriendTab">Add Friend</button>
+                    <button class="tab-btn" id="pendingTab">Pending</button>
+                </div>
+            </div>
+
+            <!-- Add Friend Section -->
+            <div class="add-friend-section">
+                <h2>ADD FRIEND</h2>
+                <p>You can add friends with their Chat Haven username.</p>
+                <div class="add-friend-form">
+                    <input type="text" id="friendUsername" placeholder="Enter a username">
+                    <button class="send-friend-request" id="sendFriendRequest">Send Friend Request</button>
+                </div>
+            </div>
+
+            <!-- Friends Display -->
+            <div class="friends-display" id="friendsDisplay">
+                <!-- Friends will be dynamically populated -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Chat Container -->
+    <div id="chatContainer" class="chat-container">
+        <div class="chat-backdrop"></div>
+        <div class="chat-content">
+            <div id="chatHeader">
+                <h3 id="chatTitle">Global Chat</h3>
+                <button id="closeChat">×</button>
+            </div>
+            <div id="chatMessages" class="messages-area"></div>
+            <div id="chatInput">
+                <input type="text" id="messageInput" placeholder="Type a message...">
+                <button id="emojiButton">😊</button>
+                <button id="sendMessage">Send</button>
+            </div>
         </div>
-    </nav>
+        <div id="emojiPickerContainer" style="display: none;"></div>
+    </div>
 
-    <!-- Main Content -->
-    <div class="content-container">
-        <h3>Hi, <span id="admin-name">Admin</span></h3>
-        <h1>Welcome to the Moderator Page</h1>
-        <p>Manage teams, channels, and users.</p>
-        <a href="dm.html" class="btn">Direct Messages</a>
-        <a href="groups.html" class="btn">Groups</a>
-
-    <!-- Row 1: Create Team & Assign User to Team -->
-    <div class="form-row">
-        <!-- Create Team -->
-        <div class="form-container">
-            <h2>Create Team</h2>
-            <form id="createTeamForm">
-                <input type="text" id="teamName" placeholder="Enter Team Name" required>
-                <button type="submit" class="btn">Create Team</button>
-            </form>
+    <!-- Team Creation View -->
+    <div id="teamCreationView" class="team-creation-view">
+        <div class="content-header">
+            <div class="header-title">
+                <i class="fas fa-users"></i>
+                <h2>Create New Team</h2>
+            </div>
         </div>
 
-        <!-- Assign User to Team -->
-        <div class="form-container">
-            <h2>Assign User to Team</h2>
-            <form id="assignUserFormForTeams">
-                <input type="text" id="userNameAssign" placeholder="Enter User Name" required>
-                <input type="number" id="teamIdAssign" placeholder="Enter Team ID" required>
-                <button type="submit" class="btn">Assign User</button>
-            </form>
+        <div class="team-creation-section">
+            <div class="team-creation-form">
+                <div class="form-group">
+                    <label for="teamName">Team Name</label>
+                    <input type="text" id="teamName" placeholder="Enter team name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Add Team Members</label>
+                    <div class="member-input-container">
+                        <input type="text" id="memberSearch" placeholder="Search users by username">
+                        <button id="searchUserButton">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div id="userSearchResults" class="user-search-results"></div>
+                </div>
+
+                <div class="selected-members">
+                    <h3>Selected Members</h3>
+                    <div id="selectedMembersList" class="selected-members-list"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button id="createTeamButton" class="create-team-btn">
+                        <i class="fas fa-plus"></i>
+                        Create Team
+                    </button>
+                    <button id="cancelCreationButton" class="cancel-btn">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Row 2: Create Channel & Assign User to Channel -->
-    <div class="form-row">
-        <!-- Create Channel -->
-        <div class="form-container">
-            <h2>Create Channel</h2>
-            <form id="createChannelForm">
-                <input type="text" id="channelName" placeholder="Enter Channel Name" required>
-                <input type="number" id="teamIdForChannel" placeholder="Enter Team ID" required>
-                <button type="submit" class="btn">Create Channel</button>
-            </form>
-        </div>
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
 
-        <!-- Assign User to Channel -->
-        <div class="form-container">
-            <h2>Assign User to Channel</h2>
-            <form id="assignUserFormForChannels">
-                <input type="text" id="userNameAssignChannel" placeholder="Enter User Name" required>
-                <input type="number" id="channelIdAssign" placeholder="Enter Channel ID" required>
-                <button type="submit" class="btn">Assign User</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Row 3: Delete User & Delete Channel -->
-    <div class="form-row">
-        <!-- Delete User -->
-        <div class="form-container">
-            <h2>Delete User</h2>
-            <form id="deleteUserForm">
-                <input type="text" id="userNameDelete" placeholder="Enter User Name" required>
-                <button type="submit" class="btn">Delete User</button>
-            </form>
-        </div>
-
-        <!-- Delete Channel -->
-        <div class="form-container">
-            <h2>Delete Channel</h2>
-            <form id="deleteChannelForm">
-                <input type="number" id="channelIdDelete" placeholder="Enter Channel ID" required>
-                <button type="submit" class="btn">Delete Channel</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Row 4: Delete Team & List All Users -->
-    <div class="form-row">
-        <!-- Delete Team -->
-        <div class="form-container">
-            <h2>Delete Team</h2>
-            <form id="deleteTeamForm">
-                <input type="number" id="teamIdDelete" placeholder="Enter Team ID" required>
-                <button type="submit" class="btn">Delete Team</button>
-            </form>
-        </div>
-
-        <!-- List All Users -->
-        <div class="form-container">
-            <h2>List All Users</h2>
-            <button id="listUsersBtn" class="btn">List Users</button>
-            <div id="usersList"></div>
-        </div>
-    </div>
-
-    <!-- Chat Section -->
-    <div class="chat-container">
-        <div class="chat-messages" id="chatMessages"></div>
-        <div class="chat-input-container">
-            <div id="emoji-picker-container"></div>
-            <button id="emoji-btn" class="emoji-button">😊</button>
-            <input type="text" id="message" placeholder="Type a message...">
-            <button onclick="sendMessage()" class="send-button">Send</button>
-        </div>
-    </div>
-
+    <!-- Scripts -->
     <script src="js/admin.js"></script>
+    <script src="js/global-chat.js"></script>
 </body>
 </html>

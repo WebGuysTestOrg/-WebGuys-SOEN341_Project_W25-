@@ -4,6 +4,15 @@ const crypto = require('crypto');
 const connection = require('../database/connection');
 const AuthService = require('../services/authService');
 
+// Error handling middleware for session errors
+const handleSessionError = (err, req, res, next) => {
+    if (err.code === 'EBADCSRFTOKEN') {
+        return res.status(403).json({ error: 'Invalid CSRF token' });
+    }
+    console.error('Session error:', err);
+    next(err);
+};
+
 // User Registration
 router.post("/register", (req, res) => {
     const { name, email, password, cpassword, user_type } = req.body;
@@ -66,21 +75,34 @@ router.post("/register", (req, res) => {
 // Login
 router.post("/login", async (req, res) => {
     try {
+        console.log('Login request received');
         const { email, password } = req.body;
+        console.log('Login attempt for email:', email);
+
         const loginResult = await AuthService.login(email, password);
+        console.log('Login result:', loginResult);
 
         if (!loginResult.success) {
+            console.log('Login failed:', loginResult.error);
             return res.status(loginResult.statusCode).json({ error: loginResult.error });
         }
 
-        // Set session
-        req.session.user = loginResult.user;
+        // Set session with error handling
+        try {
+            console.log('Setting session for user:', loginResult.user);
+            req.session.user = loginResult.user;
+            console.log('Session after setting:', req.session);
+        } catch (sessionError) {
+            console.error('Session error during login:', sessionError);
+            return res.status(500).json({ error: 'Error setting up session' });
+        }
 
         // Determine redirect based on user type
         const redirect = loginResult.user.user_type === "admin" 
             ? "/admin_page.html" 
             : "/user_page.html";
 
+        console.log('Login successful, redirecting to:', redirect);
         return res.json({ 
             redirect,
             user: loginResult.user
@@ -92,29 +114,15 @@ router.post("/login", async (req, res) => {
 });
 
 // Logout
-router.get("/logout", async (req, res) => {
-    try {
-        if (!req.session.user) {
-            return res.redirect("/login_form.html");
+router.post("/logout", (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error("Logout error:", err);
+            return res.status(500).json({ error: "Error logging out" });
         }
-
-        const logoutResult = await AuthService.logout(req.session.user.id);
-        
-        if (!logoutResult.success) {
-            console.error("Logout error:", logoutResult.error);
-        }
-
-        // Destroy session
-        req.session.destroy((sessionErr) => {
-            if (sessionErr) {
-                console.error("Error destroying session:", sessionErr);
-            }
-            res.redirect("/login_form.html");
-        });
-    } catch (error) {
-        console.error("Logout route error:", error);
-        res.redirect("/login_form.html");
-    }
+        res.clearCookie('sessionId');
+        res.json({ redirect: "/login_form.html" });
+    });
 });
 
 // Update Password
@@ -148,5 +156,8 @@ router.post("/update-password", async (req, res) => {
         return res.status(500).json({ error: "An unexpected error occurred." });
     }
 });
+
+// Apply session error handling to all routes
+router.use(handleSessionError);
 
 module.exports = router; 

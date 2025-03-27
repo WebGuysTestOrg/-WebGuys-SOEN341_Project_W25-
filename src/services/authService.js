@@ -4,7 +4,10 @@ const connection = require('../database/connection');
 class AuthService {
     static async login(email, password) {
         try {
+            console.log('AuthService.login called with email:', email);
+            
             if (!email || !password) {
+                console.log('Login failed: Missing email or password');
                 return {
                     success: false,
                     error: "Email and password are required.",
@@ -14,11 +17,12 @@ class AuthService {
 
             const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
             const query = "SELECT * FROM user_form WHERE email = ? AND password = ?";
+            console.log('Executing login query for email:', email);
 
             return new Promise((resolve, reject) => {
                 connection.query(query, [email, hashedPassword], async (err, results) => {
                     if (err) {
-                        console.error("Login error:", err);
+                        console.error("Login database error:", err);
                         return resolve({
                             success: false,
                             error: "Server error. Please try again later.",
@@ -27,6 +31,7 @@ class AuthService {
                     }
 
                     if (results.length === 0) {
+                        console.log('Login failed: Invalid credentials');
                         return resolve({
                             success: false,
                             error: "Invalid email or password.",
@@ -35,6 +40,7 @@ class AuthService {
                     }
 
                     const user = results[0];
+                    console.log('User found:', { id: user.id, name: user.name, email: user.email });
                     
                     // Log login time
                     try {
@@ -45,6 +51,7 @@ class AuthService {
                                     console.error("Error logging login:", logErr);
                                     resolveLog();
                                 } else {
+                                    console.log('Login activity logged successfully');
                                     resolveLog();
                                 }
                             });
@@ -53,7 +60,7 @@ class AuthService {
                         console.error("Error in login logging:", logError);
                     }
 
-                    return resolve({
+                    const loginResult = {
                         success: true,
                         user: {
                             id: user.id,
@@ -62,7 +69,9 @@ class AuthService {
                             user_type: user.user_type
                         },
                         statusCode: 200
-                    });
+                    };
+                    console.log('Login successful:', loginResult);
+                    return resolve(loginResult);
                 });
             });
         } catch (error) {

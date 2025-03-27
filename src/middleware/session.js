@@ -3,8 +3,8 @@ const config = require("../config/config");
 
 const sessionMiddleware = session({
     secret: config.SESSION_SECRET,
-    resave: true,
-    saveUninitialized: true,
+    resave: false,
+    saveUninitialized: false,
     cookie: { 
         maxAge: config.SESSION_COOKIE_MAX_AGE,
         secure: false,
@@ -14,7 +14,8 @@ const sessionMiddleware = session({
     },
     name: 'sessionId',
     store: new session.MemoryStore(),
-    rolling: true
+    rolling: true,
+    unset: 'destroy'
 });
 
 module.exports = sessionMiddleware; 
