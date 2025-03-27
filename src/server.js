@@ -15,12 +15,6 @@ const groupsRoutes = require("./routes/groups");
 const app = express();
 let expressServer;
 
-if (process.env.NODE_ENV !== "test") {
-    expressServer = app.listen(config.PORT, () => {
-        console.log(`Server running at http://localhost:${config.PORT}`);
-    });
-}
-
 // Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -33,7 +27,17 @@ app.use("/", userRoutes);
 app.use("/", teamsRoutes);
 app.use("/", groupsRoutes);
 
-// Initialize Socket.IO
-const io = initializeSocket(expressServer, sessionMiddleware);
+// Initialize Socket.IO with the server
+if (process.env.NODE_ENV !== "test") {
+    expressServer = app.listen(config.PORT, () => {
+        console.log(`Server running at http://localhost:${config.PORT}`);
+        
+        // Initialize Socket.IO after server is listening
+        const io = initializeSocket(expressServer, sessionMiddleware);
+        
+        // Store io instance in app for route access
+        app.set('io', io);
+    });
+}
 
-module.exports = { app, io, connection, expressServer };
+module.exports = { app, connection, expressServer };

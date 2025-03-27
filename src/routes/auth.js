@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const connection = require('../database/connection');
+const AuthService = require('../services/authService');
 
 // User Registration
 router.post("/register", (req, res) => {
@@ -63,111 +64,89 @@ router.post("/register", (req, res) => {
 });
 
 // Login
-router.post("/login", (req, res) => {
-    const { email, password } = req.body;
+router.post("/login", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const loginResult = await AuthService.login(email, password);
 
-    if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required." });
+        if (!loginResult.success) {
+            return res.status(loginResult.statusCode).json({ error: loginResult.error });
+        }
+
+        // Set session
+        req.session.user = loginResult.user;
+
+        // Determine redirect based on user type
+        const redirect = loginResult.user.user_type === "admin" 
+            ? "/admin_page.html" 
+            : "/user_page.html";
+
+        return res.json({ 
+            redirect,
+            user: loginResult.user
+        });
+    } catch (error) {
+        console.error("Login route error:", error);
+        return res.status(500).json({ error: "An unexpected error occurred." });
     }
-
-    const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
-    const query = "SELECT * FROM user_form WHERE email = ? AND password = ?";
-
-    connection.query(query, [email, hashedPassword], (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "Server error. Please try again later." });
-        }
-
-        if (results.length > 0) {
-            const user = results[0];
-            req.session.user = {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                user_type: user.user_type,
-            };
-
-            // Log login time
-            const logQuery = "INSERT INTO user_activity_log (user_id, name) VALUES (?, ?)";
-            connection.query(logQuery, [user.id, user.name], (logErr) => {
-                if (logErr) console.error("Error logging login:", logErr);
-            });
-
-            if (user.user_type === "admin") {
-                return res.json({ 
-                    redirect: "/admin_page.html",
-                    user: req.session.user
-                });
-            } else {
-                return res.json({ 
-                    redirect: "/user_page.html",
-                    user: req.session.user
-                });
-            }
-        } else {
-            res.status(401).json({ error: "Invalid email or password." });
-        }
-    });
 });
 
 // Logout
-router.get("/logout", (req, res) => {
-    if (!req.session.user) {
-        return res.redirect("/login_form.html");
-    }
-
-    const userId = req.session.user.id;
-
-    // Update the logout timestamp for the latest login
-    const updateLogoutQuery = `
-        UPDATE user_activity_log 
-        SET logout_time = CURRENT_TIMESTAMP 
-        WHERE user_id = ? 
-        ORDER BY login_time DESC 
-        LIMIT 1
-    `;
-
-    connection.query(updateLogoutQuery, [userId], (err) => {
-        if (err) {
-            console.error("Error logging logout:", err);
-            return res.status(500).json({ error: "Error logging out." });
+router.get("/logout", async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.redirect("/login_form.html");
         }
 
+        const logoutResult = await AuthService.logout(req.session.user.id);
+        
+        if (!logoutResult.success) {
+            console.error("Logout error:", logoutResult.error);
+        }
+
+        // Destroy session
         req.session.destroy((sessionErr) => {
             if (sessionErr) {
                 console.error("Error destroying session:", sessionErr);
-                return res.status(500).json({ error: "Error logging out." });
             }
             res.redirect("/login_form.html");
         });
-    });
+    } catch (error) {
+        console.error("Logout route error:", error);
+        res.redirect("/login_form.html");
+    }
 });
 
 // Update Password
-router.post("/update-password", (req, res) => {
-    const { newPassword, confirmPassword } = req.body;
-
-    if (!req.session.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    if (newPassword !== confirmPassword) {
-        return res.status(400).json({ error: "Passwords do not match!" });
-    }
-
-    const hashedPassword = crypto.createHash("md5").update(newPassword).digest("hex");
-    const id = req.session.user.id;
-    
-    const updatePasswordQuery = "UPDATE user_form SET password = ? WHERE id = ?";
-
-    connection.query(updatePasswordQuery, [hashedPassword, id], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "Error updating password." });
+router.post("/update-password", async (req, res) => {
+    try {
+        const sessionResult = await AuthService.validateSession(req.session);
+        if (!sessionResult.success) {
+            return res.status(sessionResult.statusCode).json({ error: sessionResult.error });
         }
-        res.status(200).json({ message: "Password updated successfully!" });
-    });
+
+        const { newPassword, confirmPassword } = req.body;
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({ error: "Passwords do not match!" });
+        }
+
+        const hashedPassword = crypto.createHash("md5").update(newPassword).digest("hex");
+        const id = sessionResult.user.id;
+        
+        const updatePasswordQuery = "UPDATE user_form SET password = ? WHERE id = ?";
+
+        connection.query(updatePasswordQuery, [hashedPassword, id], (err, result) => {
+            if (err) {
+                console.error("Password update error:", err);
+                return res.status(500).json({ error: "Error updating password." });
+            }
+            res.status(200).json({ message: "Password updated successfully!" });
+        });
+    } catch (error) {
+        console.error("Update password route error:", error);
+        return res.status(500).json({ error: "An unexpected error occurred." });
+    }
 });
 
 module.exports = router; 

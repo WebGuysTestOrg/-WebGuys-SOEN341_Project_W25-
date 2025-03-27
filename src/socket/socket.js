@@ -1,96 +1,92 @@
 const { Server } = require("socket.io");
-const sharedSession = require("express-socket.io-session");
 const config = require("../config/config");
 const connection = require("../database/connection");
 
 const onlineUsers = new Map();
 const awayUsers = new Map();
 
-function initializeSocket(expressServer, sessionMiddleware) {
-    const io = new Server(expressServer, {
+function initializeSocket(server, sessionMiddleware) {
+    const io = new Server(server, {
         cors: {
-            origin: config.CORS_ORIGINS
-        }
+            origin: "http://localhost:3000",
+            credentials: true
+        },
+        pingTimeout: 60000,
+        pingInterval: 25000
     });
 
-    io.use(sharedSession(sessionMiddleware, {
-        autoSave: true
-    }));
+    // Use session middleware for socket connections
+    io.use((socket, next) => {
+        sessionMiddleware(socket.request, {}, next);
+    });
 
-    io.on('connection', socket => {
-        const session = socket.handshake.session;
-
-        if (session && session.user && session.user.name) {
-            console.log(`User ${session.user.name} connected`);
-        } else {
-            console.log(`User with no session connected`);
-        }
+    io.on('connection', (socket) => {
+        const session = socket.request.session;
         
-        socket.on('message', data => {
-            const message = data.text;
-            const user = session.user && session.user.name 
-                ? `${session.user.name}[${session.user.user_type}_${session.user.id.toString().padStart(3, '0')}]`
-                : "Anonymous"; 
-            io.emit('message', {
-                SSocketId: socket.id,
-                user: user,
-                text: message,
-                userID: session.user.id
+        if (!session || !session.user) {
+            console.log('Unauthorized socket connection attempt');
+            socket.disconnect();
+            return;
+        }
+
+        console.log(`User ${session.user.name}(${session.user.id}) connected`);
+        
+        // Store user info in socket
+        socket.userId = session.user.id;
+        socket.userName = session.user.name;
+
+        // Add user to online users
+        onlineUsers.set(session.user.id, socket.id);
+        awayUsers.delete(session.user.id);
+
+        // Emit updated user status
+        io.emit('updateUserStatus', {
+            online: Array.from(onlineUsers.keys()),
+            away: Array.from(awayUsers.keys())
+        });
+
+        // Handle disconnection
+        socket.on('disconnect', () => {
+            console.log(`User ${socket.userName}(${socket.userId}) disconnected`);
+            onlineUsers.delete(socket.userId);
+            awayUsers.delete(socket.userId);
+            
+            // Emit updated user status
+            io.emit('updateUserStatus', {
+                online: Array.from(onlineUsers.keys()),
+                away: Array.from(awayUsers.keys())
             });
         });
 
-        let inactivityTimer;
+        // Handle messages
+        socket.on('message', (data) => {
+            io.emit('message', {
+                text: data.text,
+                user: socket.userName,
+                userID: socket.userId
+            });
+        });
 
-        socket.on("userOnline", (userId) => {
+        // Handle user status
+        socket.on('userOnline', (userId) => {
             onlineUsers.set(userId, socket.id);
             awayUsers.delete(userId);
-            io.emit("updateUserStatus", {
+            io.emit('updateUserStatus', {
                 online: Array.from(onlineUsers.keys()),
                 away: Array.from(awayUsers.keys())
             });
-            resetInactivityTimer(userId);
         });
 
-        socket.on("userAway", (userId) => {
+        socket.on('userAway', (userId) => {
             awayUsers.set(userId, socket.id);
             onlineUsers.delete(userId);
-            io.emit("updateUserStatus", {
+            io.emit('updateUserStatus', {
                 online: Array.from(onlineUsers.keys()),
                 away: Array.from(awayUsers.keys())
             });
         });
 
-        socket.on("disconnect", () => {
-            console.log(`User ${socket.id} disconnected`);
-            onlineUsers.forEach((socketId, userId) => {
-                if (socketId === socket.id) {
-                    onlineUsers.delete(userId);
-                    awayUsers.delete(userId);
-                }
-            });
-            io.emit("updateUserStatus", {
-                online: Array.from(onlineUsers.keys()),
-                away: Array.from(awayUsers.keys())
-            });
-        });
-
-        function startInactivityTimer(userId) {
-            clearTimeout(inactivityTimer);
-            inactivityTimer = setTimeout(() => {
-                console.log(`User ${userId} is now away`);
-                socket.emit("userAway", userId);
-            }, config.INACTIVITY_TIME);
-        }
-
-        function resetInactivityTimer(userId) {
-            clearTimeout(inactivityTimer);
-            startInactivityTimer(userId);
-            console.log(`User ${userId} is now online`);
-        }
-    });
-
-    // Private messaging
-    io.on("connection", (socket) => {
+        // Private messaging
         socket.on("private-message", (msg) => {
             const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text, quoted_message) VALUES (?, ?, ?, ?)";
             const quotedText = msg.quoted ? msg.quoted.text : null;
@@ -106,10 +102,8 @@ function initializeSocket(expressServer, sessionMiddleware) {
                 io.emit("private-message", fullMessage);
             });
         });
-    });
 
-    // Channel messages
-    io.on("connection", (socket) => {
+        // Channel messages
         socket.on("ChannelMessages", (msg) => {
             const query = `
                 INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
@@ -132,10 +126,8 @@ function initializeSocket(expressServer, sessionMiddleware) {
                 io.emit("ChannelMessages", messageWithId);
             });
         });
-    });
 
-    // Group messages
-    io.on("connection", (socket) => {
+        // Group messages
         socket.on("send-message", (data) => {
             const { groupId, userId, message } = data;
 

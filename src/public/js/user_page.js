@@ -1,24 +1,133 @@
-const socket = io();
+// Global variables
+let socket = null;
 let messages = [];
 let loggedInUserId = null;
 let loggedInUserName = "";
 
-// Fetch user info
-fetch('/user-info')
-    .then(response => {
-        if (!response.ok) throw new Error('Unauthorized');
-        return response.json();
-    })
-    .then(data => {
-        loggedInUserId = data.id;
-        loggedInUserName = data.name;
-        document.getElementById('username').textContent = data.name;
-        fetchTeamsWithMembers();
-    })
-    .catch(() => window.location.href = '/login_form.html');
+// Initialize socket connection
+function initializeSocket() {
+    if (socket) {
+        socket.disconnect();
+    }
 
-// Create channel form submission
-document.getElementById('createChannelForm').addEventListener('submit', (e) => {
+    socket = io({
+        withCredentials: true,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000
+    });
+
+    // Socket event handlers
+    socket.on('connect', () => {
+        console.log('Socket connected');
+        if (loggedInUserId) {
+            socket.emit('userOnline', loggedInUserId);
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Socket disconnected');
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+    });
+
+    // Message handling
+    socket.on("message", handleNewMessage);
+}
+
+// Message handling functions
+function handleNewMessage(msg) {
+    const messageElement = document.createElement("div");
+    if (loggedInUserId === msg.userID) {
+        messageElement.classList.add("my-message");
+        messageElement.textContent = `${msg.text}`;
+    } else {
+        messageElement.classList.add("other-message");
+        messageElement.textContent = `${msg.user}: ${msg.text}`;
+    }
+    
+    addMessage(msg.user, msg.text, msg.userID);
+    sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+    
+    const chatMessages = document.getElementById("chatMessages");
+    chatMessages.appendChild(messageElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    const messageInput = document.getElementById("message");
+    messageInput.value = "";
+}
+
+function addMessage(sender, text, senderID) {
+    const newMessage = {
+        id: messages.length + 1,
+        text: text,
+        sender: sender,
+        senderID: senderID,
+        timestamp: Date.now()
+    };
+    messages.push(newMessage);
+}
+
+function sendMessage() {
+    const input = document.getElementById("message");
+    if (input.value && socket) {
+        socket.emit('message', { text: input.value });
+    }
+    input.focus();
+}
+
+// Emoji picker functionality
+function initializeEmojiPicker() {
+    const emojiBtn = document.getElementById("emoji-btn");
+    const pickerContainer = document.getElementById("emoji-picker-container");
+
+    emojiBtn.addEventListener("click", function (event) {
+        event.stopPropagation();
+        if (pickerContainer.style.display === "none" || pickerContainer.innerHTML === "") {
+            pickerContainer.style.display = "block";
+            pickerContainer.innerHTML = "";
+
+            const picker = new EmojiMart.Picker({
+                set: 'apple',
+                onEmojiSelect: (emoji) => {
+                    const messageInput = document.getElementById("message");
+                    messageInput.value += emoji.native || emoji.colons || emoji.id;
+                    pickerContainer.style.display = "none";
+                }
+            });
+
+            pickerContainer.appendChild(picker);
+        } else {
+            pickerContainer.style.display = "none";
+        }
+    });
+
+    // Close emoji picker when clicking outside
+    document.addEventListener("click", function (event) {
+        if (
+            pickerContainer.style.display === "block" &&
+            !pickerContainer.contains(event.target) &&
+            event.target !== emojiBtn
+        ) {
+            pickerContainer.style.display = "none";
+        }
+    });
+}
+
+// Form submission handlers
+function initializeForms() {
+    // Create channel form
+    document.getElementById('createChannelForm').addEventListener('submit', handleCreateChannel);
+    
+    // Assign user form
+    document.getElementById('assignUserForm').addEventListener('submit', handleAssignUser);
+}
+
+async function handleCreateChannel(e) {
     e.preventDefault();
     const teamId = document.getElementById('teamId').value;
     const channelName = document.getElementById('channelName').value;
@@ -28,25 +137,27 @@ document.getElementById('createChannelForm').addEventListener('submit', (e) => {
         return;
     }
 
-    fetch('/create-channel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId, channelName }),
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert(data.error);
-            } else {
-                alert("Channel created successfully!");
-                fetchTeamsWithMembers();
-            }
-        })
-        .catch(err => console.error('Error:', err));
-});
+    try {
+        const response = await fetch('/create-channel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ teamId, channelName }),
+        });
+        const data = await response.json();
+        
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert("Channel created successfully!");
+            fetchTeamsWithMembers();
+        }
+    } catch (err) {
+        console.error('Error:', err);
+    }
+}
 
-// Assign user to channel form submission
-document.getElementById('assignUserForm').addEventListener('submit', (e) => {
+async function handleAssignUser(e) {
     e.preventDefault();
     const teamId = document.getElementById('teamIdAssign').value;
     const channelName = document.getElementById('channelNameAssign').value;
@@ -57,173 +168,134 @@ document.getElementById('assignUserForm').addEventListener('submit', (e) => {
         return;
     }
 
-    fetch('/assign-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId, channelName, userName }),
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert(data.error);
-            } else {
-                alert("User assigned successfully!");
-                fetchTeamsWithMembers();
-            }
-        })
-        .catch(err => console.error('Error:', err));
-});
-
-// Fetch teams with members
-function fetchTeamsWithMembers() {
-    fetch('/get-teams-with-members')
-        .then(response => response.json())
-        .then(teams => {
-            const teamsContainer = document.getElementById('teams-container');
-            teamsContainer.innerHTML = '';
-
-            if (teams.length === 0) {
-                teamsContainer.innerHTML = '<p>No teams available.</p>';
-                return;
-            }
-
-            teams.forEach(team => {
-                console.log("Processing team:", team);
-
-                const teamDiv = document.createElement('div');
-                teamDiv.classList.add('team-card');
-                
-                const teamsButton = document.createElement("button");
-                teamsButton.textContent = "Open Chat";
-                teamsButton.classList.add("teamsButton");
-
-                const teamTitle = document.createElement('h3');
-                teamTitle.innerHTML = `(${team.teamId || 'N/A'}) ${team.teamName || 'Unnamed Team'}`;
-                teamTitle.style.color = '#007BFF';
-
-                const createdBy = document.createElement('p');
-                createdBy.innerHTML = `<strong>Created by:</strong> ${team.creatorName || 'Unknown'}`;
-
-                const membersList = document.createElement('p');
-                membersList.innerHTML = `<strong>Members:</strong> ${team.members?.join(', ') || 'No members'}`;
-                
-                const channelContainer = document.createElement('div');
-                channelContainer.classList.add('channel-container');
-
-                Object.values(team.channels).forEach(channel => {
-                    const channelDiv = document.createElement('div');
-                    channelDiv.style.marginLeft = '20px';
-
-                    const channelName = document.createElement('h4');
-                    channelName.textContent = `Channel: ${channel.channelName}`;
-                    channelName.style.color = '#555';
-                    
-                    const channelMembersList = document.createElement('p');
-                    if (channel.members && channel.members.length > 0) {
-                        channelMembersList.innerHTML = `<strong>Members:</strong> ${channel.members.join(', ')}`;
-                    } else {
-                        channelMembersList.innerHTML = `<strong>Members:</strong> No members`;
-                    }
-
-                    channelDiv.appendChild(channelName);
-                    channelDiv.appendChild(channelMembersList);
-                    channelContainer.appendChild(channelDiv);
-                });
-
-                teamDiv.appendChild(teamTitle);
-                teamDiv.appendChild(createdBy);
-                teamDiv.appendChild(membersList);
-                teamDiv.appendChild(channelContainer);
-                teamDiv.appendChild(teamsButton);
-
-                teamsButton.addEventListener("click", function(){
-                    window.location.href = `teams_chat.html?team=${encodeURIComponent(team.teamName)}`;
-                });
-
-                teamsContainer.appendChild(teamDiv);
-            });
-        })
-        .catch(err => console.error('Error fetching teams:', err));
-}
-
-// Message handling functions
-function addMessage(sender, text, senderID) {
-    const newMessage = {
-        id: messages.length + 1,
-        text: text,
-        sender: sender,
-        senderID: senderID,
-        timestamp: Date.now()
-    };
-
-    messages.push(newMessage);
-    sessionStorage.setItem("chatMessages", JSON.stringify(messages));
-}
-
-function sendMessage() {
-    const input = document.getElementById("message");
-    if (input.value) {
-        socket.emit('message', { text: input.value });
-    }
-    input.focus();
-}
-
-// Socket event listeners
-socket.on("message", (msg) => {
-    const messageElement = document.createElement("div");
-    if (loggedInUserId === msg.userID) {
-        messageElement.classList.add("my-message");
-        messageElement.textContent = `${msg.text}`;
-        addMessage(msg.user, msg.text, msg.userID);
-        sessionStorage.setItem("chatMessages", JSON.stringify(messages));
-    } else {
-        messageElement.classList.add("other-message");
-        messageElement.textContent = `${msg.user}: ${msg.text}`;
-        addMessage(msg.user, msg.text, msg.userID);
-        sessionStorage.setItem("chatMessages", JSON.stringify(messages));
-    }
-    console.log("SavedMessages", messages);
-    chatMessages.appendChild(messageElement);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-    messageInput.value = "";
-});
-
-// Emoji picker functionality
-document.getElementById("emoji-btn").addEventListener("click", function (event) {
-    console.log("Emoji Clicked");
-    event.stopPropagation();
-
-    const pickerContainer = document.getElementById("emoji-picker-container");
-
-    if (pickerContainer.style.display === "none" || pickerContainer.innerHTML === "") {
-        pickerContainer.style.display = "block";
-        pickerContainer.innerHTML = "";
-
-        const picker = new EmojiMart.Picker({
-            set: 'apple',
-            onEmojiSelect: (emoji) => {
-                const messageInput = document.getElementById("message");
-                messageInput.value += emoji.native || emoji.colons || emoji.id;
-                pickerContainer.style.display = "none";
-            }
+    try {
+        const response = await fetch('/assign-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ teamId, channelName, userName }),
         });
-
-        pickerContainer.appendChild(picker);
-    } else {
-        pickerContainer.style.display = "none";
+        const data = await response.json();
+        
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert("User assigned successfully!");
+            fetchTeamsWithMembers();
+        }
+    } catch (err) {
+        console.error('Error:', err);
     }
-});
+}
 
-// Close emoji picker when clicking outside
-document.addEventListener("click", function (event) {
-    const pickerContainer = document.getElementById("emoji-picker-container");
-    const emojiButton = document.getElementById("emoji-btn");
-
-    if (
-        pickerContainer.style.display === "block" &&
-        !pickerContainer.contains(event.target) &&
-        event.target !== emojiButton
-    ) {
-        pickerContainer.style.display = "none";
+// Team fetching and display
+async function fetchTeamsWithMembers() {
+    try {
+        const response = await fetch('/get-teams-with-members', {
+            credentials: 'include'
+        });
+        const teams = await response.json();
+        displayTeams(teams);
+    } catch (err) {
+        console.error('Error fetching teams:', err);
     }
-}); 
+}
+
+function displayTeams(teams) {
+    const teamsContainer = document.getElementById('teams-container');
+    teamsContainer.innerHTML = '';
+
+    if (teams.length === 0) {
+        teamsContainer.innerHTML = '<p>No teams available.</p>';
+        return;
+    }
+
+    teams.forEach(team => {
+        const teamDiv = createTeamElement(team);
+        teamsContainer.appendChild(teamDiv);
+    });
+}
+
+function createTeamElement(team) {
+    const teamDiv = document.createElement('div');
+    teamDiv.classList.add('team-card');
+    
+    const teamsButton = document.createElement("button");
+    teamsButton.textContent = "Open Chat";
+    teamsButton.classList.add("teamsButton");
+    teamsButton.addEventListener("click", () => {
+        window.location.href = `teams_chat.html?team=${encodeURIComponent(team.teamName)}`;
+    });
+
+    const teamTitle = document.createElement('h3');
+    teamTitle.innerHTML = `(${team.teamId || 'N/A'}) ${team.teamName || 'Unnamed Team'}`;
+    teamTitle.style.color = '#007BFF';
+
+    const createdBy = document.createElement('p');
+    createdBy.innerHTML = `<strong>Created by:</strong> ${team.creatorName || 'Unknown'}`;
+
+    const membersList = document.createElement('p');
+    membersList.innerHTML = `<strong>Members:</strong> ${team.members?.join(', ') || 'No members'}`;
+    
+    const channelContainer = createChannelContainer(team.channels);
+
+    teamDiv.appendChild(teamTitle);
+    teamDiv.appendChild(createdBy);
+    teamDiv.appendChild(membersList);
+    teamDiv.appendChild(channelContainer);
+    teamDiv.appendChild(teamsButton);
+
+    return teamDiv;
+}
+
+function createChannelContainer(channels) {
+    const channelContainer = document.createElement('div');
+    channelContainer.classList.add('channel-container');
+
+    Object.values(channels).forEach(channel => {
+        const channelDiv = document.createElement('div');
+        channelDiv.style.marginLeft = '20px';
+
+        const channelName = document.createElement('h4');
+        channelName.textContent = `Channel: ${channel.channelName}`;
+        channelName.style.color = '#555';
+        
+        const channelMembersList = document.createElement('p');
+        channelMembersList.innerHTML = `<strong>Members:</strong> ${channel.members?.join(', ') || 'No members'}`;
+
+        channelDiv.appendChild(channelName);
+        channelDiv.appendChild(channelMembersList);
+        channelContainer.appendChild(channelDiv);
+    });
+
+    return channelContainer;
+}
+
+// Initialize application
+async function initializeApp() {
+    try {
+        const response = await fetch('/user-info', {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Unauthorized');
+        }
+        
+        const data = await response.json();
+        loggedInUserId = data.id;
+        loggedInUserName = data.name;
+        document.getElementById('username').textContent = data.name;
+        
+        initializeSocket();
+        initializeForms();
+        initializeEmojiPicker();
+        fetchTeamsWithMembers();
+    } catch (error) {
+        console.error('Error initializing app:', error);
+        window.location.href = '/login_form.html';
+    }
+}
+
+// Start the application
+initializeApp(); 
