@@ -6,6 +6,8 @@ const onlineUsers = new Map();
 const awayUsers = new Map();
 
 function initializeSocket(server, sessionMiddleware) {
+    console.log('Initializing socket server...');
+    
     const io = new Server(server, {
         cors: {
             origin: config.CORS_ORIGINS,
@@ -24,21 +26,28 @@ function initializeSocket(server, sessionMiddleware) {
 
     // Add authentication middleware
     io.use((socket, next) => {
+        console.log('Socket authentication attempt...');
         const session = socket.request.session;
         if (session && session.user) {
+            console.log('Socket authenticated for user:', session.user.name);
             next();
         } else {
+            console.log('Socket authentication failed - no session or user');
             next(new Error('Unauthorized'));
         }
     });
 
     io.on('connection', (socket) => {
+        console.log('New socket connection attempt...');
         const session = socket.request.session;
         
         if (!session || !session.user) {
+            console.log('Connection rejected - no session or user');
             socket.disconnect();
             return;
         }
+        
+        console.log('User connected:', session.user.name);
         
         // Store user info in socket
         socket.userId = session.user.id;
@@ -62,6 +71,7 @@ function initializeSocket(server, sessionMiddleware) {
 
         // Handle disconnection
         socket.on('disconnect', () => {
+            console.log('User disconnected:', socket.userName);
             onlineUsers.delete(socket.userId);
             awayUsers.delete(socket.userId);
             
@@ -73,14 +83,24 @@ function initializeSocket(server, sessionMiddleware) {
         });
 
         // Handle messages
-        socket.on('message', (data) => {
-            if (!socket.userId) return;
+        socket.on('chat message', (data) => {
+            if (!socket.userId) {
+                console.log('Message rejected - no socket.userId found');
+                return;
+            }
             
-            io.emit('message', {
+            console.log('Received chat message from', socket.userName, ':', data);
+            
+            // Broadcast the message to all connected clients
+            const messageData = {
                 text: data.text,
                 user: socket.userName,
-                userID: socket.userId
-            });
+                timestamp: data.timestamp,
+                quotedMessage: data.quotedMessage
+            };
+            
+            console.log('Broadcasting message to all clients:', messageData);
+            io.emit('chat message', messageData);
         });
 
         // Handle user status

@@ -6,7 +6,7 @@
     <title>Chat Haven Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="styles/adminstyle.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@emoji-mart/css@latest/css/emoji-mart.css">
 </head>
 <body>
     <div class="app-container">
@@ -16,7 +16,7 @@
                 <i class="fas fa-home"></i>
             </div>
             <div class="server-separator"></div>
-            <div class="global-chat" id="globalChatButton" title="Global Chat">
+            <div class="global-chat" id="chat-toggle" title="Global Chat">
                 <i class="fas fa-globe"></i>
             </div>
             <div class="teams-list" id="teamsList">
@@ -127,21 +127,22 @@
     </div>
 
     <!-- Chat Container -->
-    <div id="chatContainer" class="chat-container">
-        <div class="chat-backdrop"></div>
+    <div id="chat-container" class="chat-container">
         <div class="chat-content">
-            <div id="chatHeader">
-                <h3 id="chatTitle">Global Chat</h3>
-                <button id="closeChat">×</button>
+            <div id="chat-header">
+                <h3>Global Chat</h3>
+                <button id="close-chat">×</button>
             </div>
-            <div id="chatMessages" class="messages-area"></div>
-            <div id="chatInput">
-                <input type="text" id="messageInput" placeholder="Type a message...">
-                <button id="emojiButton">😊</button>
-                <button id="sendMessage">Send</button>
-            </div>
+            <div id="chat-messages"></div>
+            <form id="message-form" class="message-form">
+                <div id="emoji-picker-container" style="display: none;"></div>
+                <div class="input-container">
+                    <button type="button" id="emoji-button">😊</button>
+                    <input type="text" id="message-input" placeholder="Type a message...">
+                    <button type="submit" id="send-button">Send</button>
+                </div>
+            </form>
         </div>
-        <div id="emojiPickerContainer" style="display: none;"></div>
     </div>
 
     <!-- Team Creation View -->
@@ -194,7 +195,10 @@
     <div id="toastContainer"></div>
 
     <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emoji-mart/data"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emoji-mart/react"></script>
+    <script src="https://cdn.jsdelivr.net/npm/emoji-mart"></script>
     <script src="js/admin.js"></script>
-    <script src="js/global-chat.js"></script>
 </body>
 </html>

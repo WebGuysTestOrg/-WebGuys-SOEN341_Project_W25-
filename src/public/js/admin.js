@@ -1,87 +1,210 @@
 // Socket.io connection
-const socket = io();
-let messages = [];
-let loggedInUserId = null;
+let socket = io();
+let loggedInUserName = null;
+let quotedMessage = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Admin page loaded, verifying session...');
-    
-    // First verify session
-    fetch('/user-info', {
-        credentials: 'include',
-        headers: {
-            'Accept': 'application/json'
+    // Get logged in username from the session
+    fetch('/user-info')
+        .then(response => response.json())
+        .then(data => {
+            loggedInUserName = data.name;
+        })
+        .catch(error => {
+            window.location.href = '/login_form.html';
+        });
+
+    // Chat elements
+    const chatContainer = document.getElementById('chat-container');
+    const closeChat = document.getElementById('close-chat');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const emojiButton = document.getElementById('emoji-button');
+    const emojiPickerContainer = document.getElementById('emoji-picker-container');
+    const chatMessages = document.getElementById('chat-messages');
+
+    if (!chatContainer || !closeChat || !messageForm || !messageInput || !chatMessages) {
+        return;
+    }
+
+    // Toggle chat visibility
+    document.getElementById('chat-toggle').addEventListener('click', () => {
+        chatContainer.classList.add('active');
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
+    closeChat.addEventListener('click', () => {
+        chatContainer.classList.remove('active');
+    });
+
+    // Initialize emoji picker
+    let picker = null;
+    emojiButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!picker) {
+            picker = new EmojiMart.Picker({
+                onEmojiSelect: (emoji) => {
+                    messageInput.value += emoji.native;
+                    messageInput.focus();
+                    emojiPickerContainer.style.display = 'none';
+                },
+                showPreview: false,
+                showSkinTones: false,
+                emojiSize: 20
+            });
+            emojiPickerContainer.appendChild(picker);
         }
-    })
-    .then(response => {
-        console.log('Session verification response status:', response.status);
-        if (!response.ok) {
-            throw new Error(`Session invalid: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Session verification data:', data);
-        if (!data || !data.id) {
-            throw new Error('Invalid user data received');
-        }
-        if (data.user_type !== 'admin') {
-            throw new Error('User is not an admin');
-        }
-        document.getElementById('adminName').textContent = data.name;
-        loggedInUserId = data.id;
-        initializeSocket(data);
-    })
-    .catch(error => {
-        console.error('Session verification error:', error);
-        // Only redirect if it's a session error, not a network error
-        if (error.message.includes('Session invalid') || error.message.includes('Invalid user data')) {
-            window.location.href = '/login_form.html?reason=session_expired';
-        } else {
-            console.error('Non-session error:', error);
-            // Don't redirect on network errors
+        
+        const isVisible = emojiPickerContainer.style.display === 'block';
+        emojiPickerContainer.style.display = isVisible ? 'none' : 'block';
+    });
+
+    // Hide emoji picker when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!emojiButton.contains(e.target) && !emojiPickerContainer.contains(e.target)) {
+            emojiPickerContainer.style.display = 'none';
         }
     });
 
-    // Initialize logout button
-    document.getElementById('logoutButton').addEventListener('click', () => {
-        console.log('Logout button clicked');
-        fetch('/logout', {
-            method: 'POST',
-            credentials: 'include'
-        })
-        .then(response => {
-            console.log('Logout response status:', response.status);
-            return response.json();
-        })
-        .then(data => {
-            console.log('Logout successful, redirecting to:', data.redirect);
-            window.location.href = data.redirect;
-        })
-        .catch(error => {
-            console.error('Logout error:', error);
-            window.location.href = '/login_form.html';
-        });
+    // Send message
+    messageForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = messageInput.value.trim();
+        
+        if (text) {
+            const messageData = {
+                text: text,
+                user: loggedInUserName,
+                timestamp: new Date().toISOString(),
+                quotedMessage: quotedMessage
+            };
+            
+            // Display message immediately for sender
+            displayMessage(messageData);
+            
+            socket.emit('chat message', messageData);
+            messageInput.value = '';
+            
+            // Clear quote preview
+            const quotePreview = document.getElementById('quote-preview');
+            if (quotePreview) {
+                quotePreview.remove();
+            }
+            quotedMessage = null;
+        }
+    });
+
+    // Handle received messages
+    socket.on('chat message', (msg) => {
+        // Only display messages from others (sender's message is already displayed)
+        if (msg.user !== loggedInUserName) {
+            displayMessage(msg);
+        }
     });
 });
 
+// Function to display messages
+function displayMessage(msg) {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = msg.user === loggedInUserName ? 'my-message' : 'other-message';
+    
+    let content = '<div class="message-content">';
+    
+    // Add sender name for other users' messages
+    if (msg.user !== loggedInUserName) {
+        content += `<div class="message-sender">${msg.user}</div>`;
+    }
+    
+    // Add quoted message if exists
+    if (msg.quotedMessage) {
+        content += `
+            <div class="quoted-message">
+                <span class="quoted-sender">${msg.quotedMessage.user}</span>
+                <span class="quoted-text">${msg.quotedMessage.text}</span>
+            </div>
+        `;
+    }
+    
+    // Add message text and time
+    content += `
+        <div class="message-text">${msg.text}</div>
+        <div class="message-time">${formatTime(msg.timestamp)}</div>
+    </div>
+    `;
+    
+    // Add reply button
+    content += `
+        <button class="reply-button" onclick="replyToMessage(this)">
+            <i class="fas fa-reply"></i>
+        </button>
+    `;
+    
+    messageDiv.innerHTML = content;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Format timestamp
+function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// Reply to message
+function replyToMessage(button) {
+    const messageDiv = button.parentElement;
+    const messageText = messageDiv.querySelector('.message-text').textContent;
+    const messageSender = messageDiv.querySelector('.message-sender')?.textContent || loggedInUserName;
+    
+    quotedMessage = {
+        text: messageText,
+        user: messageSender
+    };
+    
+    // Create quote preview
+    let quotePreview = document.getElementById('quote-preview');
+    if (!quotePreview) {
+        quotePreview = document.createElement('div');
+        quotePreview.id = 'quote-preview';
+        const messageForm = document.getElementById('message-form');
+        messageForm.insertBefore(quotePreview, messageForm.firstChild);
+    }
+    
+    quotePreview.innerHTML = `
+        <div class="quote-content">
+            <div class="quote-sender">Replying to ${messageSender}</div>
+            <div class="quote-text">${messageText}</div>
+        </div>
+        <button class="cancel-quote" onclick="cancelReply()">×</button>
+    `;
+    
+    document.getElementById('message-input').focus();
+}
+
+// Cancel reply
+function cancelReply() {
+    quotedMessage = null;
+    const quotePreview = document.getElementById('quote-preview');
+    if (quotePreview) {
+        quotePreview.remove();
+    }
+}
+
 function initializeSocket(userData) {
-    const socket = io({
-        withCredentials: true,
-        auth: {
-            userId: userData.id,
-            userName: userData.name
-        },
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000
-    });
+    socket.auth = {
+        userId: userData.id,
+        userName: userData.name
+    };
 
     socket.on('connect', () => {
-        // Connection established
+        console.log('Socket connected with auth:', socket.auth);
     });
 
     socket.on('disconnect', (reason) => {
+        console.log('Socket disconnected:', reason);
         if (reason === 'io server disconnect') {
             socket.connect();
         }
@@ -117,87 +240,4 @@ function initializeForms(socket) {
             alert('Error creating team');
         }
     });
-}
-
-// Message handling functions
-function addMessage(sender, text, senderID) {
-    const newMessage = {
-        id: messages.length + 1,
-        text: text,
-        sender: sender,
-        senderID: senderID,
-        timestamp: Date.now()
-    };
-
-    messages.push(newMessage);
-    sessionStorage.setItem("chatMessages", JSON.stringify(messages));
-}
-
-function sendMessage() {
-    const messageInput = document.getElementById('message');
-    const text = messageInput.value.trim();
-    
-    if (!text) return;
-    
-    socket.emit('message', { text });
-    messageInput.value = '';
-}
-
-// Socket event listeners
-socket.on("message", (msg) => {
-    const messageElement = document.createElement("div");
-    if (loggedInUserId === msg.userID) {
-        messageElement.classList.add("my-message");
-        messageElement.textContent = `${msg.text}`;
-    } else {
-        messageElement.classList.add("other-message");
-        messageElement.textContent = `${msg.user}: ${msg.text}`;
-    }
-    
-    addMessage(msg.user, msg.text, msg.userID);
-    sessionStorage.setItem("chatMessages", JSON.stringify(messages));
-    
-    const chatMessages = document.getElementById("chatMessages");
-    chatMessages.appendChild(messageElement);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-    messageInput.value = "";
-});
-
-// Emoji picker functionality
-document.getElementById("emoji-btn").addEventListener("click", function (event) {
-    event.stopPropagation();
-
-    const pickerContainer = document.getElementById("emoji-picker-container");
-
-    if (pickerContainer.style.display === "none" || pickerContainer.innerHTML === "") {
-        pickerContainer.style.display = "block";
-        pickerContainer.innerHTML = "";
-
-        const picker = new EmojiMart.Picker({
-            set: 'apple',
-            onEmojiSelect: (emoji) => {
-                const messageInput = document.getElementById("message");
-                messageInput.value += emoji.native || emoji.colons || emoji.id;
-                pickerContainer.style.display = "none";
-            }
-        });
-
-        pickerContainer.appendChild(picker);
-    } else {
-        pickerContainer.style.display = "none";
-    }
-});
-
-// Close emoji picker when clicking outside
-document.addEventListener("click", function (event) {
-    const pickerContainer = document.getElementById("emoji-picker-container");
-    const emojiButton = document.getElementById("emoji-btn");
-
-    if (
-        pickerContainer.style.display === "block" &&
-        !pickerContainer.contains(event.target) &&
-        event.target !== emojiButton
-    ) {
-        pickerContainer.style.display = "none";
-    }
-}); 
+} 

@@ -53,18 +53,22 @@
     <div id="chat-toggle">
         <i class="fa-solid fa-globe"></i>
 </div>
-    <div id="chat-container">
-        <div id="chat-header">
-            <span id="Chat-title"> Global Chat</span>
-            <button id="close-chat">✖</button>
+    <!-- Chat Container -->
+    <div id="chat-container" class="chat-container">
+        <div class="chat-backdrop"></div>
+        <div class="chat-content">
+            <div id="chat-header">
+                <h3 id="chat-title">Global Chat</h3>
+                <button id="close-chat">×</button>
+            </div>
+            <div id="chat-messages" class="messages-area"></div>
+            <div id="chat-input">
+                <input type="text" id="message" placeholder="Type a message...">
+                <button id="emoji-btn">😊</button>
+                <button id="send">Send</button>
+            </div>
         </div>
-        <div id="chat-messages"></div> 
-        <div id="chat-input">
-            <input type="text" id="message" placeholder="Type a message...">
-            <button id="emoji-btn">😊</button> 
-            <div id="emoji-picker-container" style="display: none;"></div>
-            <button id="send">Send</button>
-        </div>
+        <div id="emoji-picker-container" style="display: none;"></div>
     </div>
     <div id="status-toggle">
         <i class="fa-solid fa-users"></i>
@@ -86,7 +90,9 @@
         <a href="/logout" class="btn">Logout</a>
     </div>
     
-    <script src="js/user_page.js"></script>
-    <script src="js/global-chat.js"></script>
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.0/dist/index.min.js"></script>
+    <script src="js/admin.js"></script>
 </body>
 </html>
