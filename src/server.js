@@ -1391,16 +1391,48 @@ const getLastMessagesQuery = `
 `;
 
 // Update the database schema for global_messages table
-const updateGlobalMessagesSchema = `
-    ALTER TABLE global_messages 
-    ADD COLUMN IF NOT EXISTS quoted_text TEXT,
-    ADD COLUMN IF NOT EXISTS quoted_sender VARCHAR(255),
-    MODIFY COLUMN timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-`;
+const checkColumnsQuery = `
+    SELECT 
+        COLUMN_NAME 
+    FROM 
+        INFORMATION_SCHEMA.COLUMNS 
+    WHERE 
+        TABLE_SCHEMA = 'chathaven' AND 
+        TABLE_NAME = 'global_messages'`;
 
-connection.query(updateGlobalMessagesSchema, (err) => {
+connection.query(checkColumnsQuery, (err, results) => {
     if (err) {
-        console.error('Error updating global_messages schema:', err);
+        console.error('Error checking global_messages columns:', err);
+        return;
+    }
+
+    const existingColumns = results.map(row => row.COLUMN_NAME.toLowerCase());
+    const columnsToAdd = [];
+
+    if (!existingColumns.includes('quoted_text')) {
+        columnsToAdd.push('ADD COLUMN quoted_text TEXT');
+    }
+    
+    if (!existingColumns.includes('quoted_sender')) {
+        columnsToAdd.push('ADD COLUMN quoted_sender VARCHAR(255)');
+    }
+
+    // Always update timestamp column to have default value
+    columnsToAdd.push('MODIFY COLUMN timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+
+    if (columnsToAdd.length > 0) {
+        const updateGlobalMessagesSchema = `
+            ALTER TABLE global_messages 
+            ${columnsToAdd.join(', ')}
+        `;
+
+        connection.query(updateGlobalMessagesSchema, (err) => {
+            if (err) {
+                console.error('Error updating global_messages schema:', err);
+            } else {
+                console.log('Global messages schema updated successfully');
+            }
+        });
     }
 });
 

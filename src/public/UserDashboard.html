@@ -76,8 +76,15 @@
     <!-- User Status Container -->
     <div id="status-container">
         <div id="chat-header">
-            <span id="Chat-title"><i class="fas fa-users"></i> Online Users <span class="user-counter" id="user-counter"></span></span>
-            <button id="close-status"><i class="fas fa-times"></i></button>
+            <span id="Chat-title">
+                <i class="fas fa-users"></i> Online Users 
+                <span class="user-counter" id="user-counter"></span>
+            </span>
+            <button id="close-status" title="Close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="user-search-container">
+            <input type="text" id="user-search" placeholder="Search users..." class="user-search-input">
+            <i class="fas fa-search search-icon"></i>
         </div>
         <div id="users-status"></div>
     </div>

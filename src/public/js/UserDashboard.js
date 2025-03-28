@@ -819,28 +819,29 @@ function initializeUserStatus() {
     const closeStatus = document.getElementById('close-status');
     const usersStatusDiv = document.getElementById('users-status');
     const onlineUsersIndicator = document.getElementById('online-users-indicator');
-    
-    // Add search box to the status container header
-    const chatHeader = statusContainer.querySelector('#chat-header');
-    const searchBox = document.createElement('div');
-    searchBox.classList.add('user-search-container');
-    searchBox.innerHTML = `
-        <input type="text" id="user-search" placeholder="Search users..." class="user-search-input">
-        <i class="fas fa-search search-icon"></i>
-    `;
-    chatHeader.insertBefore(searchBox, closeStatus);
+    const userSearchInput = document.getElementById('user-search');
     
     // Function to open status panel
     function openStatusPanel() {
         statusPanelOpen = true;
         statusContainer.style.right = '0';
         fetchUserStatus();
+        
+        // Focus search input when panel opens
+        if (userSearchInput) {
+            setTimeout(() => userSearchInput.focus(), 300);
+        }
     }
     
     // Function to close status panel
     function closeStatusPanel() {
         statusPanelOpen = false;
         statusContainer.style.right = '-300px';
+        
+        // Clear search when panel closes
+        if (userSearchInput) {
+            userSearchInput.value = '';
+        }
     }
     
     // Toggle status panel visibility with the float button
@@ -861,8 +862,9 @@ function initializeUserStatus() {
     }
     
     // Add search functionality
-    const userSearchInput = document.getElementById('user-search');
-    userSearchInput.addEventListener('input', filterUsers);
+    if (userSearchInput) {
+        userSearchInput.addEventListener('input', filterUsers);
+    }
     
     // Setup activity monitoring to manage user status
     setupActivityMonitoring();
@@ -1235,7 +1237,7 @@ function createUsersList(container, searchTerm) {
 }
 
 function filterUsers() {
-    const searchTerm = this.value.toLowerCase();
+    const searchTerm = document.getElementById('user-search').value.toLowerCase();
     updateUserStatusUI(window.onlineUsers, window.awayUsers);
 }
 
