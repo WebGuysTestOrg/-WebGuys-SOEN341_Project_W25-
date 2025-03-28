@@ -84,3 +84,14 @@ CREATE TABLE IF NOT EXISTS channel_members (
     FOREIGN KEY (user_id) REFERENCES user_form(id),
     UNIQUE KEY unique_channel_member (channel_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS global_messages (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    sender_id INT NOT NULL,
+    sender_name VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    quoted_text TEXT,
+    quoted_sender VARCHAR(255),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES user_form(id)
+);

@@ -51,9 +51,82 @@ io.on('connection',socket =>{
 
     if (session && session.user && session.user.name) {
         console.log(`User ${session.user.name} connected`);
+        socket.userId = session.user.id;
+        socket.userName = session.user.name;
+        
+        // Join global chat room
+        socket.join('global-chat');
+        
+        // Emit last 50 messages when user connects
+        const getLastMessagesQuery = `
+            SELECT 
+                gm.*, 
+                uf.name as sender_name,
+                gm.quoted_text,
+                gm.quoted_sender,
+                gm.timestamp
+            FROM global_messages gm
+            JOIN user_form uf ON gm.sender_id = uf.id
+            ORDER BY gm.timestamp DESC
+            LIMIT 50
+        `;
+        
+        connection.query(getLastMessagesQuery, (err, results) => {
+            if (err) {
+                console.error('Error fetching global messages:', err);
+                return;
+            }
+            socket.emit('global-chat-history', results.reverse());
+        });
     } else {
         console.log(`User with no session connected`);
     }
+    
+    // Handle global chat messages
+    socket.on('global-message', async (data) => {
+        if (!socket.userId) {
+            socket.emit('error', { message: 'You must be logged in to send messages' });
+            return;
+        }
+
+        const message = {
+            sender_id: socket.userId,
+            sender_name: socket.userName,
+            message: data.text,
+            quoted_text: data.quoted_text,
+            quoted_sender: data.quoted_sender,
+            timestamp: new Date()
+        };
+
+        // Save message to database
+        const insertQuery = `
+            INSERT INTO global_messages 
+            (sender_id, sender_name, message, quoted_text, quoted_sender, timestamp) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        `;
+
+        connection.query(
+            insertQuery,
+            [
+                message.sender_id,
+                message.sender_name,
+                message.message,
+                message.quoted_text,
+                message.quoted_sender,
+                message.timestamp
+            ],
+            (err, result) => {
+                if (err) {
+                    console.error('Error saving global message:', err);
+                    socket.emit('error', { message: 'Failed to send message' });
+                    return;
+                }
+
+                message.id = result.insertId;
+                io.to('global-chat').emit('global-message', message);
+            }
+        );
+    });
     
     socket.on('message',data=>{
         const message = data.text;
@@ -1254,4 +1327,52 @@ io.on("connection", (socket) => {
     });
     });
 });
+
+// Add endpoint to fetch global chat messages
+app.get('/global-messages', (req, res) => {
+    const query = `
+        SELECT gm.*, uf.name as sender_name 
+        FROM global_messages gm
+        JOIN user_form uf ON gm.sender_id = uf.id
+        ORDER BY gm.timestamp DESC
+        LIMIT 50
+    `;
+
+    connection.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching global messages:', err);
+            return res.status(500).json({ error: 'Failed to fetch messages' });
+        }
+        res.json(results.reverse());
+    });
+});
+
+// Update the global messages query to include quoted messages
+const getLastMessagesQuery = `
+    SELECT 
+        gm.*, 
+        uf.name as sender_name,
+        gm.quoted_text,
+        gm.quoted_sender,
+        gm.timestamp
+    FROM global_messages gm
+    JOIN user_form uf ON gm.sender_id = uf.id
+    ORDER BY gm.timestamp DESC
+    LIMIT 50
+`;
+
+// Update the database schema for global_messages table
+const updateGlobalMessagesSchema = `
+    ALTER TABLE global_messages 
+    ADD COLUMN IF NOT EXISTS quoted_text TEXT,
+    ADD COLUMN IF NOT EXISTS quoted_sender VARCHAR(255),
+    MODIFY COLUMN timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+`;
+
+connection.query(updateGlobalMessagesSchema, (err) => {
+    if (err) {
+        console.error('Error updating global_messages schema:', err);
+    }
+});
+
 module.exports = { app, io,connection, expressServer };

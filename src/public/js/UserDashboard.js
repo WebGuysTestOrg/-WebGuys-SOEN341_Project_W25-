@@ -1,5 +1,12 @@
 let userTeams = {};
-const socket = io('ws://localhost:3000');
+const socket = io('ws://localhost:3000', {
+    withCredentials: true
+});
+let globalChatOpen = false;
+
+// Initialize user data and socket connection
+let currentUserId = null;
+let currentUserName = null;
 
 function fetchUserTeams() {
     fetch('/get-user-teams')
@@ -275,13 +282,201 @@ function fetchUserTeams() {
         });
 }
 
+// Initialize global chat
+function initializeGlobalChat() {
+    const chatToggle = document.getElementById('chat-toggle');
+    const chatContainer = document.getElementById('chat-container');
+    const closeChat = document.getElementById('close-chat');
+    const messageInput = document.getElementById('message');
+    const sendButton = document.getElementById('send');
+    const chatMessages = document.getElementById('chat-messages');
+    const emojiBtn = document.getElementById('emoji-btn');
+    const emojiPickerContainer = document.getElementById('emoji-picker-container');
+
+    // Toggle chat visibility
+    chatToggle.addEventListener('click', () => {
+        globalChatOpen = !globalChatOpen;
+        chatContainer.style.right = globalChatOpen ? '0' : '-700px';
+        if (globalChatOpen) {
+            messageInput.focus();
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    });
+
+    closeChat.addEventListener('click', () => {
+        globalChatOpen = false;
+        chatContainer.style.right = '-700px';
+    });
+
+    // Emoji picker
+    let picker = null;
+    emojiBtn.addEventListener('click', () => {
+        if (!picker) {
+            picker = new EmojiMart.Picker({
+                onEmojiSelect: (emoji) => {
+                    messageInput.value += emoji.native;
+                    emojiPickerContainer.style.display = 'none';
+                }
+            });
+            emojiPickerContainer.appendChild(picker);
+        }
+        emojiPickerContainer.style.display = emojiPickerContainer.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Send message
+    function sendMessage() {
+        const messageInput = document.getElementById('message');
+        const message = messageInput.value.trim();
+        if (message) {
+            const quoteData = messageInput.dataset.quoteData ? JSON.parse(messageInput.dataset.quoteData) : null;
+            
+            const messageData = {
+                text: message,
+                timestamp: new Date(),
+                sender_id: currentUserId,
+                sender_name: currentUserName,
+                quoted_text: quoteData ? quoteData.text : null,
+                quoted_sender: quoteData ? quoteData.sender_name : null
+            };
+            
+            socket.emit('global-message', messageData);
+            
+            // Clear input and quote data
+            messageInput.value = '';
+            messageInput.dataset.quoteData = '';
+            messageInput.classList.remove('has-quote');
+            
+            const chatInput = document.getElementById('chat-input');
+            chatInput.classList.remove('has-quote');
+            const quoteContainer = chatInput.querySelector('.quote-container');
+            quoteContainer.innerHTML = '';
+            
+            messageInput.focus();
+        }
+    }
+
+    sendButton.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Handle incoming messages
+    socket.on('global-message', (message) => {
+        appendMessage(message);
+        if (!globalChatOpen) {
+            showToast('New message in Global Chat', 'info');
+        }
+    });
+
+    // Load chat history
+    socket.on('global-chat-history', (messages) => {
+        chatMessages.innerHTML = '';
+        messages.forEach(appendMessage);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
+    function appendMessage(message) {
+        const messageDiv = document.createElement('div');
+        const isMyMessage = message.sender_id === currentUserId;
+        messageDiv.className = `message-container ${isMyMessage ? 'right' : 'left'}`;
+        
+        const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        messageDiv.innerHTML = `
+            <div class="message ${isMyMessage ? 'sent' : 'received'} ${message.quoted_text ? 'has-quote' : ''}">
+                ${!isMyMessage ? `<div class="sender-name">${message.sender_name}</div>` : ''}
+                <div class="message-content">
+                    ${message.quoted_text ? `
+                        <div class="quoted-message">
+                            <div class="quoted-sender">Replying to ${message.quoted_sender}</div>
+                            <div class="quoted-text">${message.quoted_text}</div>
+                        </div>
+                    ` : ''}
+                    <div class="message-text">${message.message}</div>
+                    <div class="message-time">${time}</div>
+                    <button class="quote-btn" title="Reply to this message" data-message='${JSON.stringify({
+                        text: message.message,
+                        sender_name: message.sender_name
+                    })}'>
+                        <i class="fas fa-reply"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add event listener for quote button
+        const quoteBtn = messageDiv.querySelector('.quote-btn');
+        if (quoteBtn) {
+            quoteBtn.addEventListener('click', (e) => {
+                const messageData = JSON.parse(e.currentTarget.dataset.message);
+                const messageInput = document.getElementById('message');
+                const chatInput = document.getElementById('chat-input');
+                
+                messageInput.dataset.quoteData = JSON.stringify(messageData);
+                messageInput.classList.add('has-quote');
+                chatInput.classList.add('has-quote');
+                
+                // Show quote preview
+                const quotePreview = document.createElement('div');
+                quotePreview.className = 'quote-preview';
+                quotePreview.innerHTML = `
+                    <div class="quoted-content">
+                        <div class="quoted-sender">Replying to ${messageData.sender_name}</div>
+                        <div class="quoted-text">${messageData.text}</div>
+                    </div>
+                    <button class="remove-quote" title="Remove quote">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                
+                const existingPreview = chatInput.querySelector('.quote-preview');
+                if (existingPreview) {
+                    existingPreview.remove();
+                }
+                
+                const quoteContainer = chatInput.querySelector('.quote-container');
+                quoteContainer.appendChild(quotePreview);
+                
+                // Add event listener to remove quote
+                quotePreview.querySelector('.remove-quote').addEventListener('click', () => {
+                    quotePreview.remove();
+                    messageInput.dataset.quoteData = '';
+                    messageInput.classList.remove('has-quote');
+                    chatInput.classList.remove('has-quote');
+                });
+                
+                messageInput.focus();
+            });
+        }
+        
+        const chatMessages = document.getElementById('chat-messages');
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Click outside emoji picker to close it
+    document.addEventListener('click', (e) => {
+        if (!emojiPickerContainer.contains(e.target) && e.target !== emojiBtn) {
+            emojiPickerContainer.style.display = 'none';
+        }
+    });
+}
+
 // Initialize page
 document.addEventListener("DOMContentLoaded", () => {
     fetch('/user-info')
         .then(response => response.json())
         .then(data => {
             document.getElementById('username').textContent = data.name;
+            currentUserId = data.id;
+            currentUserName = data.name;
+            socket.userId = data.id;
+            socket.userName = data.name;
             fetchUserTeams();
+            initializeGlobalChat();
         })
         .catch(() => window.location.href = '/Login-Form.html');
 });
@@ -452,3 +647,108 @@ navStyle.textContent = `
     }
 `;
 document.head.appendChild(navStyle);
+
+// Add styles for the new chat layout
+const chatStyle = document.createElement('style');
+chatStyle.textContent = `
+    #chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background: #1a1a1a;
+    }
+
+    #chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        margin-bottom: 80px; /* Space for input container */
+    }
+
+    .message-input-container {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        padding: 20px;
+        background: #1a1a1a;
+        border-top: 1px solid #333;
+    }
+
+    .message-container {
+        display: flex;
+        margin: 8px;
+        max-width: 80%;
+    }
+
+    .message-container.right {
+        margin-left: auto;
+    }
+
+    .message-container.left {
+        margin-right: auto;
+    }
+
+    .message {
+        padding: 10px;
+        border-radius: 12px;
+        position: relative;
+        max-width: 100%;
+    }
+
+    .sent {
+        background: #0084ff;
+        color: white;
+        margin-left: auto;
+    }
+
+    .received {
+        background: #333;
+        color: white;
+    }
+
+    .quoted-message {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 8px;
+        border-left: 3px solid #0084ff;
+        margin-bottom: 8px;
+        border-radius: 4px;
+    }
+
+    .message-time {
+        font-size: 0.8em;
+        opacity: 0.7;
+        margin-top: 4px;
+    }
+
+    .quote-btn {
+        opacity: 0;
+        transition: opacity 0.2s;
+        background: none;
+        border: none;
+        color: #fff;
+        cursor: pointer;
+        padding: 4px;
+        margin-left: 8px;
+    }
+
+    .message:hover .quote-btn {
+        opacity: 1;
+    }
+`;
+document.head.appendChild(chatStyle);
+
+// Update the socket connection to store userId
+socket.on('connect', () => {
+    if (currentUserId && currentUserName) {
+        socket.userId = currentUserId;
+        socket.userName = currentUserName;
+    }
+});
+
+// Add reconnection handler
+socket.on('reconnect', () => {
+    if (currentUserId && currentUserName) {
+        socket.userId = currentUserId;
+        socket.userName = currentUserName;
+    }
+});
