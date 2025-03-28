@@ -529,14 +529,14 @@ document.addEventListener("DOMContentLoaded", () => {
             socket.userId = data.id;
             socket.userName = data.name;
             
-            console.log('Current user initialized:', {
-                id: currentUserId,
-                name: currentUserName
-            });
+            // Signal that the user is online after all data is loaded
+            console.log("Emitting online status for user ID:", currentUserId);
+            socket.emit("userOnline", currentUserId);
             
+            // Initialize components
             fetchUserTeams();
             initializeGlobalChat();
-            initializeUserStatus(); // Initialize user status functionality
+            initializeUserStatus();
         })
         .catch(() => window.location.href = '/Login-Form.html');
 });
@@ -869,27 +869,19 @@ function initializeUserStatus() {
     
     // Handle socket events for user status updates
     socket.on("updateUserStatus", ({ online, away }) => {
-        // Debug log
-        console.log('Status update received:', {
-            online,
-            away,
-            currentUserId
-        });
-        
         // Store the status arrays in window variables for searching
         window.onlineUsers = online;
         window.awayUsers = away;
+        
+        console.log("Received status update:", { 
+            online, 
+            away,
+            currentUserId,
+            isCurrentUserOnline: online.includes(currentUserId.toString())
+        });
+        
         updateUserStatusUI(online, away);
     });
-    
-    // Immediately set status to online when page loads
-    if (currentUserId) {
-        // Emit online status
-        socket.emit("userOnline", currentUserId);
-        
-        // Initial status fetch
-        fetchUserStatus();
-    }
 }
 
 function fetchUserStatus() {
@@ -1069,29 +1061,27 @@ function addUserStats(usersStatusDiv, onlineCount, awayCount, totalCount, search
 function createUsersList(container, searchTerm) {
     let filteredUsers = [];
     
-    // Map users with their IDs
-    let userIdMap = {};
-    window.allUsers.forEach(user => {
-        // Add user ID to name mapping if it exists
-        if (user.id) {
-            userIdMap[user.id] = user.name;
-        }
-    });
-    
     // First add online users
     window.allUsers.forEach(user => {
         const userName = user.name;
-        const userId = user.id || null;
-        
         // Skip current user
         if (userName === currentUserName) {
             return;
         }
         
-        // Check if user is online by ID if available, otherwise fall back to name
-        const isOnline = userId ? 
-            window.onlineUsers.includes(userId.toString()) : 
-            window.onlineUsers.includes(userName);
+        // Get user ID from user object if available
+        let userId;
+        
+        if (user.id) {
+            userId = user.id.toString();
+        } else {
+            // If ID is not available, try to find it
+            const userObj = window.allUsers.find(u => u.name === userName && u.id);
+            userId = userObj ? userObj.id.toString() : null;
+        }
+        
+        // Check if user is online by ID if possible, otherwise fallback to name
+        const isOnline = userId ? window.onlineUsers.includes(userId) : window.onlineUsers.includes(userName);
         
         // Skip if not online or doesn't match search
         if (!isOnline || (searchTerm && !userName.toLowerCase().includes(searchTerm))) {
@@ -1109,17 +1099,24 @@ function createUsersList(container, searchTerm) {
     // Then add away users
     window.allUsers.forEach(user => {
         const userName = user.name;
-        const userId = user.id || null;
-        
         // Skip current user
         if (userName === currentUserName) {
             return;
         }
         
-        // Check if user is away by ID if available, otherwise fall back to name
-        const isAway = userId ? 
-            window.awayUsers.includes(userId.toString()) : 
-            window.awayUsers.includes(userName);
+        // Get user ID from user object if available
+        let userId;
+        
+        if (user.id) {
+            userId = user.id.toString();
+        } else {
+            // If ID is not available, try to find it
+            const userObj = window.allUsers.find(u => u.name === userName && u.id);
+            userId = userObj ? userObj.id.toString() : null;
+        }
+        
+        // Check if user is away by ID if possible, otherwise fallback to name
+        const isAway = userId ? window.awayUsers.includes(userId) : window.awayUsers.includes(userName);
         
         // Skip if not away or doesn't match search or already added
         if (!isAway || (searchTerm && !userName.toLowerCase().includes(searchTerm)) || 
@@ -1138,20 +1135,25 @@ function createUsersList(container, searchTerm) {
     // Finally add offline users
     window.allUsers.forEach(user => {
         const userName = user.name;
-        const userId = user.id || null;
-        
         // Skip current user
         if (userName === currentUserName) {
             return;
         }
         
-        // Check if user is online/away by ID if available, otherwise fall back to name
-        const isOnline = userId ? 
-            window.onlineUsers.includes(userId.toString()) : 
-            window.onlineUsers.includes(userName);
-        const isAway = userId ? 
-            window.awayUsers.includes(userId.toString()) : 
-            window.awayUsers.includes(userName);
+        // Get user ID from user object if available
+        let userId;
+        
+        if (user.id) {
+            userId = user.id.toString();
+        } else {
+            // If ID is not available, try to find it
+            const userObj = window.allUsers.find(u => u.name === userName && u.id);
+            userId = userObj ? userObj.id.toString() : null;
+        }
+        
+        // Check if user is online or away by ID if possible, otherwise fallback to name
+        const isOnline = userId ? window.onlineUsers.includes(userId) : window.onlineUsers.includes(userName);
+        const isAway = userId ? window.awayUsers.includes(userId) : window.awayUsers.includes(userName);
         
         // Skip if online/away or doesn't match search or already added
         if (isOnline || isAway || (searchTerm && !userName.toLowerCase().includes(searchTerm)) || 
@@ -1172,7 +1174,7 @@ function createUsersList(container, searchTerm) {
     usersListContainer.classList.add('users-list-container');
     
     // Render filtered users
-    filteredUsers.forEach(({userName, userId, isOnline, isAway}) => {
+    filteredUsers.forEach(({userName, isOnline, isAway}) => {
         const userDiv = document.createElement("div");
         userDiv.classList.add("user-status");
         
@@ -1261,30 +1263,51 @@ function setupActivityMonitoring() {
     // Monitor user activity to update status
     const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     
+    // Variable to track last activity time
+    let lastActivityTime = Date.now();
+    let isAway = false;
+    
+    // Function to handle user activity
+    function handleUserActivity() {
+        const now = Date.now();
+        
+        // If user was away, set them back to online
+        if (isAway) {
+            console.log('User returned from away state');
+            socket.emit("userOnline", currentUserId);
+            isAway = false;
+        }
+        
+        // Update last activity time
+        lastActivityTime = now;
+    }
+    
+    // Add event listeners for user activity
     activityEvents.forEach(event => {
-        document.addEventListener(event, () => {
-            if (currentUserId) {
-                resetInactivityTimer(currentUserId);
-            }
-        });
+        document.addEventListener(event, handleUserActivity);
     });
     
-    // Start the initial inactivity timer
+    // Set up periodic check for inactivity
+    const inactivityChecker = setInterval(() => {
+        const now = Date.now();
+        
+        // If user has been inactive for the threshold and is not already away
+        if (!isAway && (now - lastActivityTime > INACTIVITY_TIME)) {
+            console.log('User has gone away due to inactivity');
+            socket.emit("userAway", currentUserId);
+            isAway = true;
+        }
+    }, 5000); // Check every 5 seconds
+    
+    // Ensure initial online status is sent
     if (currentUserId) {
-        resetInactivityTimer(currentUserId);
+        socket.emit("userOnline", currentUserId);
     }
-}
-
-function resetInactivityTimer(userId) {
-    clearTimeout(inactivityTimer);
     
-    // Set user as online
-    socket.emit("userOnline", userId);
-    
-    // Start new inactivity timer
-    inactivityTimer = setTimeout(() => {
-        socket.emit("userAway", userId);
-    }, INACTIVITY_TIME);
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+        clearInterval(inactivityChecker);
+    });
 }
 
 // Add status panel styling

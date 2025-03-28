@@ -705,7 +705,7 @@ input[type="number"]:focus {
 /* Current User Profile */
 .current-user-profile {
     padding: 15px;
-    background: #222;
+    background: rgba(255, 255, 255, 0.05);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -720,18 +720,12 @@ input[type="number"]:focus {
     display: flex;
     align-items: center;
     gap: 8px;
-    position: relative;
-    padding-left: 30px;
 }
 
 .profile-header h3::before {
     content: '\f007';
     font-family: 'Font Awesome 5 Free';
     font-weight: 900;
-    position: absolute;
-    left: 0;
-    color: var(--yellow);
-    font-size: 1.2em;
 }
 
 .profile-content {
@@ -739,7 +733,6 @@ input[type="number"]:focus {
     padding: 15px;
     border-radius: 10px;
     border-left: 3px solid var(--yellow);
-    position: relative;
 }
 
 .profile-info {
@@ -788,7 +781,6 @@ input[type="number"]:focus {
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.1);
     justify-content: center;
-    margin-top: 5px;
 }
 
 .profile-status.online {
@@ -829,31 +821,21 @@ input[type="number"]:focus {
     align-items: center;
     gap: 6px;
     font-size: 0.85em;
-    padding: 6px 12px;
-    border-radius: 30px;
-    background: #222;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    transition: all 0.2s ease;
-}
-
-.status-count:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+    padding: 5px 10px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .status-count.online {
     color: #2ecc71;
-    border-left: 3px solid #2ecc71;
 }
 
 .status-count.away {
     color: var(--yellow);
-    border-left: 3px solid var(--yellow);
 }
 
 .status-count.offline {
     color: #7f8c8d;
-    border-left: 3px solid #7f8c8d;
 }
 
 .view-all-btn {
@@ -886,22 +868,17 @@ input[type="number"]:focus {
 .users-list-section h3 {
     font-size: 1em;
     margin: 0 0 15px;
-    color: var(--yellow);
+    color: rgba(255, 255, 255, 0.9);
     display: flex;
     align-items: center;
     gap: 8px;
-    position: relative;
-    padding-left: 30px;
 }
 
 .users-list-section h3::before {
     content: '\f500';
     font-family: 'Font Awesome 5 Free';
     font-weight: 900;
-    position: absolute;
-    left: 0;
     color: var(--yellow);
-    font-size: 1.2em;
 }
 
 .users-list-container {
@@ -916,14 +893,13 @@ input[type="number"]:focus {
     align-items: center;
     justify-content: space-between;
     padding: 12px 15px;
-    background: #222;
-    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .user-status:hover {
-    background: #2c2c2c;
+    background: rgba(255, 255, 255, 0.1);
     transform: translateX(-5px);
 }
 
@@ -2004,12 +1980,11 @@ select option {
     transition: all 0.3s ease;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     margin-left: auto;
-    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .online-users-indicator:hover {
     background: var(--yellow);
-    color: var(--dark-grey);
+    color: var(--text-dark);
     transform: translateY(-2px);
     box-shadow: var(--hover-shadow);
 }

@@ -136,8 +136,7 @@ io.on('connection',socket =>{
     })
     let inactivityTimer;
     socket.on("userOnline", (userId) => {
-        // Ensure userId is a string
-        userId = userId.toString();
+        console.log(`Setting user ${userId} as ONLINE (socket: ${socket.id})`);
         onlineUsers.set(userId, socket.id);
         awayUsers.delete(userId);
         io.emit("updateUserStatus", {
@@ -148,16 +147,13 @@ io.on('connection',socket =>{
         resetInactivityTimer(userId);
     });
     socket.on("userAway", (userId) => {
-        // Ensure userId is a string
-        userId = userId.toString();
+        console.log(`Setting user ${userId} as AWAY (socket: ${socket.id})`);
         awayUsers.set(userId, socket.id);
-        console.log(userId)
         onlineUsers.delete(userId);
         io.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
             away: Array.from(awayUsers.keys())
         });
-        
     });
     
     // Handle status update requests
@@ -168,6 +164,31 @@ io.on('connection',socket =>{
         });
     });
     
+    // Handle inactivity timers for each user
+    const userInactivityTimers = new Map();
+
+    function startInactivityTimer(userId) {
+        // Clear existing timer if there is one
+        if (userInactivityTimers.has(userId)) {
+            clearTimeout(userInactivityTimers.get(userId));
+        }
+        
+        // Set new timer
+        const timer = setTimeout(() => {
+            console.log(`User ${userId} is now away due to inactivity`);
+            socket.emit("userAway", userId);
+        }, INACTIVITY_TIME);
+        
+        userInactivityTimers.set(userId, timer);
+    }
+
+    function resetInactivityTimer(userId) {
+        clearTimeout(userInactivityTimers.get(userId));
+        startInactivityTimer(userId);
+        console.log(`Reset inactivity timer for user ${userId}`);
+    }
+    
+    // Clean up timers when user disconnects
     socket.on("disconnect", (reason) => {
         console.log(`User ${socket.id} disconnected`);
 
@@ -175,26 +196,20 @@ io.on('connection',socket =>{
             if (socketId === socket.id) {
                 onlineUsers.delete(userId);
                 awayUsers.delete(userId);
+                
+                // Clear any inactivity timers for this user
+                if (userInactivityTimers.has(userId)) {
+                    clearTimeout(userInactivityTimers.get(userId));
+                    userInactivityTimers.delete(userId);
+                }
             }
         });
+        
         io.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
             away: Array.from(awayUsers.keys())
         });
     });
-    function startInactivityTimer(userId) {
-        clearTimeout(inactivityTimer);
-        inactivityTimer = setTimeout(() => {
-            console.log(`User ${userId} is now away`);
-            socket.emit("userAway", userId);
-        }, INACTIVITY_TIME);
-    }
-
-    function resetInactivityTimer(userId) {
-        clearTimeout(inactivityTimer);
-        startInactivityTimer(userId);
-        console.log(`User ${userId} is now online`);
-    }
 })
 
 
@@ -751,9 +766,8 @@ app.get("/get-teams-with-members", (req, res) => {
 });
 
 app.get("/api/users", (req, res) => {
-    const sqlAllUsers = `SELECT DISTINCT ual.name, uf.id 
-                        FROM user_activity_log ual
-                        JOIN user_form uf ON ual.name = uf.name`;
+    const sqlAllUsers = `SELECT DISTINCT user_activity_log.name, user_form.id FROM user_activity_log 
+                        JOIN user_form ON user_activity_log.name = user_form.name`;
     const sqlLogoutTimes = `
         SELECT name, MAX(logout_time) AS last_logout 
         FROM user_activity_log 
