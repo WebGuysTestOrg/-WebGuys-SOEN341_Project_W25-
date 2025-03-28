@@ -150,11 +150,11 @@ const socket=io('ws://localhost:3000')
                 document.addEventListener("click", () => resetInactivityTimer(data.name));
                 document.addEventListener("keydown", () => resetInactivityTimer(data.name));
                 socket.emit("userOnline", data.name);
-                if (data.role === "user" && window.location.pathname !== "/user_page.html") {
-            window.location.href = "/user_page.html";
+                if (data.role === "user" && window.location.pathname !== "/UserDashboard.html") {
+            window.location.href = "/UserDashboard.html";
         }
             })
-            .catch(() => window.location.href = '/login_form.html');
+            .catch(() => window.location.href = '/Login-Form.html');
 
         
         document.getElementById("createTeamForm").addEventListener("submit", (e) => {
@@ -498,7 +498,7 @@ document.addEventListener("DOMContentLoaded", () => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 })
             })
-            .catch(() => window.location.href = '/login_form.html');
+            .catch(() => window.location.href = '/Login-Form.html');
 
   
     }

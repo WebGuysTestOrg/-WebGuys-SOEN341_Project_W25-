@@ -64,3 +64,23 @@ CREATE TABLE IF NOT EXISTS user_activity_log (
     logout_time TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES user_form(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS team_members (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    team_id INT NOT NULL,
+    user_id INT NOT NULL,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (user_id) REFERENCES user_form(id),
+    UNIQUE KEY unique_team_member (team_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS channel_members (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    channel_id INT NOT NULL,
+    user_id INT NOT NULL,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (channel_id) REFERENCES channels(id),
+    FOREIGN KEY (user_id) REFERENCES user_form(id),
+    UNIQUE KEY unique_channel_member (channel_id, user_id)
+);

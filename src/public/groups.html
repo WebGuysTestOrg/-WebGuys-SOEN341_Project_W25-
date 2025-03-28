@@ -35,9 +35,9 @@
             fetch('/user-info')
                 .then(response => response.json())
                 .then(data => {
-                    window.location.href = data.role === "admin" ? "/admin_page.html" : "/user_page.html"; 
+                    window.location.href = data.role === "admin" ? "/admin_page.html" : "/UserDashboard.html"; 
                 })
-                .catch(() => window.location.href = "/user_page.html");
+                .catch(() => window.location.href = "/UserDashboard.html");
         });
 
         let loggedInUserId = null;
@@ -51,7 +51,7 @@
                 loggedInUserName = data.name;
                 fetchGroups();
             })
-            .catch(() => window.location.href = '/login_form.html');
+            .catch(() => window.location.href = '/Login-Form.html');
 
         // Fetch groups
         function fetchGroups() {

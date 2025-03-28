@@ -266,7 +266,7 @@ app.post("/register", (req, res) => {
         }
 
         // Success
-        res.status(200).json({ redirect: "/login_form.html" });
+        res.status(200).json({ redirect: "/Login-Form.html" });
       });
     });
   });
@@ -314,7 +314,7 @@ app.post("/login", (req, res) => {
                 });
             } else {
                 return res.json({ 
-                    redirect: "/user_page.html",
+                    redirect: "/UserDashboard.html",
                     user: req.session.user // <- Include this
                 });
             }
@@ -491,46 +491,103 @@ app.post('/assign-user-to-team', (req, res) => {
 
 
 
-app.post("/assign-user", (req, res) => {
+app.post("/assign-user", async (req, res) => {
     const { teamId, channelName, userName } = req.body;
 
     if (!teamId || !channelName || !userName) {
-        return res.status(400).json({ error: "Missing fields." });
+        return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const getUserIdQuery = "SELECT id FROM user_form WHERE name = ?";
-    connection.query(getUserIdQuery, [userName], (err, userResults) => {
-        if (err) return res.status(500).json({ error: "Database error." });
-        if (userResults.length === 0) return res.status(404).json({ error: "User not found." });
+    try {
+        // First check if the user exists and get their ID
+        const userQuery = "SELECT id FROM user_form WHERE name = ?";
+        connection.query(userQuery, [userName], (err, userResults) => {
+            if (err) {
+                console.error("Error checking user:", err);
+                return res.status(500).json({ error: "Database error checking user" });
+            }
 
-        const userId = userResults[0].id;
+            if (userResults.length === 0) {
+                return res.status(404).json({ error: "User not found" });
+            }
 
-        const checkTeamQuery = "SELECT id FROM teams WHERE id = ?";
-        connection.query(checkTeamQuery, [teamId], (err, teamResults) => {
-            if (err) return res.status(500).json({ error: "Database error." });
-            if (teamResults.length === 0) return res.status(404).json({ error: "Team not found." });
+            const userId = userResults[0].id;
 
-            const checkUserQuery = "SELECT * FROM user_teams WHERE user_id = ? AND team_id = ?";
-            connection.query(checkUserQuery, [userId, teamId], (err, userResults) => {
-                if (err) return res.status(500).json({ error: "Database error." });
-                if (userResults.length === 0) return res.status(403).json({ error: "User is not in this team." });
+            // Check if user is a member of the team
+            const teamMemberQuery = "SELECT * FROM user_teams WHERE team_id = ? AND user_id = ?";
+            connection.query(teamMemberQuery, [teamId, userId], (err, teamResults) => {
+                if (err) {
+                    console.error("Error checking team membership:", err);
+                    return res.status(500).json({ error: "Database error checking team membership" });
+                }
 
-                const channelQuery = "SELECT id FROM channels WHERE name = ? AND team_id = ?";
-                connection.query(channelQuery, [channelName, teamId], (err, channelResults) => {
-                    if (err) return res.status(500).json({ error: "Database error." });
-                    if (channelResults.length === 0) return res.status(404).json({ error: "Channel not found in this team." });
+                if (teamResults.length === 0) {
+                    return res.status(400).json({ error: "User must be a team member first" });
+                }
+
+                // Check if the channel exists and get its ID
+                const channelQuery = "SELECT id FROM channels WHERE team_id = ? AND name = ?";
+                connection.query(channelQuery, [teamId, channelName], (err, channelResults) => {
+                    if (err) {
+                        console.error("Error checking channel:", err);
+                        return res.status(500).json({ error: "Database error checking channel" });
+                    }
+
+                    if (channelResults.length === 0) {
+                        return res.status(404).json({ error: "Channel not found" });
+                    }
 
                     const channelId = channelResults[0].id;
 
-                    const assignQuery = "INSERT INTO user_channels (user_id, channel_id) VALUES (?, ?)";
-                    connection.query(assignQuery, [userId, channelId], (err) => {
-                        if (err) return res.status(500).json({ error: "Error assigning user to channel." });
-                        res.json({ message: "User assigned to channel successfully!" });
+                    // Check if user is already in the channel
+                    const channelMemberQuery = "SELECT * FROM user_channels WHERE channel_id = ? AND user_id = ?";
+                    connection.query(channelMemberQuery, [channelId, userId], (err, memberResults) => {
+                        if (err) {
+                            console.error("Error checking channel membership:", err);
+                            return res.status(500).json({ error: "Database error checking channel membership" });
+                        }
+
+                        if (memberResults.length > 0) {
+                            return res.status(400).json({ error: "User is already a member of this channel" });
+                        }
+
+                        // Finally, add the user to the channel
+                        const insertQuery = "INSERT INTO user_channels (channel_id, user_id) VALUES (?, ?)";
+                        connection.query(insertQuery, [channelId, userId], (err) => {
+                            if (err) {
+                                console.error("Error adding user to channel:", err);
+                                return res.status(500).json({ error: "Database error adding user to channel" });
+                            }
+
+                            // After successful insertion, fetch the updated channel members
+                            const getUpdatedMembersQuery = `
+                                SELECT uf.name 
+                                FROM user_channels uc 
+                                JOIN user_form uf ON uc.user_id = uf.id 
+                                WHERE uc.channel_id = ?
+                            `;
+                            connection.query(getUpdatedMembersQuery, [channelId], (err, updatedMembers) => {
+                                if (err) {
+                                    console.error("Error fetching updated members:", err);
+                                    return res.status(500).json({ error: "User added but error fetching updated members" });
+                                }
+
+                                const memberNames = updatedMembers.map(m => m.name);
+                                res.json({ 
+                                    success: true, 
+                                    message: "User added to channel successfully",
+                                    updatedMembers: memberNames
+                                });
+                            });
+                        });
                     });
                 });
             });
         });
-    });
+    } catch (error) {
+        console.error("Server error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
 
 
@@ -660,13 +717,18 @@ app.get("/get-user-teams", (req, res) => {
         LEFT JOIN user_teams team_users ON t.id = team_users.team_id
         LEFT JOIN user_form utm ON team_users.user_id = utm.id
         LEFT JOIN channels c ON t.id = c.team_id
-        LEFT JOIN user_channels uc ON c.id = uc.channel_id
+        LEFT JOIN user_channels uc ON (c.id = uc.channel_id)
         LEFT JOIN user_form ucm ON uc.user_id = ucm.id
-        WHERE ut.user_id = ?
+        WHERE ut.user_id = ? 
+        AND (
+            c.id IN (SELECT channel_id FROM user_channels WHERE user_id = ?)  -- Channels user is member of
+            OR t.created_by = ?  -- User is team creator
+            OR c.id IS NULL     -- Include teams even if they have no channels
+        )
         ORDER BY t.id, c.id, ucm.name;
     `;
 
-    connection.query(query, [userId], (err, results) => {
+    connection.query(query, [userId, userId, userId], (err, results) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ error: "Error fetching user teams." });
@@ -680,7 +742,7 @@ app.get("/get-user-teams", (req, res) => {
                     teamId: row.teamId,
                     teamName: row.teamName,
                     creatorName: row.creatorName,
-                    members: new Set(), // Using Set to avoid duplicate entries
+                    members: new Set(),
                     channels: {}
                 };
             }
@@ -724,7 +786,7 @@ app.get("/get-user-teams", (req, res) => {
 
 app.get("/logout", (req, res) => {
     if (!req.session.user) {
-        return res.redirect("/login_form.html");
+        return res.redirect("/Login-Form.html");
     }
 
     const userId = req.session.user.id;
@@ -749,7 +811,7 @@ app.get("/logout", (req, res) => {
                 console.error("Error destroying session:", sessionErr);
                 return res.status(500).json({ error: "Error logging out." });
             }
-            res.redirect("/login_form.html");
+            res.redirect("/Login-Form.html");
         });
     });
 });

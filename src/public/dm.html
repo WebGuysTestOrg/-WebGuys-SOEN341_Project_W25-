@@ -89,9 +89,9 @@
             fetch('/user-info')
                 .then(response => response.json())
                 .then(data => {
-                    window.location.href = data.role === "admin" ? "/admin_page.html" : "/user_page.html";
+                    window.location.href = data.role === "admin" ? "/admin_page.html" : "/UserDashboard.html";
                 })
-                .catch(() => window.location.href = "/user_page.html");
+                .catch(() => window.location.href = "/UserDashboard.html");
         });
 
         // Fetch logged-in user info
@@ -102,7 +102,7 @@
                 loggedInUserName = data.name;
                 fetchUserChats();
             })
-            .catch(() => window.location.href = '/login_form.html');
+            .catch(() => window.location.href = '/Login-Form.html');
 
         // Fetch user's existing chats
         function fetchUserChats() {
