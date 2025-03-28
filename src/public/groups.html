@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Groups</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+
     <link rel="stylesheet" href="dmstyle.css">
 </head>
 <body>
@@ -28,7 +30,15 @@
             <div id="group-actions"></div>
         </div>
     </div>
-
+    <iframe
+    id="ai-chat-frame"
+    src="chatbot.html"
+    style="position: fixed; bottom: 100px; right: 20px; width: 420px; height: 700px; border: none; border-radius: 20px; display: none; z-index: 9999;">
+  </iframe>
+  
+  <div id="ai-chat-launcher" style="position: fixed; bottom: 40px; right: 20px; background: #000; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999;">
+      <i class="fa-solid fa-robot"></i>
+  </div>
     <script>
         document.getElementById("back-btn").addEventListener("click", () => {
             fetch('/user-info')
@@ -331,6 +341,14 @@ function showGroupChat(groupId) {
         if (e.key === "Enter") sendMessage();
     });
 }
+
+const chatFrame = document.getElementById("ai-chat-frame");
+    const chatLauncher = document.getElementById("ai-chat-launcher");
+
+    chatLauncher.addEventListener("click", () => {
+        const isVisible = chatFrame.style.display === "block";
+        chatFrame.style.display = isVisible ? "none" : "block";
+    });
     </script>
 </body>
 </html>

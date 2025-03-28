@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="chatbot.css">
+</head>
+<body>
+
+    <section class="chat-window">
+        <div class="chat">
+            <div class="model">
+                <p>Hi, how can I help you?</p>
+            </div>
+            
+        </div>
+        <div class="input-area">
+            <input placeholder="Ask me anything..." type="text">
+            <button>
+                <img src="send-icon.png" alt="send">
+            </button>
+        </div>
+    </section>
+
+    <script type="importmap">
+        {
+          "imports": {
+            "@google/generative-ai": "https://esm.run/@google/generative-ai"
+          }
+        }
+    </script>
+    <script type="module">
+import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+window.onload = () => {
+    document.body.classList.add("chat-open");
+  };
+
+const API_KEY = "AIzaSyA2lh7h5O4-TjMu6wJXwCTP6KlTNvSBRjo";
+const genAI = new GoogleGenerativeAI(API_KEY);
+const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-pro",
+});
+
+let messages = {
+    history: [],
+}
+
+async function sendMessage() {
+  const input = document.querySelector(".chat-window input");
+  const userMessage = input.value;
+
+  if (!userMessage.trim()) return;
+
+  input.value = "";
+
+  document.querySelector(".chat-window .chat").insertAdjacentHTML("beforeend", `
+    <div class="user">
+      <p>${userMessage}</p>
+    </div>
+  `);
+
+  document.querySelector(".chat-window .chat").insertAdjacentHTML("beforeend", `
+    <div class="loader"></div>
+  `);
+
+  try {
+    const result = await model.generateContent(userMessage);
+    const response = result.response.text();
+
+    document.querySelector(".chat-window .chat .loader").remove();
+
+    document.querySelector(".chat-window .chat").insertAdjacentHTML("beforeend", `
+      <div class="model">
+        <p>${response}</p>
+      </div>
+    `);
+
+  } catch (error) {
+    console.error(error);
+    document.querySelector(".chat-window .chat .loader").remove();
+    document.querySelector(".chat-window .chat").insertAdjacentHTML("beforeend", `
+      <div class="error">
+        <p>The message could not be sent. Please try again.</p>
+      </div>
+    `);
+  }
+}
+
+
+document.querySelector(".chat-window .input-area button")
+.addEventListener("click", ()=>sendMessage());
+
+console.log("Script is running!");
+
+document.querySelector(".chat-button").addEventListener("click", () => {
+  console.log("Chat button clicked");
+  document.body.classList.add("chat-open");
+});
+
+document.querySelector(".chat-window .close").addEventListener("click", () => {
+  console.log("Close button clicked");
+  document.body.classList.remove("chat-open");
+});
+
+
+    </script>
+    
+</body>
+</html>
+

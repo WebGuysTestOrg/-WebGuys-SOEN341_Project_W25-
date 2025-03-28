@@ -4,11 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Direct Messages</title>
+    <title>Team Channel</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
     <link rel="stylesheet" href="dmstyle.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
-    <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+     <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
     
     
 
@@ -36,7 +37,15 @@
             </div>
         </div>
     </div>
-
+    <iframe
+    id="ai-chat-frame"
+    src="chatbot.html"
+    style="position: fixed; bottom: 100px; right: 20px; width: 420px; height: 700px; border: none; border-radius: 20px; display: none; z-index: 9999;">
+  </iframe>
+  
+  <div id="ai-chat-launcher" style="position: fixed; bottom: 100px; right: 20px; background: #000; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999;">
+      <i class="fa-solid fa-robot"></i>
+  </div>
     <script>
 
         const socket = io('ws://localhost:3000')
@@ -275,29 +284,6 @@
             }; 
             socket.emit("ChannelMessages", messageData);
             messageInput.value = "";
-
-            // fetch("/sendChannelMessage", {
-            //     method: "POST",
-            //     headers: {
-            //         "Content-Type": "application/json",
-            //     },
-            //     body: JSON.stringify({
-            //         teamName,
-            //         channelName,
-            //         sender: currentUser, 
-            //         text: messageText
-            //     })
-            // })
-            // .then(response => response.json())
-            // .then(data => {
-            //     if (data.success) {
-            //         messageInput.value = "";
-            //         getChannelMessages(teamName, channelName);
-            //     } else {
-            //         console.error("Error sending message:", data.error);
-            //     }
-            // })
-            // .catch(error => console.error("Fetch Error:", error));
         }
 
         document.getElementById("emoji-btn").addEventListener("click", function (event) {
@@ -356,6 +342,15 @@ function quoteMessage(msgId, messageText) {
             quotedMessage = null;
             document.getElementById('quoted-message-container').style.display = 'none';
         });
+
+        const chatFrame = document.getElementById("ai-chat-frame");
+    const chatLauncher = document.getElementById("ai-chat-launcher");
+
+    chatLauncher.addEventListener("click", () => {
+        const isVisible = chatFrame.style.display === "block";
+        chatFrame.style.display = isVisible ? "none" : "block";
+    });
+
     </script>
 </body>
 
