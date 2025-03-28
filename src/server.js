@@ -12,9 +12,14 @@ const {Server} =require("socket.io")
 const app = express();
 
 const PORT= process.env.PORT|| 3000
-const expressServer=app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-});
+let expressServer;
+
+if (process.env.NODE_ENV !== "test") {
+    expressServer = app.listen(PORT, () => {
+        console.log(`Server running at http://localhost:${PORT}`);
+    });
+}
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
@@ -208,56 +213,76 @@ app.get("/get-user-id", (req, res) => {
 
 // User Registration
 app.post("/register", (req, res) => {
-    const { name, email, password, cpassword, user_type } = req.body;
+  const { name, email, password, cpassword, user_type } = req.body;
 
-    if (password !== cpassword) {
-        return res.status(400).json({ error: "Passwords do not match!" });
+  //  Full field validation
+  if (!name || !email || !password || !cpassword || !user_type) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
+  // Email format check
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format." });
+  }
+
+  //  Passwords match check
+  if (password !== cpassword) {
+    return res.status(400).json({ error: "Passwords do not match!" });
+  }
+
+  //  Check if email is already registered
+  const checkEmailQuery = "SELECT id FROM user_form WHERE email = ?";
+  connection.query(checkEmailQuery, [email], (err, emailResults) => {
+    if (err) {
+      console.error("Email check error:", err);
+      return res.status(500).json({ error: "Server error. Please try again later." });
     }
 
-   
-    const checkEmailQuery = "SELECT id FROM user_form WHERE email = ?";
-    connection.query(checkEmailQuery, [email], (err, emailResults) => {
+    if (emailResults.length > 0) {
+      return res.status(400).json({ error: "Email is already in use!" });
+    }
+
+    //  Check if username is already taken
+    const checkUsernameQuery = "SELECT id FROM user_form WHERE name = ?";
+    connection.query(checkUsernameQuery, [name], (err, nameResults) => {
+      if (err) {
+        console.error("Username check error:", err);
+        return res.status(500).json({ error: "Server error. Please try again later." });
+      }
+
+      if (nameResults.length > 0) {
+        return res.status(400).json({ error: "Username is already in use!" });
+      }
+
+      // Hash password & insert user
+      const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
+      const insertQuery = "INSERT INTO user_form (name, email, password, user_type) VALUES (?, ?, ?, ?)";
+
+      connection.query(insertQuery, [name, email, hashedPassword, user_type], (err) => {
         if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "Server error. Please try again later." });
+          console.error("Insert error:", err);
+          return res.status(500).json({ error: "Error registering user." });
         }
 
-        if (emailResults.length > 0) {
-            return res.status(400).json({ error: "Email is already in use!" });
-        }
-
-        
-        const checkUsernameQuery = "SELECT id FROM user_form WHERE name = ?";
-        connection.query(checkUsernameQuery, [name], (err, nameResults) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ error: "Server error. Please try again later." });
-            }
-
-            if (nameResults.length > 0) {
-                return res.status(400).json({ error: "Username is already in use!" });
-            }
-
-            
-            const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
-            const insertQuery = "INSERT INTO user_form (name, email, password, user_type) VALUES (?, ?, ?, ?)";
-
-            connection.query(insertQuery, [name, email, hashedPassword, user_type], (err) => {
-                if (err) {
-                    console.error(err);
-                    return res.status(500).json({ error: "Error registering user." });
-                }
-                res.status(200).json({ redirect: "/login_form.html" });
-            });
-        });
+        // Success
+        res.status(200).json({ redirect: "/login_form.html" });
+      });
     });
+  });
 });
+
 
 
 
 
 app.post("/login", (req, res) => {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required." });
+    }
+
     const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
     const query = "SELECT * FROM user_form WHERE email = ? AND password = ?";
 
@@ -283,9 +308,15 @@ app.post("/login", (req, res) => {
             });
 
             if (user.user_type === "admin") {
-                return res.json({ redirect: "/admin_page.html" });
+                return res.json({ 
+                    redirect: "/admin_page.html",
+                    user: req.session.user // <- Include this
+                });
             } else {
-                return res.json({ redirect: "/user_page.html" });
+                return res.json({ 
+                    redirect: "/user_page.html",
+                    user: req.session.user // <- Include this
+                });
             }
         } else {
             res.status(401).json({ error: "Invalid email or password." });
@@ -1161,4 +1192,4 @@ io.on("connection", (socket) => {
     });
     });
 });
-module.exports = { app, connection };
+module.exports = { app, io,connection, expressServer };

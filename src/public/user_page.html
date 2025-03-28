@@ -6,8 +6,9 @@
     <title>User Page</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" integrity="sha512-8ExARjWWkIllMlNzVg7JKq9RKWPlJABQUNq6YvAjE/HobctjH/NA+bSiDMDvouBVjp4Wwnf1VP1OEv7Zgjtuxw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="adminstyle.css">
+    <link rel="stylesheet" href="styles/adminstyle.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
+    <link rel="icon" type="image/png" href="assets/ChatHavenLogo.png">
     <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
     
 </head>
@@ -15,10 +16,12 @@
     <h3>Hi, <span id="username">User</span></h3>
     <h1>Welcome</h1>
     <p>This is the user page</p>
-    <a href="/logout" class="btn">Logout</a>
     <a href="dm.html" class="btn">Direct Messages</a>
     <a href="groups.html" class="btn">Groups</a>
     
+    <!-- Row: Create Channel & Assign User to Channel -->
+<div class="form-row">
+    <!-- Create Channel -->
     <div class="form-container">
         <h2>Create Channel</h2>
         <form id="createChannelForm">
@@ -28,6 +31,7 @@
         </form>
     </div>
 
+    <!-- Assign User to Channel -->
     <div class="form-container">
         <h2>Assign User to Channel</h2>
         <form id="assignUserForm">
@@ -37,7 +41,8 @@
             <button type="submit" class="btn">Assign User</button>
         </form>
     </div>
-    
+</div>
+
 <div class="form-container">
         <h2>Teams, Channels, and Members</h2>
         <div id="teams-container"></div>
@@ -62,7 +67,7 @@
         </div>
     </div>
     <div id="status-toggle">
-        <i class="fa-solid fa-globe"></i>
+        <i class="fa-solid fa-users"></i>
 </div>
     <div id="status-container">
         <div id="chat-header">
@@ -77,16 +82,10 @@
             <i class="fa-solid fa-cog"></i>
         </a>
     </div>
-    <iframe
-  id="ai-chat-frame"
-  src="chatbot.html"
-  style="position: fixed; bottom: 100px; right: 20px; width: 420px; height: 700px; border: none; border-radius: 20px; display: none; z-index: 9999;">
-</iframe>
-
-<div id="ai-chat-launcher" style="position: fixed; bottom: 40px; right: 20px; background: #000; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999;">
-    <i class="fa-solid fa-robot"></i>
-</div>
-
+    <div class = "logout-button"> 
+        <a href="/logout" class="btn">Logout</a>
+    </div>
+    
      <script>
         
          let userTeams = {};
