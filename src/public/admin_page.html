@@ -124,6 +124,17 @@
     
     <div id="toast-container"></div>
 
+    <iframe
+  id="ai-chat-frame"
+  src="chatbot.html"
+  style="position: fixed; bottom: 100px; right: 20px; width: 420px; height: 700px; border: none; border-radius: 20px; display: none; z-index: 9999;">
+</iframe>
+
+<div id="ai-chat-launcher" style="position: fixed; bottom: 40px; right: 20px; background: #000; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999;">
+    <i class="fa-solid fa-robot"></i>
+</div>
+
+
     <script>
 const socket=io('ws://localhost:3000')
         function showToast(message, type = 'success') {
@@ -587,6 +598,14 @@ document.addEventListener("DOMContentLoaded", () => {
         ) {
             pickerContainer.style.display = "none";
         }
+    });
+
+    const chatFrame = document.getElementById("ai-chat-frame");
+    const chatLauncher = document.getElementById("ai-chat-launcher");
+
+    chatLauncher.addEventListener("click", () => {
+        const isVisible = chatFrame.style.display === "block";
+        chatFrame.style.display = isVisible ? "none" : "block";
     });
 
     </script>

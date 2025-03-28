@@ -453,6 +453,13 @@ document.getElementById("emoji-btn").addEventListener("click", function (event) 
             pickerContainer.style.display = "none";
         }
     });
+    const chatFrame = document.getElementById("ai-chat-frame");
+    const chatLauncher = document.getElementById("ai-chat-launcher");
+
+    chatLauncher.addEventListener("click", () => {
+        const isVisible = chatFrame.style.display === "block";
+        chatFrame.style.display = isVisible ? "none" : "block";
+    });
     </script>
 </body>
 </html>

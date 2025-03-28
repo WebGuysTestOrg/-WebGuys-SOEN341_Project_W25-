@@ -7,7 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
     <link rel="stylesheet" href="styles/dmstyle.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
-    <link rel="icon" type="image/png" href="ChatHavenLogo.png">
+    <link rel="icon" type="image/png" href="assets/ChatHavenLogo.png">
     <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
 </head>
 <body>
@@ -33,7 +33,15 @@
             </div>
         </div>
     </div>
-
+    <iframe
+    id="ai-chat-frame"
+    src="chatbot.html"
+    style="position: fixed; bottom: 100px; right: 20px; width: 420px; height: 700px; border: none; border-radius: 20px; display: none; z-index: 9999;">
+  </iframe>
+  
+  <div id="ai-chat-launcher" style="position: fixed; bottom: 100px; right: 20px; background: #000; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999;">
+      <i class="fa-solid fa-robot"></i>
+  </div>
     <script>
 
 
@@ -268,6 +276,13 @@ document.getElementById('cancel-quote').addEventListener('click', () => {
     quotedMessage = null;
     document.getElementById('quoted-message-container').style.display = 'none';
 });
+
+const chatFrame = document.getElementById("ai-chat-frame");
+  const chatLauncher = document.getElementById("ai-chat-launcher");
+  chatLauncher.addEventListener("click", () => {
+    const isVisible = chatFrame.style.display === "block";
+    chatFrame.style.display = isVisible ? "none" : "block";
+  });
 
     </script>
 </body>
