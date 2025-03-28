@@ -98,7 +98,7 @@ io.on('connection',socket =>{
             timestamp: new Date()
         };
 
-        // Save message to database
+        // Save message to database with all fields
         const insertQuery = `
             INSERT INTO global_messages 
             (sender_id, sender_name, message, quoted_text, quoted_sender, timestamp) 
@@ -136,6 +136,8 @@ io.on('connection',socket =>{
     })
     let inactivityTimer;
     socket.on("userOnline", (userId) => {
+        // Ensure userId is a string
+        userId = userId.toString();
         onlineUsers.set(userId, socket.id);
         awayUsers.delete(userId);
         io.emit("updateUserStatus", {
@@ -146,6 +148,8 @@ io.on('connection',socket =>{
         resetInactivityTimer(userId);
     });
     socket.on("userAway", (userId) => {
+        // Ensure userId is a string
+        userId = userId.toString();
         awayUsers.set(userId, socket.id);
         console.log(userId)
         onlineUsers.delete(userId);
@@ -155,6 +159,15 @@ io.on('connection',socket =>{
         });
         
     });
+    
+    // Handle status update requests
+    socket.on("requestStatusUpdate", () => {
+        socket.emit("updateUserStatus", {
+            online: Array.from(onlineUsers.keys()),
+            away: Array.from(awayUsers.keys())
+        });
+    });
+    
     socket.on("disconnect", (reason) => {
         console.log(`User ${socket.id} disconnected`);
 
@@ -738,7 +751,9 @@ app.get("/get-teams-with-members", (req, res) => {
 });
 
 app.get("/api/users", (req, res) => {
-    const sqlAllUsers = `SELECT DISTINCT name FROM user_activity_log`;
+    const sqlAllUsers = `SELECT DISTINCT ual.name, uf.id 
+                        FROM user_activity_log ual
+                        JOIN user_form uf ON ual.name = uf.name`;
     const sqlLogoutTimes = `
         SELECT name, MAX(logout_time) AS last_logout 
         FROM user_activity_log 

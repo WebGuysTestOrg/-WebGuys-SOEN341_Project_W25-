@@ -315,11 +315,14 @@ function initializeGlobalChat() {
             picker = new EmojiMart.Picker({
                 onEmojiSelect: (emoji) => {
                     messageInput.value += emoji.native;
-                    emojiPickerContainer.style.display = 'none';
+                    messageInput.focus();
                 }
             });
+            emojiPickerContainer.innerHTML = '';
             emojiPickerContainer.appendChild(picker);
         }
+        
+        // Toggle the emoji picker
         emojiPickerContainer.style.display = emojiPickerContainer.style.display === 'none' ? 'block' : 'none';
     });
 
@@ -328,7 +331,13 @@ function initializeGlobalChat() {
         const messageInput = document.getElementById('message');
         const message = messageInput.value.trim();
         if (message) {
-            const quoteData = messageInput.dataset.quoteData ? JSON.parse(messageInput.dataset.quoteData) : null;
+            // Get quote data if it exists
+            let quoteData = null;
+            try {
+                quoteData = messageInput.dataset.quoteData ? JSON.parse(messageInput.dataset.quoteData) : null;
+            } catch (e) {
+                console.error("Error parsing quote data:", e);
+            }
             
             const messageData = {
                 text: message,
@@ -355,13 +364,56 @@ function initializeGlobalChat() {
         }
     }
 
-    sendButton.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
+    // Fix message input structure for proper layout
+    function setupChatInput() {
+        const chatInput = document.getElementById('chat-input');
+        const messageInputWrapper = chatInput.querySelector('.message-input-wrapper');
+        
+        // Clear current structure
+        messageInputWrapper.innerHTML = `
+            <div class="quote-container"></div>
+            <div class="input-container">
+                <input type="text" id="message" placeholder="Type a message...">
+                <div class="input-buttons">
+                    <button id="emoji-btn" title="Add Emoji">😊</button>
+                    <button id="send" title="Send Message">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Re-attach event listeners
+        const messageInput = document.getElementById('message');
+        const sendButton = document.getElementById('send');
+        const emojiBtn = document.getElementById('emoji-btn');
+        
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        emojiBtn.addEventListener('click', () => {
+            if (!picker) {
+                picker = new EmojiMart.Picker({
+                    onEmojiSelect: (emoji) => {
+                        messageInput.value += emoji.native;
+                        messageInput.focus();
+                    }
+                });
+                emojiPickerContainer.innerHTML = '';
+                emojiPickerContainer.appendChild(picker);
+            }
+            
+            emojiPickerContainer.style.display = emojiPickerContainer.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+
+    // Call this function after initializing the chat
+    setupChatInput();
 
     // Handle incoming messages
     socket.on('global-message', (message) => {
@@ -385,6 +437,9 @@ function initializeGlobalChat() {
         
         const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
+        // Handle both message formats from different sources
+        const messageText = message.message || message.text;
+        
         messageDiv.innerHTML = `
             <div class="message ${isMyMessage ? 'sent' : 'received'} ${message.quoted_text ? 'has-quote' : ''}">
                 ${!isMyMessage ? `<div class="sender-name">${message.sender_name}</div>` : ''}
@@ -395,12 +450,9 @@ function initializeGlobalChat() {
                             <div class="quoted-text">${message.quoted_text}</div>
                         </div>
                     ` : ''}
-                    <div class="message-text">${message.message}</div>
+                    <div class="message-text">${messageText}</div>
                     <div class="message-time">${time}</div>
-                    <button class="quote-btn" title="Reply to this message" data-message='${JSON.stringify({
-                        text: message.message,
-                        sender_name: message.sender_name
-                    })}'>
+                    <button class="quote-btn" title="Reply to this message">
                         <i class="fas fa-reply"></i>
                     </button>
                 </div>
@@ -410,8 +462,12 @@ function initializeGlobalChat() {
         // Add event listener for quote button
         const quoteBtn = messageDiv.querySelector('.quote-btn');
         if (quoteBtn) {
-            quoteBtn.addEventListener('click', (e) => {
-                const messageData = JSON.parse(e.currentTarget.dataset.message);
+            quoteBtn.addEventListener('click', () => {
+                const messageData = {
+                    text: messageText,
+                    sender_name: message.sender_name
+                };
+                
                 const messageInput = document.getElementById('message');
                 const chatInput = document.getElementById('chat-input');
                 
@@ -420,6 +476,9 @@ function initializeGlobalChat() {
                 chatInput.classList.add('has-quote');
                 
                 // Show quote preview
+                const quoteContainer = chatInput.querySelector('.quote-container');
+                quoteContainer.innerHTML = '';
+                
                 const quotePreview = document.createElement('div');
                 quotePreview.className = 'quote-preview';
                 quotePreview.innerHTML = `
@@ -432,12 +491,6 @@ function initializeGlobalChat() {
                     </button>
                 `;
                 
-                const existingPreview = chatInput.querySelector('.quote-preview');
-                if (existingPreview) {
-                    existingPreview.remove();
-                }
-                
-                const quoteContainer = chatInput.querySelector('.quote-container');
                 quoteContainer.appendChild(quotePreview);
                 
                 // Add event listener to remove quote
@@ -475,8 +528,15 @@ document.addEventListener("DOMContentLoaded", () => {
             currentUserName = data.name;
             socket.userId = data.id;
             socket.userName = data.name;
+            
+            console.log('Current user initialized:', {
+                id: currentUserId,
+                name: currentUserName
+            });
+            
             fetchUserTeams();
             initializeGlobalChat();
+            initializeUserStatus(); // Initialize user status functionality
         })
         .catch(() => window.location.href = '/Login-Form.html');
 });
@@ -742,13 +802,789 @@ socket.on('connect', () => {
     if (currentUserId && currentUserName) {
         socket.userId = currentUserId;
         socket.userName = currentUserName;
+        
+        // Emit that the user is online when connected
+        socket.emit("userOnline", currentUserId);
     }
 });
+
+// Initialize and handle user status panel
+let statusPanelOpen = false;
+let inactivityTimer;
+const INACTIVITY_TIME = 30000; // 30 seconds of inactivity before going to away status
+
+function initializeUserStatus() {
+    const statusToggle = document.getElementById('status-toggle');
+    const statusContainer = document.getElementById('status-container');
+    const closeStatus = document.getElementById('close-status');
+    const usersStatusDiv = document.getElementById('users-status');
+    const onlineUsersIndicator = document.getElementById('online-users-indicator');
+    
+    // Add search box to the status container header
+    const chatHeader = statusContainer.querySelector('#chat-header');
+    const searchBox = document.createElement('div');
+    searchBox.classList.add('user-search-container');
+    searchBox.innerHTML = `
+        <input type="text" id="user-search" placeholder="Search users..." class="user-search-input">
+        <i class="fas fa-search search-icon"></i>
+    `;
+    chatHeader.insertBefore(searchBox, closeStatus);
+    
+    // Function to open status panel
+    function openStatusPanel() {
+        statusPanelOpen = true;
+        statusContainer.style.right = '0';
+        fetchUserStatus();
+    }
+    
+    // Function to close status panel
+    function closeStatusPanel() {
+        statusPanelOpen = false;
+        statusContainer.style.right = '-300px';
+    }
+    
+    // Toggle status panel visibility with the float button
+    statusToggle.addEventListener('click', () => {
+        if (statusPanelOpen) {
+            closeStatusPanel();
+        } else {
+            openStatusPanel();
+        }
+    });
+    
+    // Close with the X button
+    closeStatus.addEventListener('click', closeStatusPanel);
+    
+    // Open with header indicator
+    if (onlineUsersIndicator) {
+        onlineUsersIndicator.addEventListener('click', openStatusPanel);
+    }
+    
+    // Add search functionality
+    const userSearchInput = document.getElementById('user-search');
+    userSearchInput.addEventListener('input', filterUsers);
+    
+    // Setup activity monitoring to manage user status
+    setupActivityMonitoring();
+    
+    // Handle socket events for user status updates
+    socket.on("updateUserStatus", ({ online, away }) => {
+        // Debug log
+        console.log('Status update received:', {
+            online,
+            away,
+            currentUserId
+        });
+        
+        // Store the status arrays in window variables for searching
+        window.onlineUsers = online;
+        window.awayUsers = away;
+        updateUserStatusUI(online, away);
+    });
+    
+    // Immediately set status to online when page loads
+    if (currentUserId) {
+        // Emit online status
+        socket.emit("userOnline", currentUserId);
+        
+        // Initial status fetch
+        fetchUserStatus();
+    }
+}
+
+function fetchUserStatus() {
+    fetch("/api/users")
+        .then(response => response.json())
+        .then(data => {
+            // Request current online/away status from server
+            socket.emit("requestStatusUpdate");
+            
+            // Store all users for filtering
+            window.allUsers = data.all_users;
+            window.userLogoutTimes = data.user_logout_times;
+        })
+        .catch(err => {
+            console.error("Error fetching users:", err);
+            showToast("Failed to load user status information", "error");
+        });
+}
+
+function updateUserStatusUI(onlineUsers = [], awayUsers = []) {
+    if (!window.allUsers) return;
+    
+    const usersStatusDiv = document.getElementById('users-status');
+    usersStatusDiv.innerHTML = "";
+    
+    const searchInput = document.getElementById('user-search');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    // Update user counter in header
+    const userCounter = document.getElementById('user-counter');
+    const onlineCount = onlineUsers.length;
+    userCounter.textContent = `(${onlineCount} online)`;
+    userCounter.className = 'user-counter ' + (onlineCount > 0 ? 'has-online' : '');
+    
+    // Update header online indicator
+    const headerOnlineCount = document.getElementById('header-online-count');
+    if (headerOnlineCount) {
+        headerOnlineCount.textContent = `(${onlineCount} online)`;
+    }
+    
+    // Add current user profile section
+    const currentUserProfile = document.createElement('div');
+    currentUserProfile.classList.add('current-user-profile');
+    
+    // Determine current user status
+    const isCurrentUserOnline = onlineUsers.includes(currentUserId.toString());
+    const isCurrentUserAway = awayUsers.includes(currentUserId.toString());
+    let currentUserStatusText = "Offline";
+    let currentUserStatusClass = "offline";
+    let currentUserStatusIcon = `<i class="fas fa-circle-xmark offline-icon"></i>`;
+    
+    if (isCurrentUserOnline) {
+        currentUserStatusText = "Available";
+        currentUserStatusClass = "online";
+        currentUserStatusIcon = `<i class="fas fa-circle-check online-icon"></i>`;
+    } else if (isCurrentUserAway) {
+        currentUserStatusText = "Away";
+        currentUserStatusClass = "away";
+        currentUserStatusIcon = `<i class="fas fa-clock away-icon"></i>`;
+    }
+    
+    // Fetch user role from session data
+    fetch('/user-info')
+        .then(response => response.json())
+        .then(data => {
+            const userRole = data.role || 'user';
+            const roleLabel = userRole === 'admin' ? 'Admin' : 'User';
+            const roleLabelClass = userRole === 'admin' ? 'admin-label' : 'user-label';
+            
+            currentUserProfile.innerHTML = `
+                <div class="profile-header">
+                    <h3>Your Profile</h3>
+                </div>
+                <div class="profile-content">
+                    <div class="profile-info">
+                        <div class="profile-name-container">
+                            <span class="profile-name">${currentUserName}</span>
+                            <span class="role-label ${roleLabelClass}">${roleLabel}</span>
+                        </div>
+                        <div class="profile-status ${currentUserStatusClass}">
+                            ${currentUserStatusIcon} <span class="status-text">${currentUserStatusText}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            usersStatusDiv.appendChild(currentUserProfile);
+            
+            // Add divider
+            const divider = document.createElement('div');
+            divider.classList.add('users-divider');
+            usersStatusDiv.appendChild(divider);
+            
+            // Continue with user stats counter
+            addUserStats(usersStatusDiv, onlineCount, awayUsers.length, window.allUsers.length, searchTerm);
+        })
+        .catch(err => {
+            console.error("Error fetching user role:", err);
+            // Fallback if user role fetch fails
+            currentUserProfile.innerHTML = `
+                <div class="profile-header">
+                    <h3>Your Profile</h3>
+                </div>
+                <div class="profile-content">
+                    <div class="profile-info">
+                        <div class="profile-name-container">
+                            <span class="profile-name">${currentUserName}</span>
+                            <span class="role-label user-label">User</span>
+                        </div>
+                        <div class="profile-status ${currentUserStatusClass}">
+                            ${currentUserStatusIcon} <span class="status-text">${currentUserStatusText}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            usersStatusDiv.appendChild(currentUserProfile);
+            
+            // Add divider
+            const divider = document.createElement('div');
+            divider.classList.add('users-divider');
+            usersStatusDiv.appendChild(divider);
+            
+            // Continue with user stats counter
+            addUserStats(usersStatusDiv, onlineCount, awayUsers.length, window.allUsers.length, searchTerm);
+        });
+}
+
+// Function to add user stats section - extracted from updateUserStatusUI
+function addUserStats(usersStatusDiv, onlineCount, awayCount, totalCount, searchTerm) {
+    // Add user stats counter
+    const statsDiv = document.createElement('div');
+    statsDiv.classList.add('user-stats');
+    
+    // Count users by status
+    const offlineCount = totalCount - onlineCount - awayCount;
+    
+    statsDiv.innerHTML = `
+        <div class="status-counts">
+            <div class="status-count online">
+                <i class="fas fa-circle-check"></i> ${onlineCount} Online
+            </div>
+            <div class="status-count away">
+                <i class="fas fa-clock"></i> ${awayCount} Away
+            </div>
+            <div class="status-count offline">
+                <i class="fas fa-circle-xmark"></i> ${offlineCount} Offline
+            </div>
+        </div>
+    `;
+    
+    // Add view all button if searching
+    if (searchTerm) {
+        const viewAllBtn = document.createElement('button');
+        viewAllBtn.classList.add('view-all-btn');
+        viewAllBtn.innerHTML = `<i class="fas fa-list"></i> View All Users`;
+        viewAllBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            updateUserStatusUI(window.onlineUsers, window.awayUsers);
+        });
+        statsDiv.appendChild(viewAllBtn);
+    }
+    
+    usersStatusDiv.appendChild(statsDiv);
+    
+    // Create users list section
+    const usersListSection = document.createElement('div');
+    usersListSection.classList.add('users-list-section');
+    usersListSection.innerHTML = `<h3>Other Users</h3>`;
+    usersStatusDiv.appendChild(usersListSection);
+    
+    // Create filtered users list (excluding current user)
+    createUsersList(usersListSection, searchTerm);
+}
+
+// Function to create the users list - extracted from updateUserStatusUI
+function createUsersList(container, searchTerm) {
+    let filteredUsers = [];
+    
+    // Map users with their IDs
+    let userIdMap = {};
+    window.allUsers.forEach(user => {
+        // Add user ID to name mapping if it exists
+        if (user.id) {
+            userIdMap[user.id] = user.name;
+        }
+    });
+    
+    // First add online users
+    window.allUsers.forEach(user => {
+        const userName = user.name;
+        const userId = user.id || null;
+        
+        // Skip current user
+        if (userName === currentUserName) {
+            return;
+        }
+        
+        // Check if user is online by ID if available, otherwise fall back to name
+        const isOnline = userId ? 
+            window.onlineUsers.includes(userId.toString()) : 
+            window.onlineUsers.includes(userName);
+        
+        // Skip if not online or doesn't match search
+        if (!isOnline || (searchTerm && !userName.toLowerCase().includes(searchTerm))) {
+            return;
+        }
+        
+        filteredUsers.push({
+            userName,
+            userId,
+            isOnline: true, 
+            isAway: false
+        });
+    });
+    
+    // Then add away users
+    window.allUsers.forEach(user => {
+        const userName = user.name;
+        const userId = user.id || null;
+        
+        // Skip current user
+        if (userName === currentUserName) {
+            return;
+        }
+        
+        // Check if user is away by ID if available, otherwise fall back to name
+        const isAway = userId ? 
+            window.awayUsers.includes(userId.toString()) : 
+            window.awayUsers.includes(userName);
+        
+        // Skip if not away or doesn't match search or already added
+        if (!isAway || (searchTerm && !userName.toLowerCase().includes(searchTerm)) || 
+            filteredUsers.some(u => u.userName === userName)) {
+            return;
+        }
+        
+        filteredUsers.push({
+            userName,
+            userId,
+            isOnline: false, 
+            isAway: true
+        });
+    });
+    
+    // Finally add offline users
+    window.allUsers.forEach(user => {
+        const userName = user.name;
+        const userId = user.id || null;
+        
+        // Skip current user
+        if (userName === currentUserName) {
+            return;
+        }
+        
+        // Check if user is online/away by ID if available, otherwise fall back to name
+        const isOnline = userId ? 
+            window.onlineUsers.includes(userId.toString()) : 
+            window.onlineUsers.includes(userName);
+        const isAway = userId ? 
+            window.awayUsers.includes(userId.toString()) : 
+            window.awayUsers.includes(userName);
+        
+        // Skip if online/away or doesn't match search or already added
+        if (isOnline || isAway || (searchTerm && !userName.toLowerCase().includes(searchTerm)) || 
+            filteredUsers.some(u => u.userName === userName)) {
+            return;
+        }
+        
+        filteredUsers.push({
+            userName,
+            userId,
+            isOnline: false, 
+            isAway: false
+        });
+    });
+    
+    // Users list container
+    const usersListContainer = document.createElement('div');
+    usersListContainer.classList.add('users-list-container');
+    
+    // Render filtered users
+    filteredUsers.forEach(({userName, userId, isOnline, isAway}) => {
+        const userDiv = document.createElement("div");
+        userDiv.classList.add("user-status");
+        
+        let statusText = "Offline";
+        let statusClass = "offline";
+        let statusIcon = `<i class="fas fa-circle-xmark offline-icon"></i>`; // default offline
+        let logoutTimestamp = "";
+        
+        if (isOnline) {
+            statusText = "Available";
+            statusClass = "online";
+            statusIcon = `<i class="fas fa-circle-check online-icon"></i>`;
+        } else if (isAway) {
+            statusText = "Away";
+            statusClass = "away";
+            statusIcon = `<i class="fas fa-clock away-icon"></i>`;
+        } else {
+            // Get last logout timestamp for this user
+            const userLogout = window.userLogoutTimes.find(logout => logout.name === userName);
+            if (userLogout && userLogout.last_logout) {
+                const logoutDate = new Date(userLogout.last_logout);
+                logoutTimestamp = `<div class="last-seen">Last seen: ${formatTimestamp(logoutDate)}</div>`;
+            }
+        }
+        
+        userDiv.innerHTML = `
+            <div class="user-info">
+                <span class="user-name">${userName}</span>
+                ${logoutTimestamp}
+            </div>
+            <div class="status ${statusClass}">
+                ${statusIcon} <span class="status-text">${statusText}</span>
+            </div>
+            <button class="message-user-btn" title="Message ${userName}" data-username="${userName}">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        `;
+        
+        usersListContainer.appendChild(userDiv);
+        
+        // Add event listener for message button
+        const messageBtn = userDiv.querySelector('.message-user-btn');
+        messageBtn.addEventListener('click', () => {
+            // Redirect to direct message page with this user
+            window.location.href = `dm.html?user=${encodeURIComponent(userName)}`;
+        });
+    });
+    
+    container.appendChild(usersListContainer);
+    
+    // Show "no users found" message if search has no results
+    if (filteredUsers.length === 0 && searchTerm) {
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.classList.add('no-users-found');
+        noResultsDiv.innerHTML = `<i class="fas fa-search"></i> No users found matching "${searchTerm}"`;
+        container.appendChild(noResultsDiv);
+    }
+}
+
+function filterUsers() {
+    const searchTerm = this.value.toLowerCase();
+    updateUserStatusUI(window.onlineUsers, window.awayUsers);
+}
+
+function formatTimestamp(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 1) {
+        return 'Just now';
+    } else if (diffMins < 60) {
+        return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    } else if (diffHours < 24) {
+        return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else if (diffDays < 7) {
+        return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    } else {
+        return date.toLocaleDateString();
+    }
+}
+
+function setupActivityMonitoring() {
+    // Monitor user activity to update status
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    
+    activityEvents.forEach(event => {
+        document.addEventListener(event, () => {
+            if (currentUserId) {
+                resetInactivityTimer(currentUserId);
+            }
+        });
+    });
+    
+    // Start the initial inactivity timer
+    if (currentUserId) {
+        resetInactivityTimer(currentUserId);
+    }
+}
+
+function resetInactivityTimer(userId) {
+    clearTimeout(inactivityTimer);
+    
+    // Set user as online
+    socket.emit("userOnline", userId);
+    
+    // Start new inactivity timer
+    inactivityTimer = setTimeout(() => {
+        socket.emit("userAway", userId);
+    }, INACTIVITY_TIME);
+}
+
+// Add status panel styling
+const statusStyle = document.createElement('style');
+statusStyle.textContent = `
+    #status-toggle {
+        position: fixed;
+        right: 30px;
+        bottom: 100px; /* Position above the chat toggle */
+        width: 60px;
+        height: 60px;
+        background: var(--dark-grey);
+        color: var(--text-light);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 999;
+        border: 2px solid var(--yellow);
+    }
+    
+    #status-toggle:hover {
+        background: var(--yellow);
+        color: var(--dark-grey);
+        transform: scale(1.1);
+        box-shadow: 0 5px 20px rgba(251, 202, 31, 0.4);
+    }
+    
+    #status-toggle i {
+        font-size: 1.5em;
+        transition: transform 0.3s ease;
+    }
+    
+    #status-toggle:hover i {
+        transform: rotate(15deg);
+    }
+    
+    #status-container {
+        position: fixed;
+        right: -300px;
+        top: 0;
+        width: 300px;
+        height: 100vh;
+        background: #1a1a1a;
+        transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: -5px 0 25px rgba(0, 0, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    #users-status {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .user-search-container {
+        position: relative;
+        margin-right: 10px;
+        flex: 1;
+    }
+    
+    .user-search-input {
+        padding: 8px 32px 8px 12px;
+        border: none;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border-radius: 20px;
+        width: 100%;
+        font-size: 0.9em;
+        transition: all 0.3s ease;
+    }
+    
+    .user-search-input:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 0 0 2px rgba(251, 202, 31, 0.2);
+    }
+    
+    .search-icon {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: rgba(255, 255, 255, 0.5);
+        pointer-events: none;
+    }
+    
+    .user-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 15px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .user-status:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateX(-5px);
+    }
+    
+    .user-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+    }
+    
+    .user-name {
+        font-weight: 500;
+        color: #fff;
+    }
+    
+    .current-user {
+        color: var(--yellow);
+    }
+    
+    .last-seen {
+        font-size: 0.75em;
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85em;
+        padding: 4px 8px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .status.online {
+        color: #2ecc71;
+    }
+    
+    .status.away {
+        color: var(--yellow);
+    }
+    
+    .status.offline {
+        color: #7f8c8d;
+    }
+    
+    .status-text {
+        font-size: 0.8em;
+    }
+    
+    .online-icon {
+        color: #2ecc71;
+        animation: pulse 2s infinite;
+    }
+    
+    .away-icon {
+        color: var(--yellow);
+        animation: pulse 3s infinite;
+    }
+    
+    .offline-icon {
+        color: #7f8c8d;
+    }
+    
+    .message-user-btn {
+        background: none;
+        border: none;
+        color: #fff;
+        opacity: 0.7;
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1em;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
+    
+    .message-user-btn:hover {
+        opacity: 1;
+        background: var(--dark-grey);
+        color: var(--yellow);
+        transform: scale(1.1);
+    }
+    
+    .no-users-found {
+        padding: 20px;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.7);
+        font-style: italic;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .no-users-found i {
+        font-size: 2em;
+        color: rgba(255, 255, 255, 0.3);
+    }
+    
+    .user-stats {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .status-counts {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .status-count {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85em;
+        padding: 5px 10px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.08);
+    }
+    
+    .status-count.online {
+        color: #2ecc71;
+    }
+    
+    .status-count.away {
+        color: var(--yellow);
+    }
+    
+    .status-count.offline {
+        color: #7f8c8d;
+    }
+    
+    .view-all-btn {
+        background: rgba(255, 255, 255, 0.08);
+        border: none;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.9em;
+        transition: all 0.3s ease;
+        margin-top: 8px;
+        width: 100%;
+    }
+    
+    .view-all-btn:hover {
+        background: var(--yellow);
+        color: var(--dark-grey);
+    }
+    
+    .user-counter {
+        font-size: 0.8em;
+        opacity: 0.7;
+        margin-left: 6px;
+        font-weight: normal;
+    }
+    
+    .user-counter.has-online {
+        color: #2ecc71;
+        opacity: 1;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.6; }
+        100% { opacity: 1; }
+    }
+`;
+document.head.appendChild(statusStyle);
 
 // Add reconnection handler
 socket.on('reconnect', () => {
     if (currentUserId && currentUserName) {
         socket.userId = currentUserId;
         socket.userName = currentUserName;
+        
+        // Re-emit that the user is online when reconnected
+        socket.emit("userOnline", currentUserId);
     }
 });

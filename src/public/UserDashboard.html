@@ -17,6 +17,10 @@
         <div class="quick-actions">
             <a href="dm.html" class="btn"><i class="fas fa-comments"></i> Direct Messages</a>
             <a href="groups.html" class="btn"><i class="fas fa-users"></i> Groups</a>
+            <div class="online-users-indicator" id="online-users-indicator">
+                <i class="fas fa-users"></i> Online Users
+                <span class="online-count" id="header-online-count">(1 online)</span>
+            </div>
             <a href="settings_page.html" class="btn settings-btn" title="Settings">
                 <i class="fa-solid fa-cog"></i> Settings
             </a>
@@ -72,7 +76,7 @@
     <!-- User Status Container -->
     <div id="status-container">
         <div id="chat-header">
-            <span id="Chat-title"><i class="fas fa-users"></i> Online Users</span>
+            <span id="Chat-title"><i class="fas fa-users"></i> Online Users <span class="user-counter" id="user-counter"></span></span>
             <button id="close-status"><i class="fas fa-times"></i></button>
         </div>
         <div id="users-status"></div>
