@@ -266,7 +266,7 @@ function fetchUserTeams() {
                 teamsButton.textContent = "Open Team Chat";
                 teamsButton.classList.add("teamsButton");
                 teamsButton.addEventListener("click", () => {
-                    window.location.href = `teams_chat.html?team=${encodeURIComponent(team.teamName)}`;
+                    window.location.href = `channel_chat.html?team=${encodeURIComponent(team.teamName)}`;
                 });
 
                 teamElement.appendChild(teamHeader);
@@ -1221,7 +1221,7 @@ function createUsersList(container, searchTerm) {
         const messageBtn = userDiv.querySelector('.message-user-btn');
         messageBtn.addEventListener('click', () => {
             // Redirect to direct message page with this user
-            window.location.href = `dm.html?user=${encodeURIComponent(userName)}`;
+            window.location.href = `DMs.html?user=${encodeURIComponent(userName)}`;
         });
     });
     

@@ -25,7 +25,7 @@
         <h3>Hi, <span id="admin-name">Admin</span></h3>
         <h1>Welcome to the Moderator Page</h1>
         <p>Manage teams, channels, and users.</p>
-        <a href="dm.html" class="btn">Direct Messages</a>
+        <a href="DMs.html" class="btn">Direct Messages</a>
         <a href="groups.html" class="btn">Groups</a>
 
 
@@ -337,7 +337,7 @@ function fetchTeamsWithMembers() {
                 teamDiv.appendChild(teamsButton);
 
                 teamsButton.addEventListener("click", function(){
-                        window.location.href = `teams_chat.html?team=${encodeURIComponent(team.teamName)}`;
+                        window.location.href = `channel_chat.html?team=${encodeURIComponent(team.teamName)}`;
                     })
 
                 teamsContainer.appendChild(teamDiv);

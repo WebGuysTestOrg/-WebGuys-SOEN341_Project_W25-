@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatHaven - Direct Messages</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="styles/DMstyle.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
+    <link rel="icon" type="image/png" href="assets/ChatHavenLogo.png">
+    <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
+</head>
+<body>
+    <button id="back-btn"><i class="fas fa-arrow-left"></i> Back</button>
+    
+    <!-- Mobile Toggle Button - Updated -->
+    <button id="mobile-toggle" class="mobile-only">
+        <span class="toggle-icon">
+            <i class="fas fa-bars"></i>
+        </span>
+        <span class="toggle-text">Chats</span>
+    </button>
+    
+    <div class="dm-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-comments"></i> Chats</h2>
+                <button id="new-chat-btn"><i class="fas fa-plus"></i> New Chat</button>
+            </div>
+            <div class="chat-search">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="search-chats" placeholder="Search conversations...">
+            </div>
+            <ul id="chat-list"></ul>
+        </div>
+        <div class="chat-window">
+            <div id="chat-header">
+                <div class="chat-info">
+                    <div class="chat-avatar">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div class="chat-details">
+                        <h3 class="chat-recipient-name">Select a chat to start messaging</h3>
+                        <span class="chat-status"></span>
+                    </div>
+                </div>
+            </div>
+            <div id="chat-messages">
+                <div class="welcome-message">
+                    <div class="welcome-icon"><i class="fas fa-comments"></i></div>
+                    <h3>Welcome to Direct Messages</h3>
+                    <p>Select an existing conversation or start a new one</p>
+                    <button id="welcome-new-chat-btn"><i class="fas fa-plus"></i> New Conversation</button>
+                </div>
+            </div>
+            <div class="chat-input">
+                <div id="quoted-message-container" style="display: none;">
+                    <div class="quoted-content">
+                        <span id="quoted-text"></span>
+                    </div>
+                    <button id="cancel-quote" title="Cancel reply"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="input-container">
+                    <button id="emoji-btn" title="Add emoji"><i class="far fa-smile"></i></button>
+                    <input type="text" id="message" placeholder="Type a message...">
+                    <button id="send" title="Send message"><i class="fas fa-paper-plane"></i></button>
+                </div>
+                <div id="emoji-picker-container" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/DMs.js"></script>
+</body>
+</html>
+
+
+

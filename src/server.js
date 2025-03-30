@@ -136,20 +136,31 @@ io.on('connection',socket =>{
     })
     let inactivityTimer;
     socket.on("userOnline", (userId) => {
-        console.log(`Setting user ${userId} as ONLINE (socket: ${socket.id})`);
-        onlineUsers.set(userId, socket.id);
-        awayUsers.delete(userId);
+        // Convert userId to string to ensure consistent comparison
+        const userIdStr = userId.toString();
+        console.log(`Setting user ${userIdStr} as ONLINE (socket: ${socket.id})`);
+        
+        onlineUsers.set(userIdStr, socket.id);
+        awayUsers.delete(userIdStr);
+        
+        // Log the current online users for debugging
+        console.log("Current online users:", Array.from(onlineUsers.keys()));
+        
         io.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
             away: Array.from(awayUsers.keys())
         });
 
-        resetInactivityTimer(userId);
+        resetInactivityTimer(userIdStr);
     });
     socket.on("userAway", (userId) => {
-        console.log(`Setting user ${userId} as AWAY (socket: ${socket.id})`);
-        awayUsers.set(userId, socket.id);
-        onlineUsers.delete(userId);
+        // Convert userId to string to ensure consistent comparison
+        const userIdStr = userId.toString();
+        console.log(`Setting user ${userIdStr} as AWAY (socket: ${socket.id})`);
+        
+        awayUsers.set(userIdStr, socket.id);
+        onlineUsers.delete(userIdStr);
+        
         io.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
             away: Array.from(awayUsers.keys())
@@ -192,19 +203,36 @@ io.on('connection',socket =>{
     socket.on("disconnect", (reason) => {
         console.log(`User ${socket.id} disconnected`);
 
+        // Find and remove the user from online/away lists
+        let disconnectedUserId = null;
+        
+        // Check online users
         onlineUsers.forEach((socketId, userId) => {
             if (socketId === socket.id) {
+                disconnectedUserId = userId;
+                console.log(`User ${userId} is now offline (was online)`);
                 onlineUsers.delete(userId);
-                awayUsers.delete(userId);
-                
-                // Clear any inactivity timers for this user
-                if (userInactivityTimers.has(userId)) {
-                    clearTimeout(userInactivityTimers.get(userId));
-                    userInactivityTimers.delete(userId);
-                }
             }
         });
         
+        // Check away users
+        if (!disconnectedUserId) {
+            awayUsers.forEach((socketId, userId) => {
+                if (socketId === socket.id) {
+                    disconnectedUserId = userId;
+                    console.log(`User ${userId} is now offline (was away)`);
+                    awayUsers.delete(userId);
+                }
+            });
+        }
+        
+        // Clean up timers for this user
+        if (disconnectedUserId && userInactivityTimers.has(disconnectedUserId)) {
+            clearTimeout(userInactivityTimers.get(disconnectedUserId));
+            userInactivityTimers.delete(disconnectedUserId);
+        }
+        
+        // Broadcast updated status
         io.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
             away: Array.from(awayUsers.keys())
@@ -228,21 +256,193 @@ connection.connect((err) => {
         process.exit(1);
     }
     console.log("Connected to MySQL");
+    
+    // Create or update channels_messages table
+    const createChannelsMessagesTable = `
+        CREATE TABLE IF NOT EXISTS channels_messages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            team_name VARCHAR(255) NOT NULL,
+            channel_name VARCHAR(255) NOT NULL,
+            sender_name VARCHAR(255) NOT NULL,
+            text TEXT NOT NULL,
+            quoted_message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX (team_name, channel_name)
+        )
+    `;
+    
+    connection.query(createChannelsMessagesTable, (err) => {
+        if (err) {
+            console.error("Error creating channels_messages table:", err);
+            return;
+        }
+        console.log("Channels messages table ready");
+        
+        // Check if sender column exists, if not rename sender_name to sender
+        connection.query("SHOW COLUMNS FROM channels_messages LIKE 'sender'", (err, results) => {
+            if (err) {
+                console.error("Error checking columns:", err);
+                return;
+            }
+            
+            // If sender column doesn't exist but sender_name does, rename it
+            if (results.length === 0) {
+                connection.query("SHOW COLUMNS FROM channels_messages LIKE 'sender_name'", (err, results) => {
+                    if (err) {
+                        console.error("Error checking sender_name column:", err);
+                        return;
+                    }
+                    
+                    if (results.length > 0) {
+                        // Rename sender_name to sender for compatibility
+                        connection.query("ALTER TABLE channels_messages CHANGE sender_name sender VARCHAR(255) NOT NULL", (err) => {
+                            if (err) {
+                                console.error("Error renaming sender_name column:", err);
+                                return;
+                            }
+                            console.log("Renamed sender_name to sender for backward compatibility");
+                            preloadChannelMessages();
+                        });
+                    } else {
+                        // Add sender column if neither exists
+                        connection.query("ALTER TABLE channels_messages ADD COLUMN sender VARCHAR(255) NOT NULL AFTER channel_name", (err) => {
+                            if (err) {
+                                console.error("Error adding sender column:", err);
+                                return;
+                            }
+                            console.log("Added sender column to channels_messages table");
+                            preloadChannelMessages();
+                        });
+                    }
+                });
+            } else {
+                // Sender column already exists, check if we need to preload messages
+                preloadChannelMessages();
+            }
+        });
+    });
 });
 
+// Function to preload initial messages for testing
+function preloadChannelMessages() {
+    // Check if messages already exist
+    connection.query("SELECT COUNT(*) as count FROM channels_messages", (err, results) => {
+        if (err) {
+            console.error("Error checking messages count:", err);
+            return;
+        }
+        
+        // If no messages, add some initial ones for testing
+        if (results[0].count === 0) {
+            console.log("Preloading initial channel messages for testing...");
+            
+            const teams = ['1211', 'Team Alpha', 'Team Beta'];
+            const channels = ['general', '123', '122133', 'general2', '1212', '321', '123123', '23312', 'dasd'];
+            const senders = ['Admin', 'User1', 'User2', 'ChatBot'];
+            
+            // Generate welcome messages for each team/channel combination
+            const messages = [];
+            
+            // Sample conversation messages
+            const conversations = [
+                {
+                    sender: 'Admin',
+                    text: 'Welcome to the channel! This is where we discuss project updates.',
+                    quoted: null
+                },
+                {
+                    sender: 'ChatBot',
+                    text: 'This channel is now active. You can start chatting!',
+                    quoted: null
+                },
+                {
+                    sender: 'User1',
+                    text: 'Hi everyone! Excited to be part of this team.',
+                    quoted: null
+                },
+                {
+                    sender: 'User2',
+                    text: 'Welcome aboard! Let me know if you have any questions.',
+                    quoted: 'Hi everyone! Excited to be part of this team.'
+                },
+                {
+                    sender: 'User1',
+                    text: 'Thanks for the warm welcome! I do have a question about our meeting schedule.',
+                    quoted: null
+                },
+                {
+                    sender: 'Admin',
+                    text: 'We meet every Tuesday at 10am EST. I\'ll send a calendar invite.',
+                    quoted: 'Thanks for the warm welcome! I do have a question about our meeting schedule.'
+                },
+                {
+                    sender: 'ChatBot',
+                    text: 'Meeting reminder: Don\'t forget to prepare your updates for the weekly sync.',
+                    quoted: null
+                },
+                {
+                    sender: 'User2',
+                    text: 'I\'ve uploaded the project files to our shared drive. Please review when you get a chance.',
+                    quoted: null
+                },
+                {
+                    sender: 'User1',
+                    text: 'Will do! I should be able to review them by tomorrow.',
+                    quoted: 'I\'ve uploaded the project files to our shared drive. Please review when you get a chance.'
+                }
+            ];
+
+            teams.forEach(team => {
+                channels.forEach(channel => {
+                    // Add conversation messages
+                    conversations.forEach(msg => {
+                        messages.push([
+                            team, channel, msg.sender, 
+                            msg.text, 
+                            msg.quoted
+                        ]);
+                    });
+                });
+            });
+            
+            // Insert all preloaded messages
+            const insertQuery = `
+                INSERT INTO channels_messages 
+                (team_name, channel_name, sender, text, quoted_message)
+                VALUES ?
+            `;
+            
+            connection.query(insertQuery, [messages], (err) => {
+                if (err) {
+                    console.error("Error preloading messages:", err);
+                    return;
+                }
+                console.log("Successfully preloaded channel messages for testing");
+            });
+        }
+    });
+}
 
 io.on("connection", (socket) => {
     socket.on("private-message", (msg) => {
-        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text, quoted_message) VALUES (?, ?, ?, ?)";
-        const quotedText = msg.quoted ? msg.quoted.text : null;
-        connection.query(insertQuery, [msg.senderId, msg.recipientId, msg.text, quotedText], (err) => {
+        // Store the client-generated message ID
+        const tempId = msg.id;
+        
+        // Use only the fields present in schema.sql
+        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text, timestamp) VALUES (?, ?, ?, NOW())";
+        
+        connection.query(insertQuery, [msg.senderId, msg.recipientId, msg.text], (err, result) => {
             if (err) {
                 console.error("Error saving message:", err);
                 return;
             }
+            
+            // Send back the full message including the quoted data, but only store essential fields in DB
             const fullMessage = {
                 ...msg,
-                quoted: msg.quoted
+                id: result.insertId,
+                tempId: tempId, // Return the tempId so client can match it
+                quoted: msg.quoted // Keep this for UI, but don't store in DB
             };
 
             io.emit("private-message", fullMessage);
@@ -268,13 +468,54 @@ app.get('/get-user-chats', (req, res) => {
     });
 });
 
+// Add a new route to initialize a chat between users
+app.post('/init-chat', (req, res) => {
+    const { userId, recipientId } = req.body;
+    
+    if (!userId || !recipientId) {
+        return res.status(400).json({ error: "Both user IDs are required" });
+    }
+    
+    // First check if a message already exists between these users
+    const checkQuery = `
+        SELECT id FROM direct_messages 
+        WHERE (sender_id = ? AND recipient_id = ?) 
+        OR (sender_id = ? AND recipient_id = ?)
+        LIMIT 1
+    `;
+    
+    connection.query(checkQuery, [userId, recipientId, recipientId, userId], (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: "Database error checking messages." });
+        }
+        
+        if (results.length > 0) {
+            // Messages already exist, no need to initialize
+            return res.json({ success: true, message: "Chat already exists" });
+        }
+        
+        // If no messages exist, create a system message to initialize the chat
+        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text) VALUES (?, ?, ?)";
+        const systemMessage = "Chat initialized";
+        
+        connection.query(insertQuery, [userId, recipientId, systemMessage], (err, result) => {
+            if (err) {
+                return res.status(500).json({ error: "Failed to initialize chat." });
+            }
+            
+            res.json({ success: true, message: "Chat initialized successfully" });
+        });
+    });
+});
+
 
 
 app.get('/get-messages', (req, res) => {
     const { senderId, recipientId } = req.query;
     
+    // Use only the fields present in the original schema
     const query = `
-        SELECT dm.text, dm.quoted_message, dm.sender_id, dm.recipient_id, uf.name AS senderName
+        SELECT dm.id, dm.text, dm.sender_id, dm.recipient_id, dm.timestamp, uf.name AS senderName
         FROM direct_messages dm
         JOIN user_form uf ON dm.sender_id = uf.id
         WHERE (dm.sender_id = ? AND dm.recipient_id = ?)
@@ -286,13 +527,15 @@ app.get('/get-messages', (req, res) => {
         if (err) {
             return res.status(500).json({ error: "Error fetching messages." });
         }
+        
         const formattedResults = results.map(msg => ({
             id: msg.id,
             senderId: msg.sender_id,
             recipientId: msg.recipient_id,
             senderName: msg.senderName,
             text: msg.text,
-            quoted: msg.quoted_message ? { text: msg.quoted_message } : null
+            timestamp: msg.timestamp,
+            // Don't include quoted field since it's not in the database
         }));
 
         res.json(formattedResults);
@@ -1336,23 +1579,22 @@ io.on("connection", (socket) => {
         VALUES (?, ?, ?, ?, ?)
     `;
 
-    connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted], (err,result) => {
+    connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted], (err, result) => {
         if (err) {
             console.error("Database error:", err);
-            return res.status(500).json({ error: "Failed to save message." });
+            socket.emit("error", { message: "Failed to save message" });
+            return;
         }
-        else{
-            const messageWithId = {
-                id: result.insertId,  
-                teamName: msg.teamName,
-                channelName: msg.channelName,
-                sender: msg.sender,
-                text: msg.text,
-                quoted: msg.quoted
-            };
-            io.emit("ChannelMessages",messageWithId)
-        }
-       
+        
+        const messageWithId = {
+            id: result.insertId,  
+            teamName: msg.teamName,
+            channelName: msg.channelName,
+            sender: msg.sender,
+            text: msg.text,
+            quoted: msg.quoted
+        };
+        io.emit("ChannelMessages", messageWithId);
     });
     });
 });
