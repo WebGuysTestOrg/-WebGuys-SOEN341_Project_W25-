@@ -49,38 +49,40 @@ io.use(sharedSession(sessionMiddleware, {
 io.on('connection',socket =>{
     const session = socket.handshake.session;
 
-    if (session && session.user && session.user.name) {
-        console.log(`User ${session.user.name} connected`);
-        socket.userId = session.user.id;
-        socket.userName = session.user.name;
-        
-        // Join global chat room
-        socket.join('global-chat');
-        
-        // Emit last 50 messages when user connects
-        const getLastMessagesQuery = `
-            SELECT 
-                gm.*, 
-                uf.name as sender_name,
-                gm.quoted_text,
-                gm.quoted_sender,
-                gm.timestamp
-            FROM global_messages gm
-            JOIN user_form uf ON gm.sender_id = uf.id
-            ORDER BY gm.timestamp DESC
-            LIMIT 50
-        `;
-        
-        connection.query(getLastMessagesQuery, (err, results) => {
-            if (err) {
-                console.error('Error fetching global messages:', err);
-                return;
-            }
-            socket.emit('global-chat-history', results.reverse());
-        });
-    } else {
-        console.log(`User with no session connected`);
+    if (!session || !session.user || !session.user.name) {
+        console.log(`Unauthorized connection attempt - disconnecting socket ${socket.id}`);
+        socket.disconnect();
+        return;
     }
+
+    console.log(`User ${session.user.name} connected`);
+    socket.userId = session.user.id;
+    socket.userName = session.user.name;
+    
+    // Join global chat room
+    socket.join('global-chat');
+    
+    // Emit last 50 messages when user connects
+    const getLastMessagesQuery = `
+        SELECT 
+            gm.*, 
+            uf.name as sender_name,
+            gm.quoted_text,
+            gm.quoted_sender,
+            gm.timestamp
+        FROM global_messages gm
+        JOIN user_form uf ON gm.sender_id = uf.id
+        ORDER BY gm.timestamp DESC
+        LIMIT 50
+    `;
+    
+    connection.query(getLastMessagesQuery, (err, results) => {
+        if (err) {
+            console.error('Error fetching global messages:', err);
+            return;
+        }
+        socket.emit('global-chat-history', results.reverse());
+    });
     
     // Handle global chat messages
     socket.on('global-message', async (data) => {
@@ -128,14 +130,24 @@ io.on('connection',socket =>{
         );
     });
     
-    socket.on('message',data=>{
+    socket.on('message', data => {
+        if (!socket.userId) {
+            socket.emit('error', { message: 'You must be logged in to send messages' });
+            return;
+        }
+        
         const message = data.text;
-         
-        const user = session.user && session.user.name ? `${session.user.name}[${session.user.user_type}_${session.user.id.toString().padStart(3, '0')}]`:"Anonymous"; 
-        io.emit('message',{SSocketId:socket.id,user:user,text:message, userID:session.user.id})
-    })
+        const user = `${session.user.name}[${session.user.user_type}_${session.user.id.toString().padStart(3, '0')}]`;
+        io.emit('message', {SSocketId: socket.id, user: user, text: message, userID: session.user.id});
+    });
+
     let inactivityTimer;
     socket.on("userOnline", (userId) => {
+        if (!socket.userId) {
+            socket.emit('error', { message: 'You must be logged in to update status' });
+            return;
+        }
+        
         // Convert userId to string to ensure consistent comparison
         const userIdStr = userId.toString();
         console.log(`Setting user ${userIdStr} as ONLINE (socket: ${socket.id})`);
@@ -153,7 +165,13 @@ io.on('connection',socket =>{
 
         resetInactivityTimer(userIdStr);
     });
+
     socket.on("userAway", (userId) => {
+        if (!socket.userId) {
+            socket.emit('error', { message: 'You must be logged in to update status' });
+            return;
+        }
+        
         // Convert userId to string to ensure consistent comparison
         const userIdStr = userId.toString();
         console.log(`Setting user ${userIdStr} as AWAY (socket: ${socket.id})`);
@@ -169,6 +187,11 @@ io.on('connection',socket =>{
     
     // Handle status update requests
     socket.on("requestStatusUpdate", () => {
+        if (!socket.userId) {
+            socket.emit('error', { message: 'You must be logged in to request status updates' });
+            return;
+        }
+        
         socket.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
             away: Array.from(awayUsers.keys())
@@ -1362,7 +1385,7 @@ app.post("/add-user", (req, res) => {
 });
 
 app.get("/get-groups", (req, res) => {
-    const query = "SELECT id, name, description FROM groups ORDER BY created_at DESC";
+    const query = "SELECT id, name, description FROM `groups` ORDER BY created_at DESC";
     connection.query(query, (err, results) => {
         if (err) {
             console.error("Error fetching groups:", err);
@@ -1394,7 +1417,7 @@ app.get("/group-members/:groupId", (req, res) => {
 app.get("/group-owner/:groupId", (req, res) => {
     const { groupId } = req.params;
     
-    const query = "SELECT created_by AS owner_id FROM groups WHERE id = ?";
+    const query = "SELECT created_by AS owner_id FROM `groups` WHERE id = ?";
     connection.query(query, [groupId], (err, results) => {
         if (err) {
             console.error("Error fetching group owner:", err);
@@ -1417,7 +1440,7 @@ app.get("/group-requests/:groupId", (req, res) => {
     }
 
     // Check if the user is the owner of the group
-    const checkOwnerQuery = "SELECT created_by FROM groups WHERE id = ?";
+    const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
     connection.query(checkOwnerQuery, [groupId], (err, results) => {
         if (err) {
             console.error("Database error checking group owner:", err);
@@ -1468,7 +1491,7 @@ app.post("/request-join", (req, res) => {
         if (results.length > 0) return res.status(400).json({ error: "You are already a member of this group." });
 
         // Check if user is the group owner
-        const checkOwnerQuery = "SELECT created_by FROM groups WHERE id = ?";
+        const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
         connection.query(checkOwnerQuery, [groupId], (err, ownerResults) => {
             if (err) return res.status(500).json({ error: "Database error while checking owner." });
 
@@ -1612,70 +1635,8 @@ app.get('/global-messages', (req, res) => {
     connection.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching global messages:', err);
-            return res.status(500).json({ error: 'Failed to fetch messages' });
+            return res.status(500).json({ error: 'Failed to fetch global messages' });
         }
-        res.json(results.reverse());
+        res.json(results);
     });
 });
-
-// Update the global messages query to include quoted messages
-const getLastMessagesQuery = `
-    SELECT 
-        gm.*, 
-        uf.name as sender_name,
-        gm.quoted_text,
-        gm.quoted_sender,
-        gm.timestamp
-    FROM global_messages gm
-    JOIN user_form uf ON gm.sender_id = uf.id
-    ORDER BY gm.timestamp DESC
-    LIMIT 50
-`;
-
-// Update the database schema for global_messages table
-const checkColumnsQuery = `
-    SELECT 
-        COLUMN_NAME 
-    FROM 
-        INFORMATION_SCHEMA.COLUMNS 
-    WHERE 
-        TABLE_SCHEMA = 'chathaven' AND 
-        TABLE_NAME = 'global_messages'`;
-
-connection.query(checkColumnsQuery, (err, results) => {
-    if (err) {
-        console.error('Error checking global_messages columns:', err);
-        return;
-    }
-
-    const existingColumns = results.map(row => row.COLUMN_NAME.toLowerCase());
-    const columnsToAdd = [];
-
-    if (!existingColumns.includes('quoted_text')) {
-        columnsToAdd.push('ADD COLUMN quoted_text TEXT');
-    }
-    
-    if (!existingColumns.includes('quoted_sender')) {
-        columnsToAdd.push('ADD COLUMN quoted_sender VARCHAR(255)');
-    }
-
-    // Always update timestamp column to have default value
-    columnsToAdd.push('MODIFY COLUMN timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
-
-    if (columnsToAdd.length > 0) {
-        const updateGlobalMessagesSchema = `
-            ALTER TABLE global_messages 
-            ${columnsToAdd.join(', ')}
-        `;
-
-        connection.query(updateGlobalMessagesSchema, (err) => {
-            if (err) {
-                console.error('Error updating global_messages schema:', err);
-            } else {
-                console.log('Global messages schema updated successfully');
-            }
-        });
-    }
-});
-
-module.exports = { app, io,connection, expressServer };
