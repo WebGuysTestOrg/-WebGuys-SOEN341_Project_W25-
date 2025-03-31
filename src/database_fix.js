@@ -82,6 +82,7 @@ connection.connect((err) => {
                         user_id INT NOT NULL,
                         text TEXT NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        is_system_message TINYINT(1) DEFAULT 0,
                         FOREIGN KEY (group_id) REFERENCES \`groups\`(id),
                         FOREIGN KEY (user_id) REFERENCES user_form(id)
                     )
@@ -93,6 +94,22 @@ connection.connect((err) => {
                         return;
                     }
                     console.log("Group messages table created or already exists");
+                    
+                    // Check if is_system_message column exists in group_messages table
+                    connection.query("SHOW COLUMNS FROM group_messages LIKE 'is_system_message'", (err, results) => {
+                        if (err) {
+                            console.error("Error checking is_system_message column:", err);
+                        } else if (results.length === 0) {
+                            // Add is_system_message column if it doesn't exist
+                            connection.query("ALTER TABLE group_messages ADD COLUMN is_system_message TINYINT(1) DEFAULT 0", (err) => {
+                                if (err) {
+                                    console.error("Error adding is_system_message column:", err);
+                                } else {
+                                    console.log("Added is_system_message column to group_messages table");
+                                }
+                            });
+                        }
+                    });
                     
                     // Check and update channels_messages table
                     const fixChannelsMessagesTable = `
@@ -138,53 +155,20 @@ connection.connect((err) => {
                             
                             console.log("Database repair completed successfully!");
                             
-                            // Add sample data to groups table for testing
-                            connection.query("SELECT COUNT(*) as count FROM `groups`", (err, results) => {
+                            // Remove sample/default groups
+                            const removeDefaultGroupsQuery = `
+                                DELETE FROM \`groups\` 
+                                WHERE name IN ('Project Team', 'Support Group', 'Development')
+                            `;
+                            
+                            connection.query(removeDefaultGroupsQuery, (err, result) => {
                                 if (err) {
-                                    console.error("Error checking groups count:", err);
-                                    connection.end();
-                                    return;
+                                    console.error("Error removing default groups:", err);
+                                } else if (result.affectedRows > 0) {
+                                    console.log(`Removed ${result.affectedRows} default groups`);
                                 }
                                 
-                                // If no groups exist, add sample data
-                                if (results[0].count === 0) {
-                                    console.log("Adding sample groups data...");
-                                    
-                                    // Get an admin user to be the creator
-                                    connection.query("SELECT id FROM user_form WHERE user_type = 'admin' LIMIT 1", (err, users) => {
-                                        if (err || users.length === 0) {
-                                            console.error("Error finding admin user or no admin exists:", err);
-                                            connection.end();
-                                            return;
-                                        }
-                                        
-                                        const adminId = users[0].id;
-                                        
-                                        // Sample groups data
-                                        const sampleGroups = [
-                                            ["Project Team", "Team working on the main project", adminId],
-                                            ["Support Group", "Group for technical support discussions", adminId],
-                                            ["Development", "Software development discussion", adminId]
-                                        ];
-                                        
-                                        // Insert sample groups
-                                        const insertGroupsQuery = `
-                                            INSERT INTO \`groups\` (name, description, created_by)
-                                            VALUES ?
-                                        `;
-                                        
-                                        connection.query(insertGroupsQuery, [sampleGroups], (err) => {
-                                            if (err) {
-                                                console.error("Error inserting sample groups:", err);
-                                            } else {
-                                                console.log("Sample groups added successfully");
-                                            }
-                                            connection.end();
-                                        });
-                                    });
-                                } else {
-                                    connection.end();
-                                }
+                                connection.end();
                             });
                         });
                     });

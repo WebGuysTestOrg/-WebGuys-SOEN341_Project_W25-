@@ -1338,7 +1338,7 @@ app.post("/create-group", (req, res) => {
         return res.status(400).json({ error: "Group name and description are required." });
     }
 
-    const query = "INSERT INTO groups (name, description, created_by) VALUES (?, ?, ?)";
+    const query = "INSERT INTO `groups` (name, description, created_by) VALUES (?, ?, ?)";
     connection.query(query, [name, description, createdBy], (err, result) => {
         if (err) {
             console.error("Error creating group:", err);
@@ -1352,12 +1352,23 @@ app.post("/create-group", (req, res) => {
                 return res.status(500).json({ error: "Group created, but error adding creator." });
             }
 
-            res.json({ message: "Group created successfully!", groupId });
+            // Add a welcome system message
+            const welcomeMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
+            const welcomeMessage = `Welcome to the "${name}" channel! This channel was created by ${req.session.user.name}.`;
+            
+            connection.query(welcomeMessageQuery, [groupId, createdBy, welcomeMessage], (err) => {
+                if (err) {
+                    console.error("Error adding welcome message:", err);
+                }
+                
+                res.json({ message: "Group created successfully!", groupId });
+            });
         });
     });
 });
 app.post("/add-user", (req, res) => {
     const { groupId, username } = req.body;
+    const addedBy = req.session.user.name;
 
     // Get user ID by username
     const userQuery = "SELECT id FROM user_form WHERE name = ?";
@@ -1378,7 +1389,18 @@ app.post("/add-user", (req, res) => {
             const insertQuery = "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)";
             connection.query(insertQuery, [groupId, userId], (err) => {
                 if (err) return res.status(500).json({ error: "Error adding user to group." });
-                res.json({ message: "User added successfully!" });
+                
+                // Add system message
+                const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
+                const systemMessage = `${username} was added to the channel by ${addedBy}.`;
+                
+                connection.query(systemMessageQuery, [groupId, req.session.user.id, systemMessage], (err) => {
+                    if (err) {
+                        console.error("Error adding system message:", err);
+                    }
+                    
+                    res.json({ message: "User added successfully!" });
+                });
             });
         });
     });
@@ -1402,7 +1424,7 @@ app.get("/group-members/:groupId", (req, res) => {
        SELECT u.id, u.name, g.created_by AS owner_id
         FROM group_members gm 
         JOIN user_form u ON gm.user_id = u.id 
-        JOIN groups g ON g.id = gm.group_id
+        JOIN \`groups\` g ON g.id = gm.group_id
         WHERE gm.group_id = ?
     `;
 
@@ -1518,17 +1540,39 @@ app.post("/request-join", (req, res) => {
 
 app.post("/approve-user", (req, res) => {
     const { groupId, userId } = req.body;
+    const approvedBy = req.session.user.name;
 
-    // Remove from requests
-    const deleteQuery = "DELETE FROM group_requests WHERE group_id = ? AND user_id = ?";
-    connection.query(deleteQuery, [groupId, userId], (err) => {
-        if (err) return res.status(500).json({ error: "Error processing request." });
+    // Get user name
+    const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
+    connection.query(getUserQuery, [userId], (err, userResults) => {
+        if (err || userResults.length === 0) {
+            return res.status(400).json({ error: "User not found." });
+        }
+        
+        const username = userResults[0].name;
 
-        // Add user to group
-        const insertQuery = "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)";
-        connection.query(insertQuery, [groupId, userId], (err) => {
-            if (err) return res.status(500).json({ error: "Error adding user to group." });
-            res.json({ message: "User added successfully!" });
+        // Remove from requests
+        const deleteQuery = "DELETE FROM group_requests WHERE group_id = ? AND user_id = ?";
+        connection.query(deleteQuery, [groupId, userId], (err) => {
+            if (err) return res.status(500).json({ error: "Error processing request." });
+
+            // Add user to group
+            const insertQuery = "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)";
+            connection.query(insertQuery, [groupId, userId], (err) => {
+                if (err) return res.status(500).json({ error: "Error adding user to group." });
+                
+                // Add system message
+                const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
+                const systemMessage = `${username}'s request to join was approved by ${approvedBy}.`;
+                
+                connection.query(systemMessageQuery, [groupId, req.session.user.id, systemMessage], (err) => {
+                    if (err) {
+                        console.error("Error adding system message:", err);
+                    }
+                    
+                    res.json({ message: "User added successfully!" });
+                });
+            });
         });
     });
 });
@@ -1538,60 +1582,228 @@ app.post("/approve-user", (req, res) => {
 app.post("/leave-group", (req, res) => {
     const { groupId } = req.body;
     const userId = req.session.user.id;
+    const userName = req.session.user.name;
 
-    const query = "DELETE FROM group_members WHERE group_id = ? AND user_id = ?";
-    connection.query(query, [groupId, userId], (err, result) => {
+    // Check if the user is the owner
+    const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
+    connection.query(checkOwnerQuery, [groupId], (err, results) => {
         if (err) {
-            console.error("Error leaving group:", err);
-            return res.status(500).json({ error: "Error leaving group." });
+            console.error("Database error checking group owner:", err);
+            return res.status(500).json({ error: "Database error." });
         }
-        if (result.affectedRows === 0) {
-            return res.status(400).json({ error: "You are not a member of this group." });
-        }
-        res.json({ message: "You have left the group." });
-    });
-});
-io.on("connection", (socket) => {
-socket.on("send-message", (data) => {
-    const { groupId, userId, message } = data;
-
-    // Get sender's name
-    const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
-    connection.query(getUserQuery, [userId], (err, result) => {
-        if (err || result.length === 0) return;
-        const senderName = result[0].name;
-
         
-        const insertQuery = "INSERT INTO group_messages (group_id, user_id, text) VALUES (?, ?, ?)";
-        connection.query(insertQuery, [groupId, userId, message], (err) => {
-            if (err) {
-                console.error("Error storing message:", err);
-                return;
-            }
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Group not found." });
+        }
+        
+        // Prevent the owner from leaving their own channel
+        if (results[0].created_by === userId) {
+            return res.status(403).json({ error: "As the owner, you cannot leave your own channel. You can delete it instead." });
+        }
 
+        // Add system message before removing the user
+        const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
+        const systemMessage = `${userName} has left the channel.`;
+        
+        connection.query(systemMessageQuery, [groupId, userId, systemMessage], (err) => {
+            if (err) {
+                console.error("Error adding system message:", err);
+            }
             
-            io.emit(`group-message-${groupId}`, { sender: senderName, text: message });
+            const query = "DELETE FROM group_members WHERE group_id = ? AND user_id = ?";
+            connection.query(query, [groupId, userId], (err, result) => {
+                if (err) {
+                    console.error("Error leaving group:", err);
+                    return res.status(500).json({ error: "Error leaving group." });
+                }
+                if (result.affectedRows === 0) {
+                    return res.status(400).json({ error: "You are not a member of this group." });
+                }
+                res.json({ message: "You have left the group." });
+            });
         });
     });
 });
+
+// Add endpoint to update group description
+app.post("/update-group-description", (req, res) => {
+    const { groupId, description } = req.body;
+    const userId = req.session.user.id;
+    const userName = req.session.user.name;
+
+    // Check if user is the owner of the group
+    const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
+    connection.query(checkOwnerQuery, [groupId], (err, results) => {
+        if (err) {
+            console.error("Database error checking group owner:", err);
+            return res.status(500).json({ error: "Database error." });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Group not found." });
+        }
+
+        const isOwner = results[0].created_by === userId;
+        if (!isOwner) {
+            return res.status(403).json({ error: "Only the channel owner can update the description." });
+        }
+
+        // Update group description
+        const updateQuery = "UPDATE `groups` SET description = ? WHERE id = ?";
+        connection.query(updateQuery, [description, groupId], (err) => {
+            if (err) {
+                console.error("Error updating group description:", err);
+                return res.status(500).json({ error: "Error updating group description." });
+            }
+
+            // Add system message for the description change
+            const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
+            const systemMessage = `${userName} updated the channel description.`;
+            
+            connection.query(systemMessageQuery, [groupId, userId, systemMessage], (err) => {
+                if (err) {
+                    console.error("Error adding system message:", err);
+                }
+                
+                res.json({ message: "Channel description updated successfully!" });
+            });
+        });
+    });
+});
+
+// Add endpoint to remove user from group (for admins)
+app.post("/remove-group-member", (req, res) => {
+    const { groupId, memberId } = req.body;
+    const userId = req.session.user.id;
+    const adminName = req.session.user.name;
+
+    // Check if user is the owner of the group
+    const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
+    connection.query(checkOwnerQuery, [groupId], (err, results) => {
+        if (err) {
+            console.error("Database error checking group owner:", err);
+            return res.status(500).json({ error: "Database error." });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Group not found." });
+        }
+
+        const isOwner = results[0].created_by === userId;
+        if (!isOwner) {
+            return res.status(403).json({ error: "Only the channel owner can remove members." });
+        }
+
+        // Get member's name before removing
+        const getMemberQuery = "SELECT name FROM user_form WHERE id = ?";
+        connection.query(getMemberQuery, [memberId], (err, userResults) => {
+            if (err || userResults.length === 0) {
+                return res.status(400).json({ error: "User not found." });
+            }
+
+            const memberName = userResults[0].name;
+
+            // Add system message before removing the user
+            const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
+            const systemMessage = `${memberName} was removed from the channel by ${adminName}.`;
+            
+            connection.query(systemMessageQuery, [groupId, userId, systemMessage], (err) => {
+                if (err) {
+                    console.error("Error adding system message:", err);
+                }
+                
+                // Remove the user from the group
+                const removeQuery = "DELETE FROM group_members WHERE group_id = ? AND user_id = ?";
+                connection.query(removeQuery, [groupId, memberId], (err, result) => {
+                    if (err) {
+                        console.error("Error removing member:", err);
+                        return res.status(500).json({ error: "Error removing member from channel." });
+                    }
+                    if (result.affectedRows === 0) {
+                        return res.status(400).json({ error: "User is not a member of this channel." });
+                    }
+                    res.json({ message: "Member removed successfully!" });
+                });
+            });
+        });
+    });
+});
+
+// Enhance group message handling with better status management
+io.on("connection", (socket) => {
+    const session = socket.handshake.session;
+    
+    // Group message handling
+    socket.on("send-message", (data) => {
+        const { groupId, userId, message } = data;
+
+        // Get sender's name
+        const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
+        connection.query(getUserQuery, [userId], (err, result) => {
+            if (err || result.length === 0) {
+                console.error("Error getting user info:", err);
+                socket.emit('error', { message: 'Failed to send message' });
+                return;
+            }
+            
+            const senderName = result[0].name;
+            
+            // Insert message into database
+            const insertQuery = "INSERT INTO group_messages (group_id, user_id, text) VALUES (?, ?, ?)";
+            connection.query(insertQuery, [groupId, userId, message], (err, result) => {
+                if (err) {
+                    console.error("Error storing message:", err);
+                    socket.emit('error', { message: 'Failed to save message' });
+                    return;
+                }
+
+                const messageData = {
+                    id: result.insertId,
+                    sender: senderName,
+                    text: message,
+                    timestamp: new Date()
+                };
+                
+                // Broadcast message to all connected clients
+                io.emit(`group-message-${groupId}`, messageData);
+            });
+        });
+    });
+
+    // Enhanced status request functionality
+    socket.on("requestStatusUpdate", () => {
+        if (!socket.userId && session && session.user) {
+            socket.userId = session.user.id;
+        }
+        
+        // Only respond to authenticated requests
+        if (!socket.userId) {
+            console.log("Unauthenticated status request");
+            socket.emit('error', { message: 'Authentication required for status updates' });
+            return;
+        }
+        
+        socket.emit("updateUserStatus", {
+            online: Array.from(onlineUsers.keys()),
+            away: Array.from(awayUsers.keys())
+        });
+    });
 });
 
 // Fetch previous messages
 app.get("/group-messages/:groupId", (req, res) => {
-const { groupId } = req.params;
+    const { groupId } = req.params;
 
-const query = `
-    SELECT u.name AS sender, gm.text 
-    FROM group_messages gm 
-    JOIN user_form u ON gm.user_id = u.id 
-    WHERE gm.group_id = ?
-    ORDER BY gm.created_at ASC
-`;
+    const query = `
+        SELECT u.name AS sender, gm.text, gm.is_system_message
+        FROM group_messages gm 
+        JOIN user_form u ON gm.user_id = u.id 
+        WHERE gm.group_id = ?
+        ORDER BY gm.created_at ASC
+    `;
 
-connection.query(query, [groupId], (err, results) => {
-    if (err) return res.status(500).json({ error: "Error fetching messages." });
-    res.json(results);
-});
+    connection.query(query, [groupId], (err, results) => {
+        if (err) return res.status(500).json({ error: "Error fetching messages." });
+        res.json(results);
+    });
 });
 
 

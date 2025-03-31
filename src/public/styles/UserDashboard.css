@@ -2088,4 +2088,108 @@ select option {
         width: 100%;
         right: -100%;
     }
+}
+
+/* Private Channels Section */
+.private-channel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 15px;
+    padding: 10px 20px;
+    background: var(--dark-grey);
+    color: var(--text-light);
+    text-decoration: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.private-channel-btn:hover {
+    background: var(--yellow);
+    color: var(--text-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--hover-shadow);
+}
+
+.private-channels-loading {
+    padding: 20px;
+    text-align: center;
+    color: #888;
+}
+
+.private-channel-card {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 15px;
+    box-shadow: var(--card-shadow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid var(--medium-grey);
+    position: relative;
+    overflow: hidden;
+}
+
+.private-channel-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(to bottom, var(--yellow), var(--dark-grey));
+    border-radius: 4px;
+}
+
+.private-channel-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--hover-shadow);
+}
+
+.private-channel-card h3 {
+    font-size: 1.4em;
+    margin-bottom: 5px;
+    color: var(--dark-grey);
+}
+
+.private-channel-card p {
+    color: #666;
+    margin: 0 0 15px 0;
+    font-size: 0.9em;
+}
+
+.private-channel-card .members-count {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+}
+
+.private-channel-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.private-channel-actions .btn {
+    padding: 8px 16px;
+    font-size: 0.9em;
+}
+
+.no-private-channels {
+    padding: 30px;
+    text-align: center;
+    color: #888;
+    background: rgba(0,0,0,0.03);
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.no-private-channels i {
+    font-size: 2em;
+    margin-bottom: 10px;
+    color: var(--yellow);
 } 

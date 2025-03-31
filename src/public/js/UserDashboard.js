@@ -518,6 +518,99 @@ function initializeGlobalChat() {
     });
 }
 
+// Function to fetch and display private channels (groups)
+function fetchPrivateChannels() {
+    const privateChannelsContainer = document.getElementById("private-channels-container");
+    privateChannelsContainer.innerHTML = '<div class="private-channels-loading"><i class="fas fa-spinner fa-spin"></i> Loading your private channels...</div>';
+
+    fetch("/get-groups")
+        .then(response => response.json())
+        .then(groups => {
+            privateChannelsContainer.innerHTML = "";
+
+            if (groups.length === 0) {
+                privateChannelsContainer.innerHTML = `
+                    <div class="no-private-channels">
+                        <i class="fas fa-users-slash"></i>
+                        <p>You don't have any private channels yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Create a card for each group that the user is a member of
+            let fetchingCount = 0;
+            let privateChannels = [];
+
+            const checkGroupsComplete = () => {
+                if (fetchingCount === 0) {
+                    if (privateChannels.length === 0) {
+                        privateChannelsContainer.innerHTML = `
+                            <div class="no-private-channels">
+                                <i class="fas fa-users-slash"></i>
+                                <p>You don't have any private channels yet</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    privateChannels.forEach(group => {
+                        const card = document.createElement("div");
+                        card.className = "private-channel-card";
+                        
+                        card.innerHTML = `
+                            <h3>${group.name}</h3>
+                            <p>${group.description || "No description available"}</p>
+                            <div class="members-count">
+                                <i class="fas fa-users"></i> ${group.memberCount} members
+                            </div>
+                            <div class="private-channel-actions">
+                                <a href="groups.html?id=${group.id}" class="btn">
+                                    <i class="fas fa-comment-dots"></i> Open Chat
+                                </a>
+                            </div>
+                        `;
+                        
+                        privateChannelsContainer.appendChild(card);
+                    });
+                }
+            };
+
+            // Check membership for each group
+            groups.forEach(group => {
+                fetchingCount++;
+                fetch(`/group-members/${group.id}`)
+                    .then(response => response.json())
+                    .then(members => {
+                        // Check if current user is a member
+                        const isMember = members.some(member => member.id === currentUserId);
+                        if (isMember) {
+                            privateChannels.push({
+                                ...group,
+                                memberCount: members.length
+                            });
+                        }
+                        fetchingCount--;
+                        checkGroupsComplete();
+                    })
+                    .catch(err => {
+                        console.error(`Error fetching members for group ${group.id}:`, err);
+                        fetchingCount--;
+                        checkGroupsComplete();
+                    });
+            });
+        })
+        .catch(err => {
+            console.error("Error fetching private channels:", err);
+            privateChannelsContainer.innerHTML = `
+                <div class="no-private-channels" style="color: #e74c3c;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Failed to load private channels. Please try again.</p>
+                </div>
+            `;
+        });
+}
+
 // Initialize page
 document.addEventListener("DOMContentLoaded", () => {
     fetch('/user-info')
@@ -535,6 +628,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Initialize components
             fetchUserTeams();
+            fetchPrivateChannels();
             initializeGlobalChat();
             initializeUserStatus();
         })
