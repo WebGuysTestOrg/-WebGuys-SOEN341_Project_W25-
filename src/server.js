@@ -14,6 +14,125 @@ const app = express();
 const PORT= process.env.PORT|| 3000
 let expressServer;
 
+// =============================================
+// DATABASE CONNECTION AND SETUP
+// =============================================
+const connection = mysql.createConnection({
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "WebGuys2025!",
+});
+
+// Check if database exists and create if it doesn't
+connection.connect((err) => {
+    if (err) {
+        console.error("Initial database connection failed:", err);
+        process.exit(1);
+    }
+    
+    // Check if database exists
+    connection.query("SHOW DATABASES LIKE 'chathaven'", (err, results) => {
+        if (err) {
+            console.error("Error checking database:", err);
+            process.exit(1);
+        }
+        
+        if (results.length === 0) {
+            // Database doesn't exist, create it
+            connection.query("CREATE DATABASE chathaven", (err) => {
+                if (err) {
+                    console.error("Error creating database:", err);
+                    process.exit(1);
+                }
+                console.log("Database 'chathaven' created successfully");
+                setupDatabase();
+            });
+        } else {
+            console.log("Database 'chathaven' already exists");
+            setupDatabase();
+        }
+    });
+});
+
+function setupDatabase() {
+    // Use the chathaven database
+    connection.query("USE chathaven", (err) => {
+        if (err) {
+            console.error("Error using database:", err);
+            process.exit(1);
+        }
+        console.log("Connected to MySQL database 'chathaven'");
+        
+        // Create or update channels_messages table
+        const createChannelsMessagesTable = `
+            CREATE TABLE IF NOT EXISTS channels_messages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                team_name VARCHAR(255) NOT NULL,
+                channel_name VARCHAR(255) NOT NULL,
+                sender_name VARCHAR(255) NOT NULL,
+                text TEXT NOT NULL,
+                quoted_message TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX (team_name, channel_name)
+            )
+        `;
+        
+        connection.query(createChannelsMessagesTable, (err) => {
+            if (err) {
+                console.error("Error creating channels_messages table:", err);
+                return;
+            }
+            console.log("Channels messages table ready");
+            
+            // Check if sender column exists, if not rename sender_name to sender
+            connection.query("SHOW COLUMNS FROM channels_messages LIKE 'sender'", (err, results) => {
+                if (err) {
+                    console.error("Error checking columns:", err);
+                    return;
+                }
+                
+                // If sender column doesn't exist but sender_name does, rename it
+                if (results.length === 0) {
+                    connection.query("SHOW COLUMNS FROM channels_messages LIKE 'sender_name'", (err, results) => {
+                        if (err) {
+                            console.error("Error checking sender_name column:", err);
+                            return;
+                        }
+                        
+                        if (results.length > 0) {
+                            // Rename sender_name to sender for compatibility
+                            connection.query("ALTER TABLE channels_messages CHANGE sender_name sender VARCHAR(255) NOT NULL", (err) => {
+                                if (err) {
+                                    console.error("Error renaming sender_name column:", err);
+                                    return;
+                                }
+                                console.log("Renamed sender_name to sender for backward compatibility");
+                                preloadChannelMessages();
+                            });
+                        } else {
+                            // Add sender column if neither exists
+                            connection.query("ALTER TABLE channels_messages ADD COLUMN sender VARCHAR(255) NOT NULL AFTER channel_name", (err) => {
+                                if (err) {
+                                    console.error("Error adding sender column:", err);
+                                    return;
+                                }
+                                console.log("Added sender column to channels_messages table");
+                                preloadChannelMessages();
+                            });
+                        }
+                    });
+                } else {
+                    // Sender column already exists, check if we need to preload messages
+                    preloadChannelMessages();
+                }
+            });
+        });
+    });
+}
+
+// =============================================
+// SERVER INITIALIZATION
+// =============================================
 if (process.env.NODE_ENV !== "test") {
     expressServer = app.listen(PORT, () => {
         console.log(`Server running at http://localhost:${PORT}`);
@@ -34,19 +153,25 @@ const sessionMiddleware=
 app.use(sessionMiddleware)
 app.use(express.static(path.join(__dirname, "public")));
 
+// =============================================
+// SOCKET.IO SETUP AND USER STATUS MANAGEMENT
+// =============================================
 const onlineUsers = new Map();
 const awayUsers = new Map();
-const INACTIVITY_TIME = 30000; 
-const io= new Server(expressServer,{
-    cors:{
-        origin:process.env.NODE_ENV==="production"? false :["http://localhost:3000","http://127.0.0.1:3000"]
+const INACTIVITY_TIME = 30000;
+
+const io = new Server(expressServer, {
+    cors: {
+        origin: process.env.NODE_ENV === "production" ? false : ["http://localhost:3000", "http://127.0.0.1:3000"]
     }
-})
+});
+
 io.use(sharedSession(sessionMiddleware, {
-    autoSave: true,  // Automatically save session on socket events
+    autoSave: true,
 }));
 
-io.on('connection',socket =>{
+// Socket connection handling
+io.on('connection', socket => {
     const session = socket.handshake.session;
 
     if (!session || !session.user || !session.user.name) {
@@ -264,87 +389,6 @@ io.on('connection',socket =>{
 })
 
 
-
-// Database Connection
-const connection = mysql.createConnection({
-    host: process.env.DB_HOST || "localhost",
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "WebGuys2025!",
-    database: process.env.DB_DATABASE || "chathaven",
-});
-
-connection.connect((err) => {
-    if (err) {
-        console.error("Database connection failed:", err);
-        process.exit(1);
-    }
-    console.log("Connected to MySQL");
-    
-    // Create or update channels_messages table
-    const createChannelsMessagesTable = `
-        CREATE TABLE IF NOT EXISTS channels_messages (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            team_name VARCHAR(255) NOT NULL,
-            channel_name VARCHAR(255) NOT NULL,
-            sender_name VARCHAR(255) NOT NULL,
-            text TEXT NOT NULL,
-            quoted_message TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX (team_name, channel_name)
-        )
-    `;
-    
-    connection.query(createChannelsMessagesTable, (err) => {
-        if (err) {
-            console.error("Error creating channels_messages table:", err);
-            return;
-        }
-        console.log("Channels messages table ready");
-        
-        // Check if sender column exists, if not rename sender_name to sender
-        connection.query("SHOW COLUMNS FROM channels_messages LIKE 'sender'", (err, results) => {
-            if (err) {
-                console.error("Error checking columns:", err);
-                return;
-            }
-            
-            // If sender column doesn't exist but sender_name does, rename it
-            if (results.length === 0) {
-                connection.query("SHOW COLUMNS FROM channels_messages LIKE 'sender_name'", (err, results) => {
-                    if (err) {
-                        console.error("Error checking sender_name column:", err);
-                        return;
-                    }
-                    
-                    if (results.length > 0) {
-                        // Rename sender_name to sender for compatibility
-                        connection.query("ALTER TABLE channels_messages CHANGE sender_name sender VARCHAR(255) NOT NULL", (err) => {
-                            if (err) {
-                                console.error("Error renaming sender_name column:", err);
-                                return;
-                            }
-                            console.log("Renamed sender_name to sender for backward compatibility");
-                            preloadChannelMessages();
-                        });
-                    } else {
-                        // Add sender column if neither exists
-                        connection.query("ALTER TABLE channels_messages ADD COLUMN sender VARCHAR(255) NOT NULL AFTER channel_name", (err) => {
-                            if (err) {
-                                console.error("Error adding sender column:", err);
-                                return;
-                            }
-                            console.log("Added sender column to channels_messages table");
-                            preloadChannelMessages();
-                        });
-                    }
-                });
-            } else {
-                // Sender column already exists, check if we need to preload messages
-                preloadChannelMessages();
-            }
-        });
-    });
-});
 
 // Function to preload initial messages for testing
 function preloadChannelMessages() {
@@ -577,6 +621,10 @@ app.get("/get-user-id", (req, res) => {
     });
 });
 
+
+// =============================================
+// AUTHENTICATION AND USER MANAGEMENT ROUTES
+// =============================================
 
 // User Registration
 app.post("/register", (req, res) => {
@@ -1852,3 +1900,9 @@ app.get('/global-messages', (req, res) => {
         res.json(results);
     });
 });
+
+// Export the app and connection for testing
+module.exports = {
+    app,
+    connection
+};
