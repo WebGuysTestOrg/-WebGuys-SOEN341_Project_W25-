@@ -30,32 +30,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name:  Node.js Setup
+      - name: Node.js Setup
         uses: actions/setup-node@v3
         with:
           node-version: 18
           cache: npm
           cache-dependency-path: src/package-lock.json
 
-      - name:  Install deps
+      - name: Install dependencies
         run: cd src && npm install
 
-      - name:  Run DB Schema (like your XAMPP background does)
+      - name: Set up environment variables
         run: |
-          sudo apt-get update && sudo apt-get install -y mysql-client
-          echo "Loading schema..."
-          mysql -h 127.0.0.1 -u testuser -ptestpassword chathaven < src/database/schema.sql
+          cd src
+          echo "DB_HOST=127.0.0.1" > .env
+          echo "DB_USER=testuser" >> .env
+          echo "DB_PASSWORD=testpassword" >> .env
+          echo "DB_DATABASE=chathaven" >> .env
+          echo "DB_PORT=3306" >> .env
 
-      - name:  Run Jest Tests (you handle ports, sockets, DB in test files)
+      - name: Run database setup
         env:
           DB_HOST: 127.0.0.1
           DB_USER: testuser
           DB_PASSWORD: testpassword
           DB_DATABASE: chathaven
+          DB_PORT: 3306
         run: |
           cd src
-          npm test -- --ci --runInBand --detectOpenHandles
+          node database_fix.js
 
+      - name: Run tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: testuser
+          DB_PASSWORD: testpassword
+          DB_DATABASE: chathaven
+          DB_PORT: 3306
+        run: |
+          cd src
+          node run-tests.js
 
   deploy:
     needs: test
