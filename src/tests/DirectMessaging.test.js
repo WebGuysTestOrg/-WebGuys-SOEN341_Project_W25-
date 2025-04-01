@@ -13,14 +13,14 @@ const random = crypto.randomBytes(3).toString("hex");
 
 // Create test users
 const admin = {
-    name: `Admin_${random}`,
+    username: `Admin_${random}`,
     email: `admin_${random}@example.com`,
     password: `Password123!`,
     user_type: "admin"
 };
 
 const user = {
-    name: `User_${random}`,
+    username: `User_${random}`,
     email: `user_${random}@example.com`,
     password: `Password123!`,
     user_type: "user"
