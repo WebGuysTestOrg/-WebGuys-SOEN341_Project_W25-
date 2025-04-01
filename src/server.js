@@ -659,7 +659,7 @@ app.post("/register", (req, res) => {
     }
 
     //  Check if username is already taken
-    const checkUsernameQuery = "SELECT id FROM user_form WHERE username = ?";
+    const checkUsernameQuery = "SELECT id FROM user_form WHERE name = ?";
     connection.query(checkUsernameQuery, [name], (err, nameResults) => {
       if (err) {
         console.error("Username check error:", err);
@@ -672,7 +672,7 @@ app.post("/register", (req, res) => {
 
       // Hash password & insert user
       const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
-      const insertQuery = "INSERT INTO user_form (username, email, password, user_type) VALUES (?, ?, ?, ?)";
+      const insertQuery = "INSERT INTO user_form (name, email, password, user_type) VALUES (?, ?, ?, ?)";
 
       connection.query(insertQuery, [name, email, hashedPassword, user_type], (err) => {
         if (err) {
@@ -711,36 +711,26 @@ app.post("/login", (req, res) => {
             const user = results[0];
             req.session.user = {
                 id: user.id,
-                username: user.username,
+                name: user.name,
                 email: user.email,
                 user_type: user.user_type,
             };
 
             // Log login time
-            const logQuery = "INSERT INTO user_activity_log (user_id, username) VALUES (?, ?)";
-            connection.query(logQuery, [user.id, user.username], (logErr) => {
+            const logQuery = "INSERT INTO user_activity_log (user_id, name) VALUES (?, ?)";
+            connection.query(logQuery, [user.id, user.name], (logErr) => {
                 if (logErr) console.error("Error logging login:", logErr);
             });
 
             if (user.user_type === "admin") {
                 return res.json({ 
                     redirect: "/admin_page.html",
-                    user: {
-                        id: user.id,
-                        username: user.username,
-                        email: user.email,
-                        user_type: user.user_type
-                    }
+                    user: req.session.user // <- Include this
                 });
             } else {
                 return res.json({ 
                     redirect: "/UserDashboard.html",
-                    user: {
-                        id: user.id,
-                        username: user.username,
-                        email: user.email,
-                        user_type: user.user_type
-                    }
+                    user: req.session.user // <- Include this
                 });
             }
         } else {
