@@ -54,31 +54,31 @@ beforeAll((done) => {
                 createTestUser(user)
             ]).then(() => {
                 // Start HTTP server for Socket.IO
-                server = http.createServer(app);
+        server = http.createServer(app);
                 
                 // Setup Socket.IO server
-                ioServer = socketIO(server);
-                
-                ioServer.on("connection", (socket) => {
+        ioServer = socketIO(server);
+
+        ioServer.on("connection", (socket) => {
                     // Global messages
-                    socket.on("message", (msg) => {
-                        ioServer.emit("message", msg);
-                    });
-                    
+            socket.on("message", (msg) => {
+                ioServer.emit("message", msg);
+            });
+
                     // Direct messages
-                    socket.on("private-message", (msg) => {
-                        ioServer.emit("private-message", msg);
-                    });
-                    
+            socket.on("private-message", (msg) => {
+                ioServer.emit("private-message", msg);
+            });
+
                     // Channel messages
-                    socket.on("ChannelMessages", (msg) => {
-                        ioServer.emit("ChannelMessages", msg);
-                    });
-                });
-                
+            socket.on("ChannelMessages", (msg) => {
+                ioServer.emit("ChannelMessages", msg);
+            });
+        });
+
                 // Start the server
                 server.listen(TEST_PORT, () => {
-                    console.log("Test socket server running on port", TEST_PORT);
+            console.log("Test socket server running on port", TEST_PORT);
                 
                     // Login admin and user to get IDs
                     adminSession = request.agent(app);
@@ -117,21 +117,21 @@ beforeAll((done) => {
                             teamId
                         });
                     }).then(() => {
-                        done();
+            done();
                     }).catch((err) => {
                         console.error("Setup error:", err);
                         done(err);
                     });
-                });
+        });
             }).catch(err => {
                 console.error("Setup error:", err);
-                done(err);
-            });
-        } catch (err) {
-            console.error("Setup error:", err);
             done(err);
-        }
-    });
+        });
+    } catch (err) {
+            console.error("Setup error:", err);
+        done(err);
+    }
+});
 }, 30000);
 
 // Cleanup after all tests
@@ -140,9 +140,9 @@ afterAll((done) => {
         console.log("Cleaning up resources...");
         
         // Disconnect any active socket connections
-        if (ioUser?.connected) ioUser.disconnect();
-        if (ioAdmin?.connected) ioAdmin.disconnect();
-        
+    if (ioUser?.connected) ioUser.disconnect();
+    if (ioAdmin?.connected) ioAdmin.disconnect();
+  
         // Clean up database - delete messages
         connection.query(
             "DELETE FROM direct_messages WHERE sender_id IN (?, ?) OR recipient_id IN (?, ?)",
@@ -221,7 +221,7 @@ describe("Chat & Messaging Tests", () => {
     test("Users can send and receive global messages", (done) => {
         const testMessage = "Hello world!";
         let messageReceived = false;
-        
+
         // Create a timeout to fail the test if message isn't received
         const timeout = setTimeout(() => {
             done(new Error("Global message not received within timeout"));
@@ -232,7 +232,7 @@ describe("Chat & Messaging Tests", () => {
             transports: ["websocket"],
             forceNew: true,
         });
-        
+
         ioUser.on("connect", () => {
             // Set up message listener
             ioUser.on("message", (msg) => {
@@ -246,13 +246,13 @@ describe("Chat & Messaging Tests", () => {
                     done(err);
                 }
             });
-            
+
             // Connect admin socket and send message
             ioAdmin = io(`http://localhost:${TEST_PORT}`, {
                 transports: ["websocket"],
                 forceNew: true,
             });
-            
+
             ioAdmin.on("connect", () => {
                 ioAdmin.emit("message", { text: testMessage });
             });
@@ -267,55 +267,55 @@ describe("Chat & Messaging Tests", () => {
             clearTimeout(timeout);
             done(err);
         });
-    }, 15000);
-    
+        }, 15000);
+
     test("Users can send and receive direct messages", (done) => {
         const payload = {
-            senderId: adminId,
-            recipientId: userId,
+          senderId: adminId,
+          recipientId: userId,
             text: "DM test message"
         };
-        
+      
         // Create a timeout to fail the test if message isn't received
         const timeout = setTimeout(() => {
             done(new Error("Direct message not received within timeout"));
         }, 5000);
-        
+      
         // Disconnect previous connections if they exist
         if (ioUser?.connected) ioUser.disconnect();
         if (ioAdmin?.connected) ioAdmin.disconnect();
         
         // Connect user socket
         ioUser = io(`http://localhost:${TEST_PORT}`, {
-            transports: ["websocket"],
-            forceNew: true,
+          transports: ["websocket"],
+          forceNew: true,
         });
-        
+      
         ioUser.on("connect", () => {
             // Listen for direct messages
-            ioUser.on("private-message", (msg) => {
-                try {
-                    expect(msg.text).toBe(payload.text);
-                    expect(msg.senderId).toBe(payload.senderId);
-                    expect(msg.recipientId).toBe(payload.recipientId);
-                    
-                    clearTimeout(timeout);
-                    done();
-                } catch (err) {
-                    clearTimeout(timeout);
-                    done(err);
-                }
-            });
-            
+          ioUser.on("private-message", (msg) => {
+            try {
+              expect(msg.text).toBe(payload.text);
+              expect(msg.senderId).toBe(payload.senderId);
+              expect(msg.recipientId).toBe(payload.recipientId);
+      
+              clearTimeout(timeout);
+              done();
+            } catch (err) {
+              clearTimeout(timeout);
+              done(err);
+            }
+          });
+      
             // Connect admin socket and send message
             ioAdmin = io(`http://localhost:${TEST_PORT}`, {
-                transports: ["websocket"],
-                forceNew: true,
-            });
-            
-            ioAdmin.on("connect", () => {
-                setTimeout(() => {
-                    ioAdmin.emit("private-message", payload);
+            transports: ["websocket"],
+            forceNew: true,
+          });
+      
+          ioAdmin.on("connect", () => {
+            setTimeout(() => {
+              ioAdmin.emit("private-message", payload);
                 }, 500);
             });
             
@@ -362,54 +362,54 @@ describe("Chat & Messaging Tests", () => {
     
     test("Team channel messages can be sent and received", (done) => {
         const payload = {
-            senderId: adminId,
+          senderId: adminId,
             channelName: channelName,
-            teamId: teamId,
+          teamId: teamId,
             text: "Channel test message",
             teamName: `team_${random}`,
             sender: admin.name
         };
-        
+      
         // Create a timeout to fail the test if message isn't received
         const timeout = setTimeout(() => {
             done(new Error("Channel message not received within timeout"));
         }, 5000);
-        
+      
         // Disconnect previous connections if they exist
         if (ioUser?.connected) ioUser.disconnect();
         if (ioAdmin?.connected) ioAdmin.disconnect();
         
         // Connect user socket
         ioUser = io(`http://localhost:${TEST_PORT}`, {
-            transports: ["websocket"],
-            forceNew: true,
+          transports: ["websocket"],
+          forceNew: true,
         });
-        
+      
         ioUser.on("connect", () => {
             // Listen for channel messages
-            ioUser.on("ChannelMessages", (msg) => {
-                try {
-                    expect(msg.text).toBe(payload.text);
-                    expect(msg.channelName).toBe(payload.channelName);
+          ioUser.on("ChannelMessages", (msg) => {
+            try {
+              expect(msg.text).toBe(payload.text);
+              expect(msg.channelName).toBe(payload.channelName);
                     expect(msg.teamName).toBe(payload.teamName);
-                    
-                    clearTimeout(timeout);
-                    done();
-                } catch (err) {
-                    clearTimeout(timeout);
-                    done(err);
-                }
-            });
-            
+      
+              clearTimeout(timeout);
+              done();
+            } catch (err) {
+              clearTimeout(timeout);
+              done(err);
+            }
+          });
+      
             // Connect admin socket and send message
             ioAdmin = io(`http://localhost:${TEST_PORT}`, {
-                transports: ["websocket"],
-                forceNew: true,
-            });
-            
-            ioAdmin.on("connect", () => {
-                setTimeout(() => {
-                    ioAdmin.emit("ChannelMessages", payload);
+            transports: ["websocket"],
+            forceNew: true,
+          });
+      
+          ioAdmin.on("connect", () => {
+            setTimeout(() => {
+              ioAdmin.emit("ChannelMessages", payload);
                 }, 500);
             });
             

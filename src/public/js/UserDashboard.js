@@ -1396,7 +1396,7 @@ function setupActivityMonitoring() {
     }, 5000); // Check every 5 seconds
     
     // Ensure initial online status is sent
-    if (currentUserId) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+    if (currentUserId) {
         socket.emit("userOnline", currentUserId);
     }
     
@@ -1705,5 +1705,26 @@ socket.on('reconnect', () => {
         
         // Re-emit that the user is online when reconnected
         socket.emit("userOnline", currentUserId);
+    }
+});
+
+// AI Chatbot Integration
+const chatFrame = document.getElementById("ai-chat-frame");
+const chatLauncher = document.getElementById("ai-chat-launcher");
+
+chatLauncher.addEventListener("click", () => {
+    const isVisible = chatFrame.style.display === "block";
+    chatFrame.style.display = isVisible ? "none" : "block";
+    
+    // If opening the chat, send a message to the iframe
+    if (!isVisible) {
+        chatFrame.contentWindow.postMessage({ action: 'openChat' }, '*');
+    }
+});
+
+// Listen for messages from the chatbot iframe
+window.addEventListener('message', (event) => {
+    if (event.data.action === 'closeChat') {
+        chatFrame.style.display = "none";
     }
 });

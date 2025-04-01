@@ -778,3 +778,24 @@ window.addEventListener('resize', checkMobile);
 document.getElementById('welcome-new-chat-btn')?.addEventListener('click', () => {
     document.getElementById('new-chat-btn').click();
 });
+
+// AI Chat Integration
+const chatFrame = document.getElementById("ai-chat-frame");
+const chatLauncher = document.getElementById("ai-chat-launcher");
+
+chatLauncher.addEventListener("click", () => {
+    const isVisible = chatFrame.style.display === "block";
+    chatFrame.style.display = isVisible ? "none" : "block";
+    
+    // If opening the chat, send a message to the iframe
+    if (!isVisible) {
+        chatFrame.contentWindow.postMessage({ action: 'openChat' }, '*');
+    }
+});
+
+// Listen for messages from the chatbot iframe
+window.addEventListener('message', (event) => {
+    if (event.data.action === 'closeChat') {
+        chatFrame.style.display = "none";
+    }
+});

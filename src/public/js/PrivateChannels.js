@@ -699,3 +699,24 @@ const socket = io();
             })
             .catch(error => console.error("Error removing member:", error));
         }
+
+// AI Chatbot Integration
+const chatFrame = document.getElementById("ai-chat-frame");
+const chatLauncher = document.getElementById("ai-chat-launcher");
+
+chatLauncher.addEventListener("click", () => {
+    const isVisible = chatFrame.style.display === "block";
+    chatFrame.style.display = isVisible ? "none" : "block";
+    
+    // If opening the chat, send a message to the iframe
+    if (!isVisible) {
+        chatFrame.contentWindow.postMessage({ action: 'openChat' }, '*');
+    }
+});
+
+// Listen for messages from the chatbot iframe
+window.addEventListener('message', (event) => {
+    if (event.data.action === 'closeChat') {
+        chatFrame.style.display = "none";
+    }
+});
