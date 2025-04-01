@@ -7,11 +7,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="chatbot.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="styles/chatbot.css">
+    <link rel="icon" type="image/png" href="assets/ChatHavenLogo.png">
 </head>
 <body>
 
     <section class="chat-window">
+        <div class="chat-header">
+            <div class="chat-info">
+                <div class="chat-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="chat-details">
+                    <h3 class="chat-assistant-name">AI Assistant</h3>
+                    <span class="chat-status">Ready to help</span>
+                </div>
+            </div>
+            <button id="close-chat" class="close-chat">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
         <div class="chat">
             <div class="model">
                 <p>Hi, how can I help you?</p>
@@ -19,10 +35,12 @@
             
         </div>
         <div class="input-area">
-            <input placeholder="Ask me anything..." type="text">
-            <button>
-                <img src="send-icon.png" alt="send">
-            </button>
+            <div class="input-container">
+                <input placeholder="Ask me anything..." type="text">
+                <button>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
         </div>
     </section>
 
@@ -79,6 +97,10 @@ async function sendMessage() {
       </div>
     `);
 
+    // Auto-scroll to the bottom
+    const chatContainer = document.querySelector(".chat-window .chat");
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
   } catch (error) {
     console.error(error);
     document.querySelector(".chat-window .chat .loader").remove();
@@ -90,23 +112,35 @@ async function sendMessage() {
   }
 }
 
-
+// Send message when button is clicked
 document.querySelector(".chat-window .input-area button")
 .addEventListener("click", ()=>sendMessage());
 
-console.log("Script is running!");
-
-document.querySelector(".chat-button").addEventListener("click", () => {
-  console.log("Chat button clicked");
-  document.body.classList.add("chat-open");
+// Send message when Enter key is pressed
+document.querySelector(".chat-window input").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    sendMessage();
+  }
 });
 
-document.querySelector(".chat-window .close").addEventListener("click", () => {
-  console.log("Close button clicked");
+// Close button functionality
+document.getElementById("close-chat").addEventListener("click", () => {
   document.body.classList.remove("chat-open");
+  // If in an iframe, send message to parent
+  if (window.parent !== window) {
+    window.parent.postMessage({ action: 'closeChat' }, '*');
+  }
 });
 
+// Handle parent window messages
+window.addEventListener('message', (event) => {
+  const data = event.data;
+  if (data.action === 'openChat') {
+    document.body.classList.add("chat-open");
+  }
+});
 
+console.log("AI Chat Assistant loaded");
     </script>
     
 </body>
