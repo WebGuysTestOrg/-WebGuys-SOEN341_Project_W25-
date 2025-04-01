@@ -20,7 +20,7 @@ let expressServer;
 const connection = mysql.createConnection({
     host: process.env.DB_HOST || "localhost",
     user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "WebGuys2025!",
+    password: process.env.DB_PASSWORD || "",
 });
 
 // Check if database exists and create if it doesn't
