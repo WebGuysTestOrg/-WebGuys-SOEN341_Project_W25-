@@ -1,6 +1,7 @@
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 // Directory containing test files
 const testDir = path.join(__dirname, 'tests');
@@ -29,14 +30,12 @@ testFiles.forEach(file => {
   }
   
   // Small delay between tests to ensure resources are freed
-  console.log("Waiting before next test...");
-  try {
-    // Handle Windows-specific pause command
-    execSync('timeout /t 3', { stdio: 'inherit' });
-  } catch (e) {
-    // Simple fallback if timeout command fails
-    console.log("Waiting 3 seconds...");
-    execSync('ping 127.0.0.1 -n 4 > nul', { stdio: 'ignore' });
+  console.log("Waiting 3 seconds before next test...");
+  
+  // Cross-platform sleep by just waiting in JavaScript
+  const waitTime = Date.now() + 3000;
+  while (Date.now() < waitTime) {
+    // Busy wait
   }
 });
 
