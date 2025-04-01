@@ -14,14 +14,12 @@ jobs:
       mysql:
         image: mysql:latest
         env:
-          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
           MYSQL_DATABASE: chathaven
-          MYSQL_USER: testuser
-          MYSQL_PASSWORD: testpassword
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -u testuser -ptestpassword"
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -40,33 +38,19 @@ jobs:
       - name: Install dependencies
         run: cd src && npm install
 
-      - name: Set up environment variables
+      - name: Setup database schema
         run: |
-          cd src
-          echo "DB_HOST=127.0.0.1" > .env
-          echo "DB_USER=testuser" >> .env
-          echo "DB_PASSWORD=testpassword" >> .env
-          echo "DB_DATABASE=chathaven" >> .env
-          echo "DB_PORT=3306" >> .env
+          sudo apt-get update && sudo apt-get install -y mysql-client
+          echo "Creating database schema..."
+          mysql -h 127.0.0.1 -u root chathaven < src/config/schema.sql
 
-      - name: Run database setup
+      - name: Run Tests
         env:
           DB_HOST: 127.0.0.1
-          DB_USER: testuser
-          DB_PASSWORD: testpassword
+          DB_USER: root
+          DB_PASSWORD: ""
           DB_DATABASE: chathaven
-          DB_PORT: 3306
-        run: |
-          cd src
-          node database_fix.js
-
-      - name: Run tests
-        env:
-          DB_HOST: 127.0.0.1
-          DB_USER: testuser
-          DB_PASSWORD: testpassword
-          DB_DATABASE: chathaven
-          DB_PORT: 3306
+          NODE_ENV: test
         run: |
           cd src
           node run-tests.js
