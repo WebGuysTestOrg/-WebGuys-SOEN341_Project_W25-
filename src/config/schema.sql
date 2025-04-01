@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS channels_messages (
     channel_name VARCHAR(255) NOT NULL,
     sender VARCHAR(255) NOT NULL,
     text TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    quoted_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (team_name, channel_name)
 );
 
 CREATE TABLE IF NOT EXISTS user_activity_log (
