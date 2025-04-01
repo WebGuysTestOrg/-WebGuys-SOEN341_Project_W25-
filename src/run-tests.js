@@ -11,6 +11,8 @@ const testFiles = fs.readdirSync(testDir)
   .filter(file => file.endsWith('.test.js') && !file.includes('BasicTest'));
 
 console.log('Running tests sequentially:');
+let testResults = '';
+let testsHaveFailed = false;
 
 // Run each test file one at a time
 testFiles.forEach(file => {
@@ -19,14 +21,21 @@ testFiles.forEach(file => {
   
   try {
     // Run Jest directly with the test file
-    execSync(
+    const output = execSync(
       `node node_modules/jest/bin/jest.js "${testPath}" --detectOpenHandles --forceExit`,
-      { stdio: 'inherit' }
+      { stdio: 'pipe', encoding: 'utf-8' }
     );
+    console.log(output);
+    testResults += output;
     console.log(`\n======== Completed ${file} ========\n`);
   } catch (error) {
     console.error(`Test ${file} failed with error: ${error.message}`);
+    if (error.stdout) {
+      console.log(error.stdout);
+      testResults += error.stdout;
+    }
     console.log(`\n======== Failed ${file} ========\n`);
+    testsHaveFailed = true;
   }
   
   // Small delay between tests to ensure resources are freed
@@ -39,4 +48,13 @@ testFiles.forEach(file => {
   }
 });
 
-console.log('All tests completed!'); 
+// Write test results to a file for CI/CD checking
+fs.writeFileSync(path.join(__dirname, 'test-results.log'), testResults);
+
+console.log('All tests completed!');
+
+// Exit with error code if any tests failed
+if (testsHaveFailed) {
+  console.error('One or more test suites failed!');
+  process.exit(1);
+} 

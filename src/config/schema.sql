@@ -97,3 +97,43 @@ CREATE TABLE IF NOT EXISTS global_messages (
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sender_id) REFERENCES user_form(id)
 );
+
+CREATE TABLE IF NOT EXISTS `groups` (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES user_form(id)
+);
+
+CREATE TABLE IF NOT EXISTS group_members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    group_id INT NOT NULL,
+    user_id INT NOT NULL,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES `groups`(id),
+    FOREIGN KEY (user_id) REFERENCES user_form(id),
+    UNIQUE KEY unique_group_member (group_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS group_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    group_id INT NOT NULL,
+    user_id INT NOT NULL,
+    text TEXT NOT NULL,
+    is_system_message BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES `groups`(id),
+    FOREIGN KEY (user_id) REFERENCES user_form(id)
+);
+
+CREATE TABLE IF NOT EXISTS group_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    group_id INT NOT NULL,
+    user_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES `groups`(id),
+    FOREIGN KEY (user_id) REFERENCES user_form(id),
+    UNIQUE KEY unique_group_request (group_id, user_id)
+);
