@@ -1108,6 +1108,53 @@ app.get("/api/users", (req, res) => {
     });
 });
 
+app.get("/get-user-channels", (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = req.session.user.id;
+    const query = `
+        SELECT 
+            c.id AS channelId, 
+            c.name AS channelName,
+            t.id AS teamId,
+            t.name AS teamName
+        FROM 
+            user_channels uc  -- FIX: Changed from channel_members to user_channels
+        JOIN channels c ON uc.channel_id = c.id
+        JOIN teams t ON c.team_id = t.id
+        WHERE uc.user_id = ?
+        ORDER BY t.id, c.id;
+    `;
+
+    connection.query(query, [userId], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: "Error fetching user channels." });
+        }
+
+        const userChannels = {};
+
+        results.forEach((row) => {
+            if (!userChannels[row.teamId]) {
+                userChannels[row.teamId] = {
+                    teamId: row.teamId,
+                    teamName: row.teamName,
+                    channels: []
+                };
+            }
+
+            userChannels[row.teamId].channels.push({
+                channelId: row.channelId,
+                channelName: row.channelName
+            });
+        });
+
+        res.json(Object.values(userChannels));
+        console.log(Object.values(userChannels))
+    });
+});
 
 
 app.get("/get-user-teams", (req, res) => {

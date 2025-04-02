@@ -108,6 +108,7 @@ function fetchUserTeams() {
                 let channelsSection = document.createElement("div");
                 channelsSection.classList.add("channels-section");
 
+                console.log(team)
                 // Display channels
                 if (team.channels && Object.keys(team.channels).length > 0) {
                     Object.values(team.channels).forEach(channel => {
