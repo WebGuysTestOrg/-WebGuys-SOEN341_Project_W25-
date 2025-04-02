@@ -186,7 +186,31 @@
 
             // Populate the channels list
             if (data.channels && data.channels.length > 0) {
-                data.channels.forEach(channel => {
+
+                fetch("/get-user-channels", {
+    method: "GET",
+    headers: {
+        "Content-Type": "application/json",
+    },
+})
+.then(response => {
+    if (!response.ok) {
+        throw new Error("Failed to fetch user channels");
+    }
+    return response.json(); // Convert response to JSON
+})
+.then(userChannels => {
+    // Extract only channel names
+    const channelNames = userChannels.flatMap(team => 
+        team.channels.map(channel => channel.channelName)
+    );
+    console.log("User Channel Names:", channelNames);
+    console.log("Team Channel Names:", data.channels);
+    const filteredChannels = data.channels.filter(channel => 
+            channelNames.includes(channel)
+        );
+        
+        filteredChannels.forEach(channel => {
                     const listItem = document.createElement("li");
                     listItem.textContent = channel;
                     listItem.classList.add("channel-item");
@@ -226,6 +250,23 @@
 
                     chatList.appendChild(listItem);
                 });
+                if (data.channels && data.channels.length > 0) {
+                const firstChannel = document.querySelector("#chat-list li");
+                firstChannel.click();
+            }
+            document.getElementById("send").addEventListener("click", function() {
+                sendMessage(teamName, channelClicked);
+            });
+
+            document.getElementById("message").addEventListener("keypress", function(e) {
+                if (e.key === "Enter") {
+                    sendMessage(teamName, channelClicked);
+                }
+            });
+    
+})
+                
+                
             } else {
                 const noChannels = document.createElement("li");
                 noChannels.textContent = "No channels available";
@@ -236,21 +277,10 @@
             }
 
             // Add event listeners for sending messages
-            document.getElementById("send").addEventListener("click", function() {
-                sendMessage(teamName, channelClicked);
-            });
-
-            document.getElementById("message").addEventListener("keypress", function(e) {
-                if (e.key === "Enter") {
-                    sendMessage(teamName, channelClicked);
-                }
-            });
+            
             
             // Select first channel by default if available
-            if (data.channels && data.channels.length > 0) {
-                const firstChannel = document.querySelector("#chat-list li");
-                firstChannel.click();
-            }
+            
         })
         .catch(error => {
             console.error("Fetch Error:", error);
