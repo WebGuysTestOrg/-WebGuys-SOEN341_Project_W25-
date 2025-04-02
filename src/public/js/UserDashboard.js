@@ -565,7 +565,7 @@ function fetchPrivateChannels() {
                                 <i class="fas fa-users"></i> ${group.memberCount} members
                             </div>
                             <div class="private-channel-actions">
-                                <a href="groups.html?id=${group.id}" class="btn">
+                                <a href="private_channels.html?id=${group.id}" class="btn">
                                     <i class="fas fa-comment-dots"></i> Open Chat
                                 </a>
                             </div>
