@@ -15,10 +15,10 @@
 </head>
 
 <body>
-    <button onclick="history.back()" id="back-btn">← Back</button>
+    <!-- <button onclick="history.back()" id="back-btn">←</button> -->
     <div class="dm-container">
         <div class="sidebar">
-            <h2>Channels</h2>
+            <h2 >Channels</h2>
             <ul id="chat-list">
                 <li class="loading-channels">
                     <div class="loading-spinner"></div>
@@ -40,6 +40,7 @@
                     <span id="quoted-text"></span>
                     <button id="cancel-quote">×</button>
                 </div>
+                <i title="Export Chat" class='fas fa-file-export'id="export-chat"></i>
                 <input type="text" id="message" placeholder="Type a message..." disabled>
                 <button id="emoji-btn" disabled>😊</button> 
                 <div id="emoji-picker-container" style="display: none;"></div>
@@ -73,7 +74,7 @@
         let currentUserRole = "";
         let quotedMessage = null;
         let isLoading = true;
-
+        let exportChat={};
         // Add loading styles
         document.head.insertAdjacentHTML('beforeend', `
             <style>
@@ -320,6 +321,8 @@
                 }
 
                 // Process each message
+                console.log(messages)
+                exportChat=messages
                 messages.forEach(msg => {
                     displayMessage(msg, msg.sender === currentUser);
                 });
@@ -381,8 +384,10 @@
         socket.on("ChannelMessages", (msg) => {
             // Only display messages for current channel
             if (msg.channelName === channelClicked && msg.teamName === teamName) {
+                console.log(exportChat)
+                exportChat.push(msg)
                 displayMessage(msg, msg.sender === currentUser);
-                
+               
                 // Scroll to bottom when new message arrives
                 const chatMessages = document.getElementById("chat-messages");
                 chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -395,6 +400,7 @@
             const messageElement = document.createElement("div");
 
             // Apply message class
+            
             messageElement.classList.add("message", isOwnMessage ? "my-message" : "other-message");
 
             // Add username styling (only for other people's messages)
@@ -571,6 +577,22 @@
                 chatFrame.style.display = "none";
             }
         });
+
+        document.getElementById("export-chat").addEventListener("click", function (event) {
+  console.log(exportChat)
+  let chatText = "";
+  exportChat.forEach(msg => {
+    chatText += msg.sender +": "+ msg.text+ "\n";
+  });
+  console.log(chatText)
+  const blob = new Blob([chatText], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "DMchats.txt";
+  a.click();
+  URL.revokeObjectURL(url);
+})
     </script>
 </body>
 </html> 
