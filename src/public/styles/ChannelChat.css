@@ -36,7 +36,15 @@ body {
     transition: width 0.3s ease;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
 }
-
+#export-chat{
+    color: #888;
+}
+#export-chat:hover {
+    color: #e6c200;
+    transform: translateY(-2px);
+    cursor: pointer;
+    background:rgba(255, 255, 255, 0.15);
+}
 .sidebar h2 {
     font-size: 20px;
     margin: 20px;

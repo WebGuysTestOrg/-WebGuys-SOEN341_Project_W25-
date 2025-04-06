@@ -73,5 +73,5 @@ jobs:
       with:
         branch: gh-pages
         folder: src/public
-        token: ${{ secrets.GH_TOKEN }}
+        
 
