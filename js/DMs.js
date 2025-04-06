@@ -6,7 +6,7 @@ let currentRecipientId = null;
 let currentRecipientName = null;
 let onlineUsers = [];
 let awayUsers = [];
-
+let ChatMessageToExport={};
 // Handle URL parameters for direct navigation
 const urlParams = new URLSearchParams(window.location.search);
 const directMessageUser = urlParams.get('user');
@@ -435,7 +435,7 @@ function loadChat(recipientId, recipientName) {
                 chatMessages.innerHTML = '<div class="no-messages">No messages yet. Say hello! 👋</div>';
             } else {
                 let lastDate = '';
-                
+                exportChat=userMessages;
                 userMessages.forEach(msg => {
                     // Add date separator if needed
                     const msgDate = new Date(msg.timestamp || Date.now()).toLocaleDateString();
@@ -603,7 +603,7 @@ socket.on("private-message", (msg) => {
         if (msg.senderId === currentRecipientId || msg.recipientId === currentRecipientId || msg.senderId === loggedInUserId) {
             // Try different ID formats for pending messages
             let pendingMessage = document.getElementById('msg-' + msg.id);
-            
+            exportChat.push(msg)
             // If not found, try looking for a message with tempId
             if (!pendingMessage && msg.tempId) {
                 pendingMessage = document.getElementById(msg.tempId);
@@ -617,6 +617,7 @@ socket.on("private-message", (msg) => {
                 }
             } else {
                 // This is a new message
+                
                 displayMessage(msg, msg.senderId === loggedInUserId);
                 
                 // If this is from someone else in the current chat, scroll to bottom
@@ -792,6 +793,23 @@ chatLauncher.addEventListener("click", () => {
         chatFrame.contentWindow.postMessage({ action: 'openChat' }, '*');
     }
 });
+
+document.getElementById("export-chat").addEventListener("click", function (event) {
+  console.log(exportChat)
+  let chatText = "";
+  exportChat.forEach(msg => {
+    chatText += msg.senderName +": "+ msg.text+ "\n";
+  });
+  console.log(chatText)
+  const blob = new Blob([chatText], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "DMchats.txt";
+  a.click();
+  URL.revokeObjectURL(url);
+})
+
 
 // Listen for messages from the chatbot iframe
 window.addEventListener('message', (event) => {
