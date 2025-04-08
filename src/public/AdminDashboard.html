@@ -87,6 +87,53 @@
         </div>
     </div>
 
+    <!-- Modal for adding users to channel -->
+    <div id="add-channel-member-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Add Member to Channel</h3>
+            <form id="add-channel-member-form">
+                <input type="hidden" id="modalAddChannelTeamId">
+                <input type="hidden" id="modalAddChannelName">
+                <input type="text" id="modalAddChannelMember" placeholder="Enter username" required>
+                <button type="submit" class="btn">Add to Channel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for direct messaging to users -->
+    <div id="dm-user-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Send Direct Message</h3>
+            <form id="dm-user-form">
+                <input type="hidden" id="modalDmUserId">
+                <input type="text" id="modalDmUserName" disabled>
+                <textarea id="modalDmMessage" placeholder="Type your message..." required rows="4"></textarea>
+                <button type="submit" class="btn">Send Message</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for adding users to channels -->
+    <div id="add-to-channel-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Add User to Channel</h3>
+            <form id="add-to-channel-form">
+                <input type="hidden" id="modalChannelTeamId">
+                <input type="hidden" id="modalChannelUserId">
+                <div class="form-group">
+                    <label for="modalChannelSelect">Select Channel:</label>
+                    <select id="modalChannelSelect" required>
+                        <option value="">Select a channel</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Add to Channel</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Chat Icon Button -->
     <div id="chat-toggle">
         <i class="fa-solid fa-globe"></i>
@@ -107,11 +154,11 @@
         </div>
     </div>
     <div id="status-toggle">
-        <i class="fa-solid fa-users"></i>
+        <i class="fa-solid fa-users"></i> User Status
     </div>
     <div id="status-container">
         <div id="chat-header">
-            <span id="Chat-title"> Users</span>
+            <span id="Chat-title">User Status</span>
             <button id="close-status">✖</button>
         </div>
         <div id="users-status"></div> 

@@ -555,44 +555,152 @@ h2 {
 .user-status {
     display: flex;
     justify-content: space-between;
-    padding: 8px;
+    padding: 12px;
     border-bottom: 1px solid #ddd;
+    background-color: white;
+    margin-bottom: 5px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
 }
-.user-name{
-color :black;
-font-weight: bold;
+.user-status:hover {
+    background-color: #f9f9f9;
+    transform: translateY(-2px);
 }
-
+.user-name {
+    color: black;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 3px;
+}
+.user-name-role {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+.user-role {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+.role-admin {
+    background-color: var(--yellow);
+    color: var(--dark-grey);
+}
+.role-user {
+    background-color: var(--light-grey);
+    color: var(--dark-grey);
+    border: 1px solid var(--medium-grey);
+}
+.user-status-info {
+    display: flex;
+    flex-direction: column;
+}
+.user-status-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.status-dm-btn, .status-add-to-channel-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+.status-dm-btn {
+    color: var(--blue);
+}
+.status-dm-btn:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    transform: scale(1.1);
+}
+.status-add-to-channel-btn {
+    color: var(--yellow);
+}
+.status-add-to-channel-btn:hover {
+    background-color: rgba(251, 202, 31, 0.1);
+    transform: scale(1.1);
+}
+/* Current user highlight */
+.user-status.current-user {
+    border-left: 3px solid var(--yellow);
+    background-color: rgba(251, 202, 31, 0.05);
+}
+/* Form group styling */
+.form-group {
+    margin-bottom: 15px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+/* Channel select styling */
+#modalChannelSelect {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--medium-grey);
+    border-radius: 5px;
+    margin-bottom: 10px;
+    font-family: 'Poppins', sans-serif;
+}
+#modalChannelSelect optgroup {
+    font-weight: bold;
+    color: var(--dark-grey);
+}
+#modalChannelSelect option {
+    padding: 5px;
+}
+#modalChannelSelect option:disabled {
+    color: #999;
+    font-style: italic;
+}
+.timestamp {
+    font-size: 0.75rem;
+    color: #777;
+    margin-top: 2px;
+}
 /* status icons */
 .online-icon {
     color: green;
 }
-
 .away-icon {
-    color:  #FBCA1F;
+    color: var(--yellow);
 }
-
 .offline-icon {
     color: grey;
 }
-
 .status {
-    font-size: 14px;
-    padding: 2px 6px;
-    border-radius: 5px;
+    font-size: 0.85rem;
+    padding: 2px 0;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 .online {
     color: green;
-    font-weight: bold;
+    font-weight: 600;
+}
+.away {
+    color: var(--yellow);
+    font-weight: 600;
 }
 .offline {
     color: grey;
-    font-weight: bold;
+    font-weight: 600;
 }
 #Chat-title {
     color: var(--text-light);
 }
-
 /* Container for all messages */
 #chatMessages {
     display: flex;
@@ -601,7 +709,6 @@ font-weight: bold;
     max-height: 300px;
     overflow-y: auto;
 }
-
 /* Style for messages sent by the user */
 .my-message {
     background-color: var(--yellow);
@@ -615,7 +722,6 @@ font-weight: bold;
     word-wrap: break-word;
     box-sizing: border-box;
 }
-
 /* Style for messages sent by others */
 .other-message {
     background-color: var(--medium-grey);
@@ -630,13 +736,11 @@ font-weight: bold;
     position: relative;
     padding-right: 30px;
 }
-
 /* Make the message boxes square-like */
 .my-message, .other-message {
     border: 1px solid #ccc;
     box-sizing: border-box;
 }
-
 .settings-button{
     position: fixed;
     top: 20px;
@@ -652,19 +756,16 @@ font-weight: bold;
     z-index: 1000;
     transition: all 0.3s ease;
 }
-
 .settings-button:hover{
     background: var(--button-hover);
     color: var(--text-light);
 }
-
 #toast-container {
     position: fixed;
     top: 20px;
     right: 20px;
     z-index: 1000;
 }
-
 .toast {
     display: flex;
     align-items: center;
@@ -681,29 +782,24 @@ font-weight: bold;
     opacity: 100%;
     transition: opacity 0.5s ease, transform 0.5s ease;
 }
-
 .toast.error {
     background-color: #dc3545;
     color: var(--text-light);
 }
-
 .toast.hide {
     opacity: 0;
     transform: translateX(100%);
 }
-
 .teamsButton{
     padding: 10px;
     background: var(--yellow);
     border: 2px solid black;
     cursor: pointer;
 }
-
 .teamsButton:hover{
     background: var(--button-hover);
     color: var(--text-light);
 }
-
 #emoji-btn {
     background: none;
     border: none;
@@ -711,7 +807,6 @@ font-weight: bold;
     cursor: pointer;
     margin: 0 5px;
 }
-
 #emoji-picker-container {
     position: absolute;
     bottom: 60px;     
@@ -724,11 +819,9 @@ font-weight: bold;
     max-height: 300px;  
     overflow-y: auto;  
 }
-
 .emoji-mart {
     width: 100%;        
 }
-
 .form-row {
     display: flex;
     flex-wrap: wrap;
@@ -736,7 +829,6 @@ font-weight: bold;
     gap: 2rem;
     margin-top: 2rem;
 }
-
 .form-row .form-container {
     flex: 1;
     min-width: 320px;
@@ -746,7 +838,6 @@ font-weight: bold;
     border-radius: 20px;
     box-shadow: 19px 19px 100px #666666;
 }
-
 /* Responsive stacking for mobile */
 @media (max-width: 600px) {
     .form-row {
@@ -760,7 +851,6 @@ font-weight: bold;
     right: 20px;
     z-index: 1000;
 }
-
 /* Delete button for messages */
 .delete-btn {
     background: none;
@@ -776,11 +866,9 @@ font-weight: bold;
     right: 8px;
     top: 8px;
 }
-
 .delete-btn:hover {
     opacity: 1;
 }
-
 /* Style for removed messages */
 .removed-message {
     font-style: italic;
@@ -788,7 +876,6 @@ font-weight: bold;
     text-decoration: line-through;
     opacity: 0.7;
 }
-
 /* Global Chat Styling */
 .message-container {
     display: flex;
@@ -796,15 +883,12 @@ font-weight: bold;
     max-width: 85%;
     position: relative;
 }
-
 .message-container.right {
     margin-left: auto;
 }
-
 .message-container.left {
     margin-right: auto;
 }
-
 .message {
     padding: 12px 16px;
     border-radius: 18px;
@@ -812,47 +896,40 @@ font-weight: bold;
     max-width: 100%;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
-
 .sent {
     background: linear-gradient(135deg, var(--dark-grey), #4a4a4a);
     color: white;
     border-bottom-right-radius: 5px;
     border-right: 2px solid var(--yellow);
 }
-
 .received {
     background: #2D2D2D;
     color: white;
     border-bottom-left-radius: 5px;
     border-left: 2px solid var(--yellow);
 }
-
 .sender-name {
     font-size: 0.85em;
     color: var(--yellow);
     margin-bottom: 6px;
     font-weight: 500;
 }
-
 .message-content {
     position: relative;
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
-
 .message-text {
     line-height: 1.5;
     word-wrap: break-word;
 }
-
 .message-time {
     font-size: 0.75em;
     opacity: 0.7;
     margin-top: 4px;
     text-align: right;
 }
-
 /* Quote styling */
 .quoted-message {
     background: rgba(255, 255, 255, 0.08);
@@ -862,7 +939,6 @@ font-weight: bold;
     border-radius: 8px;
     font-size: 0.9em;
 }
-
 .quoted-sender {
     color: var(--yellow);
     font-size: 0.85em;
@@ -872,13 +948,11 @@ font-weight: bold;
     align-items: center;
     gap: 6px;
 }
-
 .quoted-text {
     color: #e0e0e0;
     opacity: 0.8;
     line-height: 1.4;
 }
-
 /* Delete button styling */
 .delete-btn {
     position: absolute;
@@ -900,19 +974,16 @@ font-weight: bold;
     justify-content: center;
     z-index: 10;
 }
-
 .message:hover .delete-btn {
     opacity: 1;
     right: -35px;
 }
-
 .delete-btn:hover {
     background: var(--red, #b1443c);
     color: var(--text-light, #fff);
     transform: scale(1.1);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
-
 /* Removed message styling */
 .removed-message {
     font-style: italic;
@@ -920,7 +991,6 @@ font-weight: bold;
     text-decoration: line-through;
     opacity: 0.7;
 }
-
 /* Moderator flag styling */
 .moderator-flag {
     margin-top: 8px;
@@ -933,9 +1003,200 @@ font-weight: bold;
     align-items: center;
     gap: 5px;
 }
-
 .moderator-flag i {
     font-size: 0.9em;
+}
+/* User Management Styling */
+.user-card {
+    background: #fff;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.user-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+.user-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+.user-name-role {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.user-name-role h4 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+.user-role {
+    font-size: 0.8rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+.role-admin {
+    background-color: var(--yellow);
+    color: var(--dark-grey);
+}
+.role-user {
+    background-color: var(--light-grey);
+    color: var(--dark-grey);
+    border: 1px solid var(--medium-grey);
+}
+.user-timestamps {
+    margin-top: 5px;
+    font-size: 0.85rem;
+    color: #777;
+}
+.user-timestamps span {
+    color: inherit;
+    font-weight: normal;
+}
+.user-actions {
+    display: flex;
+    gap: 8px;
+}
+.user-action-btn {
+    background: none;
+    border: none;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.action-message {
+    color: var(--blue);
+    background-color: rgba(0, 123, 255, 0.1);
+}
+.action-message:hover {
+    background-color: rgba(0, 123, 255, 0.2);
+}
+.action-ban {
+    color: var(--red);
+    background-color: rgba(177, 68, 60, 0.1);
+}
+.action-ban:hover {
+    background-color: rgba(177, 68, 60, 0.2);
+}
+/* DM Modal specific styles */
+#modalDmMessage {
+    width: calc(100% - 20px);
+    margin: 10px 10px 20px;
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid var(--dark-grey);
+    border-radius: 5px;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 80px;
+}
+/* Enhanced user status panel */
+.status-header {
+    background-color: var(--dark-grey);
+    color: var(--text-light);
+    padding: 10px 15px;
+    border-radius: 5px 5px 0 0;
+    margin-bottom: 10px;
+}
+.status-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-light);
+}
+.user-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    margin: 5px 0;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: background-color 0.2s ease;
+}
+.user-status:hover {
+    background-color: #f5f5f5;
+}
+.user-status-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.user-status-actions {
+    display: flex;
+    gap: 5px;
+}
+.status-dm-btn {
+    background: none;
+    border: none;
+    color: var(--blue);
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+.status-dm-btn:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.channel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.add-channel-member-btn {
+    background: none;
+    border: none;
+    color: var(--blue);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.add-channel-member-btn:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    transform: scale(1.1);
+}
+
+.channel-members-list {
+    margin-top: 5px;
+    padding-left: 5px;
+    border-left: 2px solid #f0f0f0;
+}
+
+.channel-item {
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    background-color: #fafafa;
+    border-radius: 5px;
+    transition: background-color 0.2s ease;
+}
+
+.channel-item:hover {
+    background-color: #f0f0f0;
 }
 
 

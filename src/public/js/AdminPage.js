@@ -301,19 +301,40 @@ function createTeamCard(team, isOwner) {
             const channelDiv = document.createElement('div');
             channelDiv.classList.add('channel-item');
 
+            const channelHeader = document.createElement('div');
+            channelHeader.classList.add('channel-header');
+            
             const channelName = document.createElement('div');
             channelName.innerHTML = `<strong># ${channel.channelName}</strong>`;
             channelName.style.marginBottom = '5px';
             
+            channelHeader.appendChild(channelName);
+            
+            // Add member button for channel
+            if (isOwner) {
+                const addChannelMemberBtn = document.createElement('button');
+                addChannelMemberBtn.classList.add('add-channel-member-btn');
+                addChannelMemberBtn.innerHTML = '<i class="fas fa-user-plus"></i>';
+                addChannelMemberBtn.title = 'Add Member to Channel';
+                addChannelMemberBtn.addEventListener('click', () => {
+                    document.getElementById('modalAddChannelTeamId').value = team.teamId;
+                    document.getElementById('modalAddChannelName').value = channel.channelName;
+                    openModal('add-channel-member-modal');
+                });
+                channelHeader.appendChild(addChannelMemberBtn);
+            }
+            
+            channelDiv.appendChild(channelHeader);
+            
             const channelMembersList = document.createElement('div');
             channelMembersList.style.fontSize = '0.9rem';
+            channelMembersList.classList.add('channel-members-list');
             if (channel.members && channel.members.length > 0) {
                 channelMembersList.innerHTML = `<span style="color: #888;">Members:</span> ${channel.members.join(', ')}`;
             } else {
                 channelMembersList.innerHTML = `<span style="color: #888;">Members:</span> No members`;
             }
 
-            channelDiv.appendChild(channelName);
             channelDiv.appendChild(channelMembersList);
             channelContainer.appendChild(channelDiv);
         });
@@ -460,24 +481,53 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
     const usersStatusDiv = document.getElementById("users-status");
     usersStatusDiv.innerHTML = "";
 
+    // Add header
+    const statusHeader = document.createElement('div');
+    statusHeader.classList.add('status-header');
+    statusHeader.innerHTML = `<h3>All Users (${allUsers.length})</h3>`;
+    usersStatusDiv.appendChild(statusHeader);
+
+    // Sort users: online first, then away, then offline
+    // Within each status category, sort admins first
+    allUsers.sort((a, b) => {
+        const aIsOnline = onlineUsers.includes(a.name);
+        const bIsOnline = onlineUsers.includes(b.name);
+        const aIsAway = awayUsers.includes(a.name);
+        const bIsAway = awayUsers.includes(b.name);
+        
+        if (aIsOnline && !bIsOnline) return -1;
+        if (!aIsOnline && bIsOnline) return 1;
+        if (aIsAway && !bIsAway) return -1;
+        if (!aIsAway && bIsAway) return 1;
+        
+        // If same status, sort by role (admin first)
+        if (a.role === 'admin' && b.role !== 'admin') return -1;
+        if (a.role !== 'admin' && b.role === 'admin') return 1;
+        
+        // If same role, sort alphabetically
+        return a.name.localeCompare(b.name);
+    });
+
     allUsers.forEach(user => {
         const isOnline = onlineUsers.includes(user.name);
         const isAway = awayUsers.includes(user.name);
+        const isCurrentUser = user.name === adminName;
 
         const userDiv = document.createElement("div");
         userDiv.classList.add("user-status");
+        if (isCurrentUser) {
+            userDiv.classList.add("current-user");
+        }
 
         let statusText = "Offline";
         let statusClass = "offline";
         let logoutTimestamp = "";
-        let statusIcon = `<i class="fas fa-circle-xmark offline-icon"></i>`; //default offline
-
+        let statusIcon = `<i class="fas fa-circle-xmark offline-icon"></i>`; // default offline
 
         if (isOnline) {
             statusText = "Available";
             statusClass = "online";
             statusIcon = `<i class="fas fa-circle-check online-icon"></i>`;
-
         } else if (isAway) {
             statusText = "Away";
             statusClass = "away";
@@ -486,18 +536,142 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
             // Get last logout timestamp for this user
             const userLogout = logoutTimes.find(logout => logout.name === user.name);
             if (userLogout && userLogout.last_logout) {
-                logoutTimestamp = ` (Since: ${new Date(userLogout.last_logout).toLocaleString()})`;
+                logoutTimestamp = `<div class="timestamp">Last seen: ${new Date(userLogout.last_logout).toLocaleString()}</div>`;
             }
         }
 
+        // Format registration date if available
+        let registrationInfo = '';
+        if (user.created_at) {
+            registrationInfo = `<div class="timestamp">Registered: ${new Date(user.created_at).toLocaleString()}</div>`;
+        }
+
         userDiv.innerHTML = `
-            <span class="user-name">${user.name}</span>
-            <span class="status ${statusClass}">
-                ${statusIcon} ${statusText}${logoutTimestamp}
-            </span>
+            <div class="user-status-info">
+                <div class="user-name-role">
+                    <span class="user-name">${user.name} ${isCurrentUser ? '(You)' : ''}</span>
+                    <span class="user-role ${user.role === 'admin' ? 'role-admin' : 'role-user'}">
+                        ${user.role === 'admin' ? 'Moderator' : 'User'}
+                    </span>
+                </div>
+                <div class="status ${statusClass}">
+                    ${statusIcon} ${statusText}
+                </div>
+                ${registrationInfo}
+                ${logoutTimestamp}
+            </div>
+            <div class="user-status-actions">
+                ${!isCurrentUser ? `
+                <button class="status-dm-btn" title="Send Direct Message" data-user-id="${user.id}" data-user-name="${user.name}">
+                    <i class="fas fa-envelope"></i>
+                </button>
+                ` : ''}
+            </div>
         `;
 
+        // Add event listeners for buttons
+        if (!isCurrentUser) {
+            // Direct message button
+            const dmBtn = userDiv.querySelector('.status-dm-btn');
+            if (dmBtn) {
+                dmBtn.addEventListener('click', () => {
+                    showSendDirectMessageModal(user);
+                });
+            }
+        }
+
         usersStatusDiv.appendChild(userDiv);
+    });
+}
+
+// Function to show direct message modal
+function showSendDirectMessageModal(user) {
+    // If we already have the modal from HTML, use it
+    let dmModal = document.getElementById('dm-user-modal');
+    
+    // If not, create the modal dynamically
+    if (!dmModal) {
+        dmModal = document.createElement('div');
+        dmModal.id = 'dm-user-modal';
+        dmModal.className = 'modal';
+        
+        dmModal.innerHTML = `
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h3>Send Direct Message</h3>
+                <form id="dm-user-form">
+                    <input type="hidden" id="modalDmUserId">
+                    <input type="text" id="modalDmUserName" disabled>
+                    <textarea id="modalDmMessage" placeholder="Type your message..." required rows="4"></textarea>
+                    <button type="submit" class="btn">Send Message</button>
+                </form>
+            </div>
+        `;
+        
+        document.body.appendChild(dmModal);
+        
+        // Add event listener to close button
+        const closeBtn = dmModal.querySelector('.close-modal');
+        closeBtn.addEventListener('click', () => {
+            dmModal.style.display = 'none';
+        });
+        
+        // Add event listener for submit
+        const form = dmModal.querySelector('#dm-user-form');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userId = document.getElementById('modalDmUserId').value;
+            const userName = document.getElementById('modalDmUserName').value;
+            const message = document.getElementById('modalDmMessage').value;
+            
+            if (!message.trim() || !userId) {
+                showToast("Please enter a message", "error");
+                return;
+            }
+            
+            sendDirectMessage(userId, userName, message);
+        });
+        
+        // Close when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === dmModal) {
+                dmModal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Set user information and show modal
+    document.getElementById('modalDmUserId').value = user.id;
+    document.getElementById('modalDmUserName').value = user.name;
+    document.getElementById('modalDmMessage').value = '';
+    dmModal.style.display = 'block';
+}
+
+// Function to send direct message
+function sendDirectMessage(userId, userName, message) {
+    fetch('/send-direct-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            receiverId: userId,
+            message: message,
+            senderId: adminId,
+            senderName: adminName
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showToast(data.error, 'error');
+        } else {
+            showToast(`Message sent to ${userName} successfully!`);
+            const dmModal = document.getElementById('dm-user-modal');
+            dmModal.style.display = 'none';
+        }
+    })
+    .catch(err => {
+        console.error('Error sending message:', err);
+        showToast('Failed to send message', 'error');
     });
 }
 
@@ -524,6 +698,133 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusToggle = document.getElementById("status-toggle");
     const statusContainer = document.getElementById("status-container");
     const closeStatus = document.getElementById("close-status");
+
+    // Add Channel Member form handler
+    document.getElementById('add-channel-member-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const teamId = document.getElementById('modalAddChannelTeamId').value;
+        const channelName = document.getElementById('modalAddChannelName').value;
+        const userName = document.getElementById('modalAddChannelMember').value;
+        
+        if (!userName.trim()) {
+            showToast("Please enter a username", "error");
+            return;
+        }
+        
+        // Assign user to channel
+        fetch('/assign-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                teamId: teamId,
+                channelName: channelName,
+                userName: userName
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+            } else {
+                showToast(`Added ${userName} to channel ${channelName} successfully!`);
+                document.getElementById('modalAddChannelMember').value = '';
+                document.getElementById('add-channel-member-modal').style.display = 'none';
+                
+                // Refresh the teams to show the updated channel members
+                setTimeout(() => {
+                    fetchTeamsWithMembers();
+                }, 500);
+            }
+        })
+        .catch(err => {
+            console.error('Error assigning user to channel:', err);
+            showToast('Failed to add user to channel', 'error');
+        });
+    });
+
+    // Add to channel form handler
+    document.getElementById('add-to-channel-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const modalUserId = document.getElementById('modalChannelUserId').value;
+        const channelSelectValue = document.getElementById('modalChannelSelect').value;
+        
+        if (!channelSelectValue) {
+            showToast("Please select a channel", "error");
+            return;
+        }
+        
+        // Parse the channel data
+        try {
+            const channelData = JSON.parse(channelSelectValue);
+            const teamId = channelData.teamId;
+            const channelName = channelData.channelName;
+            
+            // First get the username from the user ID
+            fetch(`/get-username?userId=${encodeURIComponent(modalUserId)}`)
+                .then(response => response.json())
+                .then(userData => {
+                    if (userData.error) {
+                        showToast(userData.error, 'error');
+                        return;
+                    }
+                    
+                    const userName = userData.userName;
+                    
+                    // Now assign the user to the channel
+                    fetch('/assign-user', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            teamId: teamId,
+                            channelName: channelName,
+                            userName: userName
+                        }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            showToast(data.error, 'error');
+                        } else {
+                            showToast(`Added ${userName} to channel ${channelName} successfully!`);
+                            document.getElementById('add-to-channel-modal').style.display = 'none';
+                            
+                            // Refresh the teams to show the updated channel members
+                            setTimeout(fetchTeamsWithMembers, 500);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error assigning user to channel:', err);
+                        showToast('Failed to add user to channel', 'error');
+                    });
+                })
+                .catch(err => {
+                    console.error('Error getting username:', err);
+                    showToast('Failed to get user information', 'error');
+                });
+        } catch (err) {
+            console.error('Error parsing channel data:', err);
+            showToast('Invalid channel selection', 'error');
+        }
+    });
+
+    // Close modals when clicking on the close button
+    document.querySelectorAll('.close-modal').forEach(button => {
+        button.addEventListener('click', () => {
+            const modal = button.closest('.modal');
+            modal.style.display = 'none';
+        });
+    });
+
+    // Close modals when clicking outside
+    window.addEventListener('click', (e) => {
+        document.querySelectorAll('.modal').forEach(modal => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
 
     // Toggle chat visibility
     chatToggle.addEventListener("click", () => {
@@ -804,3 +1105,65 @@ document.addEventListener("DOMContentLoaded", () => {
         chatFrame.style.display = isVisible ? "none" : "block";
     });
 });
+
+// Function to show add to channel modal
+function showAddToChannelModal(user) {
+    // Reset the form and populate with user data
+    const modalUserId = document.getElementById('modalChannelUserId');
+    const modalChannelSelect = document.getElementById('modalChannelSelect');
+    
+    modalUserId.value = user.id;
+    modalChannelSelect.innerHTML = '<option value="">Loading channels...</option>';
+    
+    // Fetch all teams and their channels
+    fetch('/get-teams-with-members')
+        .then(response => response.json())
+        .then(teams => {
+            modalChannelSelect.innerHTML = '<option value="">Select a channel</option>';
+            
+            // Filter teams where the admin is the owner
+            const ownedTeams = teams.filter(team => team.creatorName === adminName);
+            
+            if (ownedTeams.length === 0) {
+                modalChannelSelect.innerHTML = '<option value="">No channels available</option>';
+                return;
+            }
+            
+            // Add options for each channel
+            ownedTeams.forEach(team => {
+                if (team.channels && Object.keys(team.channels).length > 0) {
+                    // Create optgroup for team
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = `Team: ${team.teamName}`;
+                    
+                    // Add each channel
+                    Object.values(team.channels).forEach(channel => {
+                        const option = document.createElement('option');
+                        option.value = JSON.stringify({
+                            teamId: team.teamId,
+                            channelName: channel.channelName
+                        });
+                        option.textContent = channel.channelName;
+                        
+                        // Check if user is already a member
+                        if (channel.members && channel.members.includes(user.name)) {
+                            option.disabled = true;
+                            option.textContent += ' (Already a member)';
+                        }
+                        
+                        optgroup.appendChild(option);
+                    });
+                    
+                    modalChannelSelect.appendChild(optgroup);
+                }
+            });
+            
+            // Show the modal
+            document.getElementById('add-to-channel-modal').style.display = 'block';
+        })
+        .catch(err => {
+            console.error('Error fetching teams:', err);
+            modalChannelSelect.innerHTML = '<option value="">Error loading channels</option>';
+            document.getElementById('add-to-channel-modal').style.display = 'block';
+        });
+}
