@@ -1,5 +1,4 @@
 const express = require("express");
-const mysql = require("mysql2");
 const bodyParser = require("body-parser");
 const crypto = require("crypto");
 const session = require("express-session");
@@ -7,6 +6,8 @@ const path = require("path");
 const sharedSession = require("express-socket.io-session"); 
 const {Server} =require("socket.io") 
 
+// Import the database connection
+const connection = require('./config/db');
 
 
 const app = express();
@@ -15,8 +16,9 @@ const PORT= process.env.PORT|| 3000
 let expressServer;
 
 // =============================================
-// DATABASE CONNECTION AND SETUP
+// DATABASE CONNECTION AND SETUP - REMOVED
 // =============================================
+/*
 const connection = mysql.createConnection({
     host: process.env.DB_HOST || "localhost",
     user: process.env.DB_USER || "root",
@@ -129,6 +131,7 @@ function setupDatabase() {
         });
     });
 }
+*/
 
 // =============================================
 // SERVER INITIALIZATION
@@ -170,6 +173,15 @@ io.use(sharedSession(sessionMiddleware, {
     autoSave: true,
 }));
 
+// The preloadChannelMessages function might need adjustment or removal from here
+// depending on where it's called now (likely within db.js setup)
+/* 
+function preloadChannelMessages() {
+    // ... original implementation ...
+    // Ensure connection usage is correct (using the imported connection)
+}
+*/
+
 // Socket connection handling - Shared global chat for all users (admin and regular)
 io.on('connection', socket => {
     const session = socket.handshake.session;
@@ -202,6 +214,7 @@ io.on('connection', socket => {
         LIMIT 50
     `;
     
+    // Use the imported connection
     connection.query(getLastMessagesQuery, (err, results) => {
         if (err) {
             console.error('Error fetching global messages:', err);
@@ -234,6 +247,7 @@ io.on('connection', socket => {
             VALUES (?, ?, ?, ?, ?, ?)
         `;
 
+        // Use the imported connection
         connection.query(
             insertQuery,
             [
