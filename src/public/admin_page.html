@@ -444,31 +444,49 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusToggle=document.getElementById("status-toggle")
     const statusContainer=document.getElementById("status-container");
     const closeStatus = document.getElementById("close-status");
+
     // Toggle chat visibility
     chatToggle.addEventListener("click", () => {
-            chatContainer.style.left = "0";
-            chatToggle.style.display = "none"; 
-            statusToggle.style.display="none"
-        });
+        chatContainer.style.left = "0";
+        chatToggle.style.display = "none"; 
+        statusToggle.style.display="none"
+    });
 
-        closeChat.addEventListener("click", () => {
-            chatContainer.style.left = "-700px";
-            setTimeout(() => {
-        chatToggle.style.display = "block";  
-        statusToggle.style.display="block";
-    }, 300);
-        });
-        statusToggle.addEventListener("click", () => {
-            statusContainer.style.left = "0";
-            chatToggle.style.display = "none"; 
-            statusToggle.style.display="none"
-        });
-        closeStatus.addEventListener("click", () => {
-            statusContainer.style.left = "-300px";
-            setTimeout(() => {
-        chatToggle.style.display = "block";  
-        statusToggle.style.display="block";
-    }, 300)});
+    closeChat.addEventListener("click", () => {
+        chatContainer.style.left = "-700px";
+        setTimeout(() => {
+            chatToggle.style.display = "block";  
+            statusToggle.style.display="block";
+        }, 300);
+    });
+
+    statusToggle.addEventListener("click", () => {
+        statusContainer.style.left = "0";
+        chatToggle.style.display = "none"; 
+        statusToggle.style.display="none"
+    });
+
+    closeStatus.addEventListener("click", () => {
+        statusContainer.style.left = "-300px";
+        setTimeout(() => {
+            chatToggle.style.display = "block";  
+            statusToggle.style.display="block";
+        }, 300)
+    });
+
+    // Request global chat history when connecting
+    socket.on('connect', () => {
+        // Join global chat room
+        socket.emit('join', 'global-chat');
+    });
+
+    // Get global chat history when page loads
+    socket.on('global-chat-history', (messages) => {
+        chatMessages.innerHTML = '';
+        messages.forEach(message => appendMessage(message));
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
     // Send message
     sendButton.addEventListener("click", () => {
         sendMessage();
@@ -477,87 +495,188 @@ document.addEventListener("DOMContentLoaded", () => {
     messageInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
             sendMessage();
+            e.preventDefault();
         }
     });
-    let messages = [];
-    //load messages
-    const storedMessages = JSON.parse(sessionStorage.getItem("chatMessages")) || [];
-    messages = storedMessages;
-    console.log("LoadedMessage",messages)
-    displayMessage(messages)
-    //display messages
-    function displayMessage(msg) {
-        fetch('/user-info')
-            .then(response => {
-                if (!response.ok) throw new Error('Unauthorized');
-                return response.json();
-            })
-            .then(data => {
-                loggedInUser = data.name;
-                loggedInUserId = data.id;
-                messages.forEach((msg)=>{
-    const messageElement = document.createElement("div");
-    console.log("LoggedInUser",loggedInUserId)
-    if (msg.senderID === loggedInUserId) {
-        messageElement.classList.add("my-message");
-        messageElement.textContent = `${msg.text}`;
-    }else {
-        messageElement.classList.add("other-message");
-        messageElement.textContent = `${msg.sender}: ${msg.text}`;
-    }
-    chatMessages.appendChild(messageElement);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-})
-            })
-            .catch(() => window.location.href = '/Login-Form.html');
 
-  
-    }
+    let loggedInUser;
+    let loggedInUserId;
+    let loggedInUserRole;
 
+    // Get current user info
+    fetch('/user-info')
+        .then(response => {
+            if (!response.ok) throw new Error('Unauthorized');
+            return response.json();
+        })
+        .then(data => {
+            loggedInUser = data.name;
+            loggedInUserId = data.id;
+            loggedInUserRole = data.role; // Store the user role
+            console.log(`Admin dashboard: User ${loggedInUser} (${loggedInUserRole}) connected`);
+        })
+        .catch(() => window.location.href = '/Login-Form.html');
 
-
-    function addMessage(sender,text, senderID) {
-    const newMessage = {
-        id: messages.length + 1,
-        text: text,
-        sender: sender, // "Me" if it's your message
-        senderID:senderID,
-        timestamp: Date.now()
-    };
-
-    messages.push(newMessage); // Store message in the array
-    sessionStorage.setItem("chatMessages", JSON.stringify(messages));
-    }
+    // Send message to global chat
     function sendMessage() {
-    
-    const input =document.getElementById("message")
-    if (input.value){
-        socket.emit('message',{text:input.value})
-    }
-    input.focus()
-        const message = input.value;
-          
-    }
-    socket.on("message", (msg) => {
-        const messageElement = document.createElement("div");
-        if(loggedInUserId===msg.userID){
-            messageElement.classList.add("my-message");
-            messageElement.textContent = `${msg.text}`;
-            addMessage(msg.user,msg.text,msg.userID)
-            sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+        const input = document.getElementById("message");
+        const message = input.value.trim();
+        
+        if (message) {
+            // Prepare the message data
+            const messageData = {
+                text: message,
+                timestamp: new Date(),
+                sender_id: loggedInUserId,
+                sender_name: loggedInUser
+            };
+            
+            // Send to server using global-message event
+            socket.emit('global-message', messageData);
+            
+            // Clear input
+            input.value = '';
+            input.focus();
         }
-        else{
-            messageElement.classList.add("other-message");
-            messageElement.textContent = `${msg.user}: ${msg.text}`;
-            addMessage(msg.user,msg.text,msg.userID)
-            sessionStorage.setItem("chatMessages", JSON.stringify(messages));
+    }
+
+    // Handle incoming global messages
+    socket.on("global-message", (message) => {
+        appendMessage(message);
+    });
+
+    // Listen for global message removal events
+    socket.on('global-message-removed', (data) => {
+        const messageId = data.id;
+        const messageElements = document.querySelectorAll('[data-message-id]');
+        
+        messageElements.forEach(element => {
+            if (element.dataset.messageId === messageId.toString()) {
+                const messageText = element.querySelector('.message-text');
+                if (messageText) {
+                    messageText.textContent = 'Removed by Moderator';
+                    messageText.classList.add('removed-message');
+                    
+                    // Add moderator flag
+                    const messageContent = element.querySelector('.message-content');
+                    if (messageContent && !messageContent.querySelector('.moderator-flag')) {
+                        const moderatorFlag = document.createElement('div');
+                        moderatorFlag.className = 'moderator-flag';
+                        moderatorFlag.innerHTML = '<i class="fas fa-shield-alt"></i> Moderated';
+                        messageContent.appendChild(moderatorFlag);
+                    }
+                } else {
+                    element.textContent = 'Removed by Moderator';
+                    element.classList.add('removed-message');
+                }
+                
+                // Remove any delete buttons
+                const deleteBtn = element.querySelector('.delete-btn');
+                if (deleteBtn) {
+                    deleteBtn.remove();
+                }
+            }
+        });
+    });
+
+    // Function to append a message to the chat
+    function appendMessage(message) {
+        const messageDiv = document.createElement('div');
+        const isMyMessage = message.sender_id === loggedInUserId;
+        const isAdmin = loggedInUserRole === "admin";
+        
+        messageDiv.className = `message-container ${isMyMessage ? 'right' : 'left'}`;
+        messageDiv.dataset.messageId = message.id;
+        
+        const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        // Handle both message formats from different sources
+        const messageText = message.message || message.text;
+        const isModerated = messageText === 'Removed by Moderator' || messageText === 'Removed by Admin';
+        
+        messageDiv.innerHTML = `
+            <div class="message ${isMyMessage ? 'sent' : 'received'} ${message.quoted_text ? 'has-quote' : ''}">
+                ${!isMyMessage ? `<div class="sender-name">${message.sender_name}</div>` : ''}
+                <div class="message-content">
+                    ${message.quoted_text ? `
+                        <div class="quoted-message">
+                            <div class="quoted-sender">Replying to ${message.quoted_sender}</div>
+                            <div class="quoted-text">${message.quoted_text}</div>
+                        </div>
+                    ` : ''}
+                    <div class="message-text ${isModerated ? 'removed-message' : ''}">${messageText}</div>
+                    <div class="message-time">${time}</div>
+                    ${!isModerated && isAdmin ? `
+                        <button class="delete-btn" title="Delete message">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    ` : ''}
+                    ${isModerated ? `
+                        <div class="moderator-flag">
+                            <i class="fas fa-shield-alt"></i> Moderated
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        // Add delete functionality for admin
+        if (isAdmin && !isModerated) {
+            const deleteBtn = messageDiv.querySelector('.delete-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', () => {
+                    deleteGlobalMessage(message.id, messageDiv);
+                });
+            }
         }
-        console.log("SavedMessages",messages)
-        chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight; 
-        messageInput.value = "";
-    });
-    });
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Function to delete a global message (admin only)
+    function deleteGlobalMessage(messageId, messageElement) {
+        fetch('/remove-global-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ messageId: messageId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const messageText = messageElement.querySelector('.message-text');
+                if (messageText) {
+                    messageText.textContent = 'Removed by Moderator';
+                    messageText.classList.add('removed-message');
+                    
+                    // Add moderator flag if not already there
+                    const messageContent = messageElement.querySelector('.message-content');
+                    if (messageContent && !messageContent.querySelector('.moderator-flag')) {
+                        const moderatorFlag = document.createElement('div');
+                        moderatorFlag.className = 'moderator-flag';
+                        moderatorFlag.innerHTML = '<i class="fas fa-shield-alt"></i> Moderated';
+                        messageContent.appendChild(moderatorFlag);
+                    }
+                }
+                
+                // Remove delete button
+                const deleteBtn = messageElement.querySelector('.delete-btn');
+                if (deleteBtn) {
+                    deleteBtn.remove();
+                }
+                
+                showToast('Message removed successfully', 'success');
+            } else {
+                showToast('Failed to remove message: ' + (data.error || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to remove message', 'error');
+        });
+    }
 
     document.getElementById("emoji-btn").addEventListener("click", function (event) {
         console.log("Emoji Clieked");
@@ -606,6 +725,8 @@ document.addEventListener("DOMContentLoaded", () => {
     chatLauncher.addEventListener("click", () => {
         const isVisible = chatFrame.style.display === "block";
         chatFrame.style.display = isVisible ? "none" : "block";
+    });
+
     });
 
     </script>

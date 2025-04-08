@@ -234,7 +234,7 @@ input[type="number"]:focus {
     box-shadow: -5px 0 25px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
-    z-index: 1000;
+    z-index: 1001;
     border-left: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0 0 0 15px;
 }
@@ -313,23 +313,15 @@ input[type="number"]:focus {
     margin-bottom: 8px;
 }
 
-/* Fix for input layout */
-.message-input-wrapper {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-}
-
-/* Bottom row with input and buttons */
+/* Input container styling */
 .input-container {
     display: flex;
     align-items: center;
-    width: 100%;
     gap: 10px;
-    margin-top: 8px;
+    width: 100%;
 }
 
-#message {
+.input-container input {
     flex: 1;
     padding: 12px 15px;
     border: none;
@@ -341,7 +333,7 @@ input[type="number"]:focus {
     transition: all 0.3s ease;
 }
 
-#message:focus {
+.input-container input:focus {
     background: #3a3a3a;
     box-shadow: 0 0 0 2px rgba(251, 202, 31, 0.2);
 }
@@ -613,7 +605,7 @@ input[type="number"]:focus {
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 999;
+    z-index: 998;
     border: 2px solid var(--yellow);
 }
 
@@ -633,18 +625,6 @@ input[type="number"]:focus {
     transform: rotate(15deg);
 }
 
-/* Fix emoji picker positioning */
-#emoji-picker-container {
-    position: absolute;
-    bottom: 70px;
-    right: 20px;
-    z-index: 1001;
-    background: #252525;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 /* Status Container */
 #status-container {
     position: fixed;
@@ -657,12 +637,12 @@ input[type="number"]:focus {
     box-shadow: -5px 0 25px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
-    z-index: 1000;
+    z-index: 1001; /* Above other elements */
     border-left: 1px solid rgba(255, 255, 255, 0.1);
     color: #fff;
 }
 
-#chat-header {
+#status-header {
     padding: 15px;
     background: #252525;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -672,7 +652,7 @@ input[type="number"]:focus {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-#Chat-title {
+#status-title {
     color: #fff;
     font-size: 1.1em;
     font-weight: 500;
@@ -681,60 +661,193 @@ input[type="number"]:focus {
     gap: 10px;
 }
 
-#Chat-title i {
+#status-title i {
     color: var(--yellow);
 }
 
-#close-status {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: #ccc;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 50%;
-    transition: all 0.2s ease;
+.status-content {
+    flex: 1;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-}
-
-#close-status:hover {
-    background: rgba(255, 255, 255, 0.2);
-    color: var(--yellow);
-    transform: rotate(90deg);
+    flex-direction: column;
+    overflow: hidden; 
 }
 
 #users-status {
     flex: 1;
     overflow-y: auto;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    background-color: #1a1a1a;
+    padding: 15px;
+    background: #1a1a1a;
 }
 
+/* Clearly visible search bar */
 .user-search-container {
+    padding: 15px;
+    background: #252525;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
-    margin: 15px;
 }
 
 .user-search-input {
-    padding: 12px 36px 12px 15px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-    border-radius: 10px;
     width: 100%;
-    font-size: 0.9em;
+    padding: 12px 40px 12px 15px;
+    background: #333;
+    color: #fff;
+    border: 2px solid var(--yellow);
+    border-radius: 8px;
+    font-size: 1em;
     transition: all 0.3s ease;
+    outline: none;
 }
 
 .user-search-input:focus {
+    box-shadow: 0 0 0 2px rgba(251, 202, 31, 0.3);
+    background: #3a3a3a;
+}
+
+.search-icon {
+    position: absolute;
+    right: 25px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--yellow);
+    pointer-events: none;
+}
+
+/* Status panel sections */
+.status-section {
+    margin-bottom: 20px;
+    padding: 0 5px;
+}
+
+.status-section-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin: 0 0 15px 0;
+    color: var(--yellow);
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 204, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Status count items */
+.status-counts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.status-count {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    font-size: 0.85em;
+    min-width: 75px;
+    text-align: center;
+}
+
+.status-count.online {
+    color: #2ecc71;
+    border-left: 3px solid #2ecc71;
+}
+
+.status-count.away {
+    color: var(--yellow);
+    border-left: 3px solid var(--yellow);
+}
+
+.status-count.offline {
+    color: #7f8c8d;
+    border-left: 3px solid #7f8c8d;
+}
+
+/* User profile card */
+.user-profile-card {
+    background: #252525;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 3px solid var(--yellow);
+}
+
+.user-profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.user-profile-name {
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.user-role-badge {
+    background: #2980b9;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-status-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 8px 12px;
+    border-radius: 20px;
+    justify-content: center;
+}
+
+.status-online {
+    color: #2ecc71;
+}
+
+.status-away {
+    color: var(--yellow);
+}
+
+.status-offline {
+    color: #7f8c8d;
+}
+
+/* Improved user search container */
+.user-search-container {
+    position: relative;
+    margin: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    background: #252525;
+    padding: 3px;
+    border: 1px solid rgba(255, 204, 0, 0.3);
+}
+
+.user-search-input {
+    width: 100%;
+    padding: 12px 40px 12px 15px;
+    border: none;
+    background: #252525;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: all 0.3s ease;
     outline: none;
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
+    letter-spacing: 0.5px;
+}
+
+.user-search-input:focus {
+    background: #333;
     box-shadow: 0 0 0 2px rgba(251, 202, 31, 0.2);
 }
 
@@ -743,15 +856,17 @@ input[type="number"]:focus {
     right: 15px;
     top: 50%;
     transform: translateY(-50%);
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--yellow);
     pointer-events: none;
 }
 
 /* Current User Profile */
 .current-user-profile {
-    padding: 15px;
-    background: #1e1e1e;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    background: #252525;
+    border-radius: 0 0 15px 15px;
+    margin-bottom: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .profile-header {
@@ -854,13 +969,14 @@ input[type="number"]:focus {
     background: #1e1e1e;
     padding: 15px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 0;
 }
 
 .status-counts {
     display: flex;
-    justify-content: center;
-    gap: 10px;
     flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 .status-count {
@@ -873,18 +989,22 @@ input[type="number"]:focus {
     border-radius: 25px;
     background: rgba(0, 0, 0, 0.2);
     min-width: 80px;
+    flex: 1;
 }
 
 .status-count.online {
     color: #2ecc71;
+    border-left: 2px solid #2ecc71;
 }
 
 .status-count.away {
     color: var(--yellow);
+    border-left: 2px solid var(--yellow);
 }
 
 .status-count.offline {
     color: #7f8c8d;
+    border-left: 2px solid #7f8c8d;
 }
 
 .view-all-btn {
@@ -911,11 +1031,14 @@ input[type="number"]:focus {
 
 /* Users List */
 .users-list-section {
-    padding: 15px 15px 0;
+    padding: 15px 15px 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .users-list-section h3 {
-    font-size: 1.2em;
+    font-size: 1.1em;
     margin: 0 0 15px;
     color: var(--yellow);
     display: flex;
@@ -925,45 +1048,53 @@ input[type="number"]:focus {
     padding-bottom: 8px;
 }
 
-.users-list-section h3::before {
-    content: '\f500';
-    font-family: 'Font Awesome 5 Free';
-    font-weight: 900;
-}
-
 .users-list-container {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    overflow-y: auto;
     padding-bottom: 15px;
+    max-height: calc(100vh - 350px);
 }
 
 .user-status {
     display: flex;
     align-items: center;
-    padding: 10px 15px;
+    padding: 12px 15px;
     background: rgba(255, 255, 255, 0.03);
     border-radius: 10px;
     transition: all 0.3s ease;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
+    border-left: 3px solid transparent;
+    gap: 10px;
 }
 
 .user-status:hover {
     background: rgba(255, 255, 255, 0.07);
-    transform: translateX(-5px);
+    transform: translateX(5px);
+    border-left-color: var(--yellow);
+}
+
+.user-status.online {
+    border-left-color: #2ecc71;
+}
+
+.user-status.away {
+    border-left-color: var(--yellow);
 }
 
 .user-info {
     display: flex;
     flex-direction: column;
     flex: 1;
-    padding-left: 10px;
+    padding-left: 5px;
 }
 
 .user-name {
     font-weight: 500;
     color: #fff;
     font-size: 0.95em;
+    margin-bottom: 2px;
 }
 
 .last-seen {
@@ -975,10 +1106,23 @@ input[type="number"]:focus {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    font-size: 0.85em;
-    border-radius: 50%;
+    gap: 5px;
+    padding: 5px 8px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 0.8em;
+}
+
+.status.online {
+    color: #2ecc71;
+}
+
+.status.away {
+    color: var(--yellow);
+}
+
+.status.offline {
+    color: #7f8c8d;
 }
 
 .online-icon {
@@ -1002,7 +1146,7 @@ input[type="number"]:focus {
 }
 
 .message-user-btn {
-    background: none;
+    background: rgba(0, 0, 0, 0.2);
     border: none;
     color: #fff;
     opacity: 0.5;
@@ -1019,25 +1163,34 @@ input[type="number"]:focus {
 
 .message-user-btn:hover {
     opacity: 1;
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--yellow);
+    background: var(--yellow);
+    color: var(--dark-grey);
     transform: scale(1.1);
 }
 
+/* No users found message */
 .no-users-found {
-    padding: 20px;
+    padding: 30px 15px;
     text-align: center;
     color: rgba(255, 255, 255, 0.5);
     font-style: italic;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    margin: 15px 0;
 }
 
 .no-users-found i {
-    font-size: 2em;
+    font-size: 2.5em;
     color: rgba(255, 255, 255, 0.2);
+}
+
+.no-users-found p {
+    margin: 0;
+    font-size: 0.95em;
 }
 
 .user-counter {
@@ -1074,7 +1227,7 @@ input[type="number"]:focus {
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 999;
+    z-index: 998;
     border: 2px solid var(--yellow);
     overflow: hidden;
 }
@@ -1118,9 +1271,9 @@ input[type="number"]:focus {
 
 /* Close button enhancements */
 #close-status {
-    background: none;
+    background: rgba(255, 255, 255, 0.1);
     border: none;
-    color: #888;
+    color: #ccc;
     cursor: pointer;
     padding: 8px;
     border-radius: 50%;
@@ -1128,12 +1281,12 @@ input[type="number"]:focus {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
 }
 
 #close-status:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.2);
     color: var(--yellow);
     transform: rotate(90deg);
 }
@@ -2192,4 +2345,524 @@ select option {
     font-size: 2em;
     margin-bottom: 10px;
     color: var(--yellow);
+}
+
+/* Improved emoji picker positioning */
+#emoji-picker-container {
+    position: absolute;
+    bottom: 70px;
+    right: 20px;
+    z-index: 1002;
+    background: #252525;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    max-height: 400px;
+    overflow: hidden;
+}
+
+/* Adjust the emoji mart container */
+.emoji-mart {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    background-color: #252525 !important;
+    color: #fff !important;
+}
+
+.emoji-mart-bar {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Adjust AI chat launcher position to avoid overlap with status toggle */
+#ai-chat-launcher {
+    position: fixed !important;
+    bottom: 170px !important;
+    right: 30px !important;
+    background: #000 !important;
+    color: white !important;
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    z-index: 998 !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.3s ease !important;
+    border: 2px solid var(--yellow) !important;
+}
+
+#ai-chat-launcher:hover {
+    transform: scale(1.1) !important;
+    box-shadow: 0 6px 20px rgba(251, 202, 31, 0.3) !important;
+}
+
+/* Make sure the AI chat frame doesn't overlap */
+#ai-chat-frame {
+    z-index: 998 !important;
+}
+
+/* Status Panel Content */
+.status-panel-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    overflow-y: auto;
+}
+
+/* Current User Profile Section */
+.current-user-profile {
+    padding: 20px;
+    background: #252525;
+    border-radius: 0 0 15px 15px;
+    margin-bottom: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.profile-header {
+    margin-bottom: 15px;
+}
+
+.profile-header h3 {
+    font-size: 1.2em;
+    margin: 0;
+    color: var(--yellow);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 204, 0, 0.3);
+    padding-bottom: 8px;
+}
+
+.profile-header h3::before {
+    content: '\f007';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+}
+
+.profile-content {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 3px solid var(--yellow);
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-name-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.profile-name {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: #fff;
+}
+
+.role-label {
+    font-size: 0.7em;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-label {
+    background: #2980b9;
+    color: #fff;
+}
+
+.admin-label {
+    background: var(--yellow);
+    color: var(--dark-grey);
+}
+
+.profile-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    padding: 8px 0;
+    border-radius: 20px;
+    background: rgba(30, 30, 30, 0.7);
+    justify-content: center;
+}
+
+.profile-status.online {
+    color: #2ecc71;
+}
+
+.profile-status.away {
+    color: var(--yellow);
+}
+
+.profile-status.offline {
+    color: #7f8c8d;
+}
+
+/* Search Section */
+.user-search-section {
+    padding: 15px;
+    background: #1e1e1e;
+}
+
+.user-search-container {
+    position: relative;
+    margin: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    background: #252525;
+    padding: 3px;
+    border: 1px solid rgba(255, 204, 0, 0.3);
+}
+
+.user-search-input {
+    width: 100%;
+    padding: 12px 40px 12px 15px;
+    border: none;
+    background: #252525;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    outline: none;
+    letter-spacing: 0.5px;
+}
+
+.user-search-input:focus {
+    background: #333;
+    box-shadow: 0 0 0 2px rgba(251, 202, 31, 0.2);
+}
+
+.search-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--yellow);
+    pointer-events: none;
+}
+
+/* User Stats Section */
+.user-stats {
+    background: #1e1e1e;
+    padding: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 0;
+}
+
+.status-counts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.status-count {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.85em;
+    padding: 8px 15px;
+    border-radius: 25px;
+    background: rgba(0, 0, 0, 0.2);
+    min-width: 80px;
+    flex: 1;
+}
+
+.status-count.online {
+    color: #2ecc71;
+    border-left: 2px solid #2ecc71;
+}
+
+.status-count.away {
+    color: var(--yellow);
+    border-left: 2px solid var(--yellow);
+}
+
+.status-count.offline {
+    color: #7f8c8d;
+    border-left: 2px solid #7f8c8d;
+}
+
+/* Users List Section */
+.users-list-section {
+    padding: 15px 15px 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.users-list-section h3 {
+    font-size: 1.1em;
+    margin: 0 0 15px;
+    color: var(--yellow);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 204, 0, 0.3);
+    padding-bottom: 8px;
+}
+
+.users-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    padding-bottom: 15px;
+    max-height: calc(100vh - 350px);
+}
+
+/* User Status Items */
+.user-status {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    margin-bottom: 8px;
+    border-left: 3px solid transparent;
+    gap: 10px;
+}
+
+.user-status:hover {
+    background: rgba(255, 255, 255, 0.07);
+    transform: translateX(5px);
+    border-left-color: var(--yellow);
+}
+
+.user-status.online {
+    border-left-color: #2ecc71;
+}
+
+.user-status.away {
+    border-left-color: var(--yellow);
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding-left: 5px;
+}
+
+.user-name {
+    font-weight: 500;
+    color: #fff;
+    font-size: 0.95em;
+    margin-bottom: 2px;
+}
+
+.last-seen {
+    font-size: 0.75em;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 8px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 0.8em;
+}
+
+.status.online {
+    color: #2ecc71;
+}
+
+.status.away {
+    color: var(--yellow);
+}
+
+.status.offline {
+    color: #7f8c8d;
+}
+
+.online-icon {
+    color: #2ecc71;
+    font-size: 1.2em;
+    animation: pulse 2s infinite;
+    filter: drop-shadow(0 0 3px rgba(46, 204, 113, 0.4));
+}
+
+.away-icon {
+    color: var(--yellow);
+    font-size: 1.2em;
+    animation: pulse 3s infinite;
+    filter: drop-shadow(0 0 3px rgba(251, 202, 31, 0.4));
+}
+
+.offline-icon {
+    color: #7f8c8d;
+    font-size: 1.2em;
+    opacity: 0.7;
+}
+
+.message-user-btn {
+    background: rgba(0, 0, 0, 0.2);
+    border: none;
+    color: #fff;
+    opacity: 0.5;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.message-user-btn:hover {
+    opacity: 1;
+    background: var(--yellow);
+    color: var(--dark-grey);
+    transform: scale(1.1);
+}
+
+/* Error container for user status */
+.error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 30px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    margin: 20px;
+}
+
+.error-container i {
+    font-size: 3em;
+    color: #e74c3c;
+}
+
+.error-container p {
+    color: #fff;
+    margin: 0;
+}
+
+.error-container .btn {
+    background: var(--dark-grey);
+    color: var(--text-light);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.error-container .btn:hover {
+    background: var(--yellow);
+    color: var(--dark-grey);
 } 
+
+/* Loading Container for User Status */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 30px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    margin: 20px;
+    color: #fff;
+}
+
+.loading-container i {
+    font-size: 2.5em;
+    color: var(--yellow);
+    animation: spin 1s linear infinite;
+}
+
+.loading-container p {
+    margin: 0;
+    font-size: 1em;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Add styling for removed messages */
+.removed-message {
+    font-style: italic;
+    color: #888;
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Add styling for the delete button in global chat */
+.delete-btn {
+    position: absolute;
+    right: -40px;
+    top: calc(50% + 35px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    background: rgba(177, 68, 60, 0.6);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 8px;
+    font-size: 1em;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.message:hover .delete-btn {
+    opacity: 1;
+    right: -40px;
+}
+
+.delete-btn:hover {
+    background: var(--red, #b1443c);
+    color: var(--text-light, #fff);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Moderator removal styling */
+.moderator-flag {
+    margin-top: 8px;
+    font-size: 0.8em;
+    background-color: rgba(177, 68, 60, 0.2);
+    color: rgba(177, 68, 60, 0.9);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.moderator-flag i {
+    font-size: 0.9em;
+}

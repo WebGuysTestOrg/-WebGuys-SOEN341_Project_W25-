@@ -170,7 +170,7 @@ io.use(sharedSession(sessionMiddleware, {
     autoSave: true,
 }));
 
-// Socket connection handling
+// Socket connection handling - Shared global chat for all users (admin and regular)
 io.on('connection', socket => {
     const session = socket.handshake.session;
 
@@ -180,14 +180,15 @@ io.on('connection', socket => {
         return;
     }
 
-    console.log(`User ${session.user.name} connected`);
+    console.log(`User ${session.user.name} connected (${session.user.user_type})`);
     socket.userId = session.user.id;
     socket.userName = session.user.name;
+    socket.userType = session.user.user_type; // Store user type for role-based features
     
-    // Join global chat room
+    // Everyone joins the same global chat room
     socket.join('global-chat');
     
-    // Emit last 50 messages when user connects
+    // Emit last 50 messages when user connects - Same history for admin and regular users
     const getLastMessagesQuery = `
         SELECT 
             gm.*, 
@@ -206,6 +207,7 @@ io.on('connection', socket => {
             console.error('Error fetching global messages:', err);
             return;
         }
+        // Send message history to the connected client
         socket.emit('global-chat-history', results.reverse());
     });
     
@@ -250,6 +252,7 @@ io.on('connection', socket => {
                 }
 
                 message.id = result.insertId;
+                // Send to all connected clients in global-chat room
                 io.to('global-chat').emit('global-message', message);
             }
         );
@@ -263,7 +266,25 @@ io.on('connection', socket => {
         
         const message = data.text;
         const user = `${session.user.name}[${session.user.user_type}_${session.user.id.toString().padStart(3, '0')}]`;
-        io.emit('message', {SSocketId: socket.id, user: user, text: message, userID: session.user.id});
+        
+        // Save message to database to get an ID
+        const query = "INSERT INTO global_messages (sender_id, sender_name, message) VALUES (?, ?, ?)";
+        connection.query(query, [session.user.id, session.user.name, message], (err, result) => {
+            if (err) {
+                console.error('Error saving message:', err);
+                socket.emit('error', { message: 'Failed to send message' });
+                return;
+            }
+            
+            // Now emit the message with the ID from the database
+            io.emit('message', {
+                id: result.insertId, 
+                SSocketId: socket.id, 
+                user: user, 
+                text: message, 
+                userID: session.user.id
+            });
+        });
     });
 
     let inactivityTimer;
@@ -275,7 +296,7 @@ io.on('connection', socket => {
         
         // Convert userId to string to ensure consistent comparison
         const userIdStr = userId.toString();
-        console.log(`Setting user ${userIdStr} as ONLINE (socket: ${socket.id})`);
+        console.log(`Setting user ${userIdStr} as ONLINE (socket: ${socket.id}, type: ${socket.userType})`);
         
         onlineUsers.set(userIdStr, socket.id);
         awayUsers.delete(userIdStr);
@@ -283,6 +304,7 @@ io.on('connection', socket => {
         // Log the current online users for debugging
         console.log("Current online users:", Array.from(onlineUsers.keys()));
         
+        // Broadcast to ALL users (admin and regular) about the updated status
         io.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
             away: Array.from(awayUsers.keys())
@@ -742,7 +764,6 @@ app.post("/login", (req, res) => {
 
 
 app.get("/user-info", (req, res) => {
-
     if (!req.session.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
@@ -1386,7 +1407,7 @@ app.post("/remove-message", (req, res) => {
 
     const query = `
         UPDATE channels_messages
-        SET text = 'Removed by Admin'
+        SET text = 'Removed by Moderator'
         WHERE id = ?
     `;
 
@@ -1945,6 +1966,40 @@ app.get('/global-messages', (req, res) => {
             return res.status(500).json({ error: 'Failed to fetch global messages' });
         }
         res.json(results);
+    });
+});
+
+// Add endpoint to remove global messages (admin only)
+app.post("/remove-global-message", (req, res) => {
+    if (!req.session.user || req.session.user.user_type !== "admin") {
+        return res.status(403).json({ error: "Only admins can remove messages" });
+    }
+
+    const { messageId } = req.body;
+
+    if (!messageId) {
+        return res.status(400).json({ error: "Message ID is required" });
+    }
+
+    const query = `
+        UPDATE global_messages
+        SET message = 'Removed by Moderator'
+        WHERE id = ?
+    `;
+
+    connection.query(query, [messageId], (err, result) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Database update failed" });
+        }
+
+        // Broadcast to all users that this message was removed
+        io.to('global-chat').emit('global-message-removed', { 
+            id: messageId,
+            removedBy: req.session.user.name 
+        });
+
+        res.json({ success: true });
     });
 });
 

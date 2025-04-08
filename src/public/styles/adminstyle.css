@@ -419,6 +419,8 @@ font-weight: bold;
     align-self: flex-start;
     text-align: left;
     word-wrap: break-word;
+    position: relative;
+    padding-right: 30px;
 }
 
 /* Make the message boxes square-like */
@@ -549,6 +551,183 @@ font-weight: bold;
     top: 80px; /* places it right under settings button */
     right: 20px;
     z-index: 1000;
+}
+
+/* Delete button for messages */
+.delete-btn {
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    margin-left: 8px;
+    padding: 4px;
+    font-size: 0.9rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    position: absolute;
+    right: 8px;
+    top: 8px;
+}
+
+.delete-btn:hover {
+    opacity: 1;
+}
+
+/* Style for removed messages */
+.removed-message {
+    font-style: italic;
+    color: #888;
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Global Chat Styling */
+.message-container {
+    display: flex;
+    margin: 8px 0;
+    max-width: 85%;
+    position: relative;
+}
+
+.message-container.right {
+    margin-left: auto;
+}
+
+.message-container.left {
+    margin-right: auto;
+}
+
+.message {
+    padding: 12px 16px;
+    border-radius: 18px;
+    position: relative;
+    max-width: 100%;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.sent {
+    background: linear-gradient(135deg, var(--dark-grey), #4a4a4a);
+    color: white;
+    border-bottom-right-radius: 5px;
+    border-right: 2px solid var(--yellow);
+}
+
+.received {
+    background: #2D2D2D;
+    color: white;
+    border-bottom-left-radius: 5px;
+    border-left: 2px solid var(--yellow);
+}
+
+.sender-name {
+    font-size: 0.85em;
+    color: var(--yellow);
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.message-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.message-text {
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.message-time {
+    font-size: 0.75em;
+    opacity: 0.7;
+    margin-top: 4px;
+    text-align: right;
+}
+
+/* Quote styling */
+.quoted-message {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 10px 12px;
+    border-left: 3px solid var(--yellow);
+    margin-bottom: 10px;
+    border-radius: 8px;
+    font-size: 0.9em;
+}
+
+.quoted-sender {
+    color: var(--yellow);
+    font-size: 0.85em;
+    font-weight: 500;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.quoted-text {
+    color: #e0e0e0;
+    opacity: 0.8;
+    line-height: 1.4;
+}
+
+/* Delete button styling */
+.delete-btn {
+    position: absolute;
+    right: -40px;
+    top: calc(50% - 20px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    background: rgba(177, 68, 60, 0.8);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 6px;
+    font-size: 0.9em;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.message:hover .delete-btn {
+    opacity: 1;
+    right: -35px;
+}
+
+.delete-btn:hover {
+    background: var(--red, #b1443c);
+    color: var(--text-light, #fff);
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Removed message styling */
+.removed-message {
+    font-style: italic;
+    color: #888;
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Moderator flag styling */
+.moderator-flag {
+    margin-top: 8px;
+    font-size: 0.8em;
+    background-color: rgba(177, 68, 60, 0.2);
+    color: rgba(177, 68, 60, 0.9);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.moderator-flag i {
+    font-size: 0.9em;
 }
 
 
