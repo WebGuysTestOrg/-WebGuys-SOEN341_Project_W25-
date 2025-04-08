@@ -15,15 +15,16 @@ let messages = {
 
 async function sendMessage() {
   const input = document.querySelector(".chat-window input");
-  const userMessage = input.value;
+  const userMessage = input.value.trim();
+  const selectedTask = document.getElementById("task-select").value;
 
-  if (!userMessage.trim()) return;
+  if (!userMessage) return;
 
   input.value = "";
 
   document.querySelector(".chat-window .chat").insertAdjacentHTML("beforeend", `
     <div class="user">
-      <p>${userMessage}</p>
+      <p><strong>${selectedTask.toUpperCase()}:</strong> ${userMessage}</p>
     </div>
   `);
 
@@ -31,8 +32,24 @@ async function sendMessage() {
     <div class="loader"></div>
   `);
 
+  let prompt = "";
+
+  switch (selectedTask) {
+    case "paraphrase":
+      prompt = `Please paraphrase the following text to make it sound more natural:\n\n${userMessage}`;
+      break;
+    case "check grammar":
+      prompt = `Please check the grammar and make the pargraph better:\n\n${userMessage}`;
+      break;
+    case "fact check":
+      prompt = `Please fact-check the following claim and provide a brief explanation:\n\n${userMessage}`;
+      break;
+    default:
+      prompt = "Unsupported task selected.";
+  }
+
   try {
-    const result = await model.generateContent(userMessage);
+    const result = await model.generateContent(prompt);
     const response = result.response.text();
 
     document.querySelector(".chat-window .chat .loader").remove();
@@ -43,7 +60,6 @@ async function sendMessage() {
       </div>
     `);
 
-    // Auto-scroll to the bottom
     const chatContainer = document.querySelector(".chat-window .chat");
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
@@ -57,6 +73,7 @@ async function sendMessage() {
     `);
   }
 }
+
 
 // Send message when button is clicked
 document.querySelector(".chat-window .input-area button")

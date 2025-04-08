@@ -14,6 +14,11 @@
 body.chat-open .chat-window {
     display: flex;
 }
+.task-selector select {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+}
 
 .chat-window {
     display: none;
