@@ -11,8 +11,9 @@
     <link rel="icon" type="image/png" href="assets/ChatHavenLogo.png">
     <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
 </head>
+
 <body>
-    <button id="back-btn"><i class="fas fa-arrow-left"></i> Back</button>
+    <button id="back-btn"><i class="fas fa-arrow-left"></i> </button>
     
     <!-- Mobile Toggle Button - Updated -->
     <button id="mobile-toggle" class="mobile-only">
@@ -63,6 +64,7 @@
                 </div>
                 <div class="input-container">
                     <button id="emoji-btn" title="Add emoji"><i class="far fa-smile"></i></button>
+                    <i title="Export Chat" class='fas fa-file-export'id="export-chat"></i>
                     <input type="text" id="message" placeholder="Type a message...">
                     <button id="send" title="Send message"><i class="fas fa-paper-plane"></i></button>
                 </div>
@@ -81,8 +83,8 @@
     <div id="ai-chat-launcher" style="position: fixed; bottom: 40px; right: 20px; background: #000; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999;">
         <i class="fas fa-robot"></i>
     </div>
-
     <script src="js/DMs.js"></script>
+    
 </body>
 </html>
 

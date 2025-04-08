@@ -262,7 +262,10 @@ const socket = io();
             
             currentGroupId = groupId;
             
-            document.getElementById("empty-state").style.display = "none";
+            const emptyState = document.getElementById("empty-state");
+if (emptyState) {
+  emptyState.style.display = "none";
+}
             
             // Ensure the header is updated to show the correct channel name
             const mainHeader = document.querySelector("#chat-header");
