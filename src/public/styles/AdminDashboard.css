@@ -7,6 +7,7 @@
     --yellow: #FBCA1F;
     --green:#06ac0b;
     --red: #b1443c;
+    --blue: #007BFF;
     --text-light: #FFFFFF;
     --text-dark: #000000;
     --button-hover: #2C2C2C;
@@ -149,35 +150,234 @@ h2 {
     border-bottom: none;
 }
 
+/* Enhanced Team Card Styles */
 .team-card {
     background: #fff;
-    padding: 15px;
-    margin: 10px 0;
+    padding: 20px;
+    margin: 15px 0;
     border: 1px solid #ddd;
-    border-radius: 8px;
+    border-radius: 12px;
     text-align: left;
-    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+
+.team-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .team-card h3 {
     margin: 0;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     font-size: 1.5rem;
+    color: var(--blue);
+}
+
+.team-card .team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
 }
 
 .team-card h4 {
-    margin: 5px 0;
+    margin: 10px 0 5px;
     font-size: 1.2rem;
+    color: var(--dark-grey);
 }
 
 .team-card p {
-    margin: 5px 0;
+    margin: 8px 0;
     font-size: 1rem;
     color: #555;
 }
 
-.team-card div {
-    margin-left: 20px;
+.team-members, .channel-members {
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+.channel-container {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.03);
+    border-radius: 8px;
+    border-left: 3px solid var(--blue);
+}
+
+.channel-item {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.channel-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+/* Action Buttons */
+.team-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.action-btn i {
+    font-size: 1rem;
+}
+
+.action-btn.primary {
+    background-color: var(--blue);
+    color: white;
+}
+
+.action-btn.primary:hover {
+    background-color: #0056b3;
+}
+
+.action-btn.secondary {
+    background-color: var(--yellow);
+    color: var(--dark-grey);
+}
+
+.action-btn.secondary:hover {
+    background-color: #d9a400;
+}
+
+.action-btn.danger {
+    background-color: var(--red);
+    color: white;
+}
+
+.action-btn.danger:hover {
+    background-color: #921c16;
+}
+
+.member-list {
+    margin-top: 10px;
+}
+
+.member-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    margin-bottom: 5px;
+    border-radius: 4px;
+}
+
+.member-item:last-child {
+    margin-bottom: 0;
+}
+
+.member-name {
+    font-weight: 500;
+}
+
+.remove-member {
+    color: var(--red);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.remove-member:hover {
+    background-color: rgba(177, 68, 60, 0.1);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    position: relative;
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 25px;
+    border-radius: 12px;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    animation: modalFadeIn 0.3s;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.close-modal {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #aaa;
+    cursor: pointer;
+}
+
+.close-modal:hover {
+    color: var(--dark-grey);
+}
+
+.modal h3 {
+    margin-top: 0;
+    color: var(--dark-grey);
+    border-bottom: 2px solid var(--yellow);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.modal form {
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    background-color: transparent;
+}
+
+.loading-indicator {
+    text-align: center;
+    padding: 20px;
+    color: #888;
+}
+
+.loading-indicator i {
+    margin-right: 10px;
+}
+
+.quick-links {
+    margin: 20px 0;
 }
 
 @media (max-width: 600px) {
@@ -204,6 +404,14 @@ h2 {
 
     #teamList {
         padding: 10px;
+    }
+    
+    .team-actions {
+        flex-direction: column;
+    }
+    
+    .action-btn {
+        width: 100%;
     }
 }
 

@@ -90,7 +90,7 @@ document.getElementById("back-btn").addEventListener("click", () => {
     fetch('/user-info')
         .then(response => response.json())
         .then(data => {
-            window.location.href = data.role === "admin" ? "/admin_page.html" : "/UserDashboard.html";
+            window.location.href = data.role === "admin" ? "/AdminDashboard.html" : "/UserDashboard.html";
         })
         .catch(() => window.location.href = "/UserDashboard.html");
 });

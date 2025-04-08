@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin Page</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" integrity="sha512-8ExARjWWkIllMlNzVg7JKq9RKWPlJABQUNq6YvAjE/HobctjH/NA+bSiDMDvouBVjp4Wwnf1VP1OEv7Zgjtuxw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="styles/AdminDashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
+    <link rel="icon" type="image/png" href="ChatHavenLogo.png">
+    <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <h1 class="navbar-title">Chat Haven - Admin</h1>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="content-container">
+        <h3>Hi, <span id="admin-name">Admin</span></h3>
+        <h1>Team Management Dashboard</h1>
+        <p>Create and manage teams, channels, and users all in one place.</p>
+        
+        <div class="quick-links">
+            <a href="DMs.html" class="btn"><i class="fas fa-envelope"></i> Direct Messages</a>
+            <a href="private_channels.html" class="btn"><i class="fas fa-lock"></i> Private Channels</a>
+        </div>
+
+        <!-- Create Team Section -->
+        <div class="form-container">
+            <h2><i class="fas fa-plus-circle"></i> Create New Team</h2>
+            <form id="createTeamForm">
+                <input type="text" id="teamName" placeholder="Enter Team Name" required>
+                <button type="submit" class="btn">Create Team</button>
+            </form>
+        </div>
+
+        <!-- Teams I Own Section -->
+        <div class="form-container">
+            <h2><i class="fas fa-crown"></i> Teams I Own</h2>
+            <div id="teams-container">
+                <div class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i> Loading your teams...
+                </div>
+            </div>
+        </div>
+
+        <!-- Teams I'm a Member Of Section -->
+        <div class="form-container">
+            <h2><i class="fas fa-user-friends"></i> Teams I'm a Member Of</h2>
+            <div id="member-teams-container">
+                <div class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i> Loading your team memberships...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for adding members to team -->
+    <div id="add-member-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Add Member to Team</h3>
+            <form id="add-member-form">
+                <input type="hidden" id="modalTeamId">
+                <input type="text" id="modalUserName" placeholder="Enter username" required>
+                <button type="submit" class="btn">Add Member</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for creating a channel -->
+    <div id="create-channel-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Create New Channel</h3>
+            <form id="modal-create-channel-form">
+                <input type="hidden" id="modalChannelTeamId">
+                <input type="text" id="modalChannelName" placeholder="Enter channel name" required>
+                <button type="submit" class="btn">Create Channel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Chat Icon Button -->
+    <div id="chat-toggle">
+        <i class="fa-solid fa-globe"></i>
+    </div>
+
+    <!-- Chatbox -->
+    <div id="chat-container">
+        <div id="chat-header">
+            <span id="Chat-title">Global Chat</span>
+            <button id="close-chat">✖</button>
+        </div>
+        <div id="chat-messages"></div>
+        <div id="chat-input">
+            <input type="text" id="message" placeholder="Type a message...">
+            <button id="emoji-btn">😊</button> 
+            <div id="emoji-picker-container" style="display: none;"></div>
+            <button id="send">Send</button>
+        </div>
+    </div>
+    <div id="status-toggle">
+        <i class="fa-solid fa-users"></i>
+    </div>
+    <div id="status-container">
+        <div id="chat-header">
+            <span id="Chat-title"> Users</span>
+            <button id="close-status">✖</button>
+        </div>
+        <div id="users-status"></div> 
+    </div>
+    <!--Settings button-->
+    <div class="settings-button">
+        <a href="settings_page.html">
+            <i class="fa-solid fa-cog"></i>
+        </a>
+    </div>
+    <div class="logout-button"> 
+        <a href="/logout" class="btn">Logout</a>
+    </div>
+    
+    <div id="toast-container"></div>
+
+    <iframe
+        id="ai-chat-frame"
+        src="chatbot.html"
+        style="position: fixed; bottom: 100px; right: 20px; width: 420px; height: 700px; border: none; border-radius: 20px; display: none; z-index: 9999;">
+    </iframe>
+
+    <div id="ai-chat-launcher" style="position: fixed; bottom: 40px; right: 20px; background: #000; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999;">
+        <i class="fa-solid fa-robot"></i>
+    </div>
+
+    <script src="js/AdminPage.js"></script>
+</body>
+</html>
