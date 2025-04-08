@@ -38,14 +38,22 @@
         </div>
 
         <div class="input-area">
+            <div class="task-selector" style="margin-bottom: 8px;">
+                <select id="task-select" style="padding: 6px; font-size: 14px; width: 100%;">
+                    <option value="paraphrase">Paraphrase</option>
+                    <option value="check grammar">Check Grammar</option>
+                    <option value="fact check">Fact Check</option>
+                </select>
+            </div>
+        
             <div class="input-container">
-                <input placeholder="Ask me anything..." type="text">
+                <input placeholder="Type your sentence here..." type="text">
                 <button class="enter_msg" title="Send message">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
-            
         </div>
+        
     </section>
 
     <!-- Import map for generative AI -->
