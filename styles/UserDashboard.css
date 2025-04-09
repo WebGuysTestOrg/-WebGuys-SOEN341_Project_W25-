@@ -601,66 +601,6 @@ input[type="number"]:focus {
 #chat-toggle {
     position: fixed;
     right: 30px;
-    bottom: 171px;
-    width: 60px;
-    height: 60px;
-    background: var(--dark-grey);
-    color: var(--text-light);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 999;
-    border: 2px solid var(--yellow);
-}
-#ai-chat-frame{
-    position: fixed; 
-    bottom: 100px; 
-    right: 20px; 
-    width: 420px; 
-    height: 700px; 
-    border: none; 
-    border-radius: 20px;
-     display: none;
-     z-index: 9999;
-}
-@keyframes fadeIn {
-    0% {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-#ai-chat-frame {
-    position: fixed;
-    bottom: 100px;
-    right: 20px;
-    width: 420px;
-    height: 700px;
-    border: none;
-    border-radius: 20px;
-    display: none;
-    z-index: 9999;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
-}
-
-#ai-chat-frame.fade-in {
-    display: block;
-    animation: fadeIn 0.5s ease-out forwards;
-}
-
-#ai-chat-launcher{
-    position: fixed;
-    right: 30px;
     bottom: 30px;
     width: 60px;
     height: 60px;
@@ -675,21 +615,6 @@ input[type="number"]:focus {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 999;
     border: 2px solid var(--yellow);
-}
-#ai-chat-launcher:hover{
-    background: var(--yellow);
-    color: var(--dark-grey);
-    transform: scale(1.1);
-    box-shadow: 0 5px 20px rgba(251, 202, 31, 0.4);
-
-}
-#ai-chat-launcher i {
-    font-size: 1.5em;
-    transition: transform 0.3s ease;
-}
-
-#ai-chat-launcher:hover i {
-    transform: rotate(15deg);
 }
 
 #chat-toggle:hover {
@@ -728,7 +653,7 @@ input[type="number"]:focus {
     width: 300px;
     height: 100vh;
     background: #1a1a1a;
-    transition: right 0.4s cubic-bezier(0.10, 0, 0.2, 1);
+    transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: -5px 0 25px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
@@ -792,13 +717,7 @@ input[type="number"]:focus {
 
 .user-search-container {
     position: relative;
- padding-left: 15px;
- padding-right: 7px;
- padding-top: 8px;
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto !important;
-    
+    margin: 15px;
 }
 
 .user-search-input {
@@ -807,15 +726,13 @@ input[type="number"]:focus {
     background: rgba(255, 255, 255, 0.05);
     color: #fff;
     border-radius: 10px;
-    width: 200px;
+    width: 100%;
     font-size: 0.9em;
     transition: all 0.3s ease;
-    height: 5%;
 }
 
 .user-search-input:focus {
     outline: none;
-    color: #000000;
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.2);
     box-shadow: 0 0 0 2px rgba(251, 202, 31, 0.2);
@@ -1024,7 +941,6 @@ input[type="number"]:focus {
 .user-status {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     padding: 10px 15px;
     background: rgba(255, 255, 255, 0.03);
     border-radius: 10px;
