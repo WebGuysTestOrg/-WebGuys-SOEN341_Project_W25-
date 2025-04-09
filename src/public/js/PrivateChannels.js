@@ -564,7 +564,7 @@ if (emptyState) {
             chatBox.innerHTML = "<div class='loading-message'><i class='fas fa-spinner fa-spin'></i> Loading messages...</div>";
 
             // Fetch message history for this group
-            fetch(`/group-messages/${groupId}`)
+            fetch(`/api/group-messages/${groupId}`)
                 .then(response => response.json())
                 .then(messages => {
                     // Check if we're still on the same group (user might have switched)

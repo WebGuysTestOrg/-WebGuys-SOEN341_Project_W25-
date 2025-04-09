@@ -1,160 +1,26 @@
-const express = require("express");
-const bodyParser = require("body-parser");
 const crypto = require("crypto");
-const session = require("express-session");
 const path = require("path");
 const sharedSession = require("express-socket.io-session"); 
-const {Server} =require("socket.io") 
-
-// Import the database connection
+const {Server} = require("socket.io");
 const connection = require('./config/db');
+const { app, sessionMiddleware } = require('./app');
+const userRoutes = require('./routes/userRoutes');
+const groupMessagesRoute = require('./routes/groupMessages');
+app.use('/api', groupMessagesRoute);
 
-
-const app = express();
-
-const PORT= process.env.PORT|| 3000
+const PORT = process.env.PORT || 3000;
 let expressServer;
 
 // =============================================
-// DATABASE CONNECTION AND SETUP - REMOVED
+// SERVER INITIALIZATION & APP CONFIGURATION - REVISED
 // =============================================
-/*
-const connection = mysql.createConnection({
-    host: process.env.DB_HOST || "localhost",
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "",
-});
 
-// Check if database exists and create if it doesn't
-connection.connect((err) => {
-    if (err) {
-        console.error("Initial database connection failed:", err);
-        process.exit(1);
-    }
-    
-    // Check if database exists
-    connection.query("SHOW DATABASES LIKE 'chathaven'", (err, results) => {
-        if (err) {
-            console.error("Error checking database:", err);
-            process.exit(1);
-        }
-        
-        if (results.length === 0) {
-            // Database doesn't exist, create it
-            connection.query("CREATE DATABASE chathaven", (err) => {
-                if (err) {
-                    console.error("Error creating database:", err);
-                    process.exit(1);
-                }
-                console.log("Database 'chathaven' created successfully");
-                setupDatabase();
-            });
-        } else {
-            console.log("Database 'chathaven' already exists");
-            setupDatabase();
-        }
-    });
-});
-
-function setupDatabase() {
-    // Use the chathaven database
-    connection.query("USE chathaven", (err) => {
-        if (err) {
-            console.error("Error using database:", err);
-            process.exit(1);
-        }
-        console.log("Connected to MySQL database 'chathaven'");
-        
-        // Create or update channels_messages table
-        const createChannelsMessagesTable = `
-            CREATE TABLE IF NOT EXISTS channels_messages (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                team_name VARCHAR(255) NOT NULL,
-                channel_name VARCHAR(255) NOT NULL,
-                sender_name VARCHAR(255) NOT NULL,
-                text TEXT NOT NULL,
-                quoted_message TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX (team_name, channel_name)
-            )
-        `;
-        
-        connection.query(createChannelsMessagesTable, (err) => {
-            if (err) {
-                console.error("Error creating channels_messages table:", err);
-                return;
-            }
-            console.log("Channels messages table ready");
-            
-            // Check if sender column exists, if not rename sender_name to sender
-            connection.query("SHOW COLUMNS FROM channels_messages LIKE 'sender'", (err, results) => {
-                if (err) {
-                    console.error("Error checking columns:", err);
-                    return;
-                }
-                
-                // If sender column doesn't exist but sender_name does, rename it
-                if (results.length === 0) {
-                    connection.query("SHOW COLUMNS FROM channels_messages LIKE 'sender_name'", (err, results) => {
-                        if (err) {
-                            console.error("Error checking sender_name column:", err);
-                            return;
-                        }
-                        
-                        if (results.length > 0) {
-                            // Rename sender_name to sender for compatibility
-                            connection.query("ALTER TABLE channels_messages CHANGE sender_name sender VARCHAR(255) NOT NULL", (err) => {
-                                if (err) {
-                                    console.error("Error renaming sender_name column:", err);
-                                    return;
-                                }
-                                console.log("Renamed sender_name to sender for backward compatibility");
-                                preloadChannelMessages();
-                            });
-                        } else {
-                            // Add sender column if neither exists
-                            connection.query("ALTER TABLE channels_messages ADD COLUMN sender VARCHAR(255) NOT NULL AFTER channel_name", (err) => {
-                                if (err) {
-                                    console.error("Error adding sender column:", err);
-                                    return;
-                                }
-                                console.log("Added sender column to channels_messages table");
-                                preloadChannelMessages();
-                            });
-                        }
-                    });
-                } else {
-                    // Sender column already exists, check if we need to preload messages
-                    preloadChannelMessages();
-                }
-            });
-        });
-    });
-}
-*/
-
-// =============================================
-// SERVER INITIALIZATION
-// =============================================
+// Start the server (using the imported app)
 if (process.env.NODE_ENV !== "test") {
     expressServer = app.listen(PORT, () => {
         console.log(`Server running at http://localhost:${PORT}`);
     });
 }
-
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-
-const sessionMiddleware= 
-    session({
-        secret: "your_secret_key",
-        resave: false,
-        saveUninitialized: true,
-        cookie: { maxAge: 3600000 },
-    });
-
-app.use(sessionMiddleware)
-app.use(express.static(path.join(__dirname, "public")));
 
 // =============================================
 // SOCKET.IO SETUP AND USER STATUS MANAGEMENT
@@ -163,24 +29,17 @@ const onlineUsers = new Map();
 const awayUsers = new Map();
 const INACTIVITY_TIME = 30000;
 
+// Pass the existing expressServer instance to Socket.IO
 const io = new Server(expressServer, {
     cors: {
-        origin: process.env.NODE_ENV === "production" ? false : ["http://localhost:3000", "http://127.0.0.1:3000"]
+        origin: process.env.NODE_ENV === "production" ? false : ["http://localhost:3000"]
     }
 });
 
+// Use the imported sessionMiddleware for Socket.IO
 io.use(sharedSession(sessionMiddleware, {
     autoSave: true,
 }));
-
-// The preloadChannelMessages function might need adjustment or removal from here
-// depending on where it's called now (likely within db.js setup)
-/* 
-function preloadChannelMessages() {
-    // ... original implementation ...
-    // Ensure connection usage is correct (using the imported connection)
-}
-*/
 
 // Socket connection handling - Shared global chat for all users (admin and regular)
 io.on('connection', socket => {
@@ -272,36 +131,107 @@ io.on('connection', socket => {
         );
     });
     
-    socket.on('message', data => {
-        if (!socket.userId) {
-            socket.emit('error', { message: 'You must be logged in to send messages' });
+    // Handle private messages (Moved from lines 347-368)
+    socket.on("private-message", (msg) => {
+        // Store the client-generated message ID
+        const tempId = msg.id;
+        
+        // Use only the fields present in schema.sql
+        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text, timestamp) VALUES (?, ?, ?, NOW())";
+        
+        connection.query(insertQuery, [msg.senderId, msg.recipientId, msg.text], (err, result) => {
+            if (err) {
+                console.error("Error saving message:", err);
+                return;
+            }
+            
+            // Send back the full message including the quoted data, but only store essential fields in DB
+            const fullMessage = {
+                ...msg,
+                id: result.insertId,
+                tempId: tempId, // Return the tempId so client can match it
+                quoted: msg.quoted // Keep this for UI, but don't store in DB
+            };
+
+            // TODO: Review io.emit vs socket.emit or targeting specific user sockets
+            io.emit("private-message", fullMessage);
+        });
+    });
+
+    // Handle Channel Messages (Moved from lines 2030-2056)
+    socket.on("ChannelMessages", (msg) => {
+        const query = `
+        INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
+        VALUES (?, ?, ?, ?, ?)
+    `;
+
+    connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted], (err, result) => {
+        if (err) {
+            console.error("Database error:", err);
+            socket.emit("error", { message: "Failed to save message" });
             return;
         }
         
-        const message = data.text;
-        const user = `${session.user.name}[${session.user.user_type}_${session.user.id.toString().padStart(3, '0')}]`;
-        
-        // Save message to database to get an ID
-        const query = "INSERT INTO global_messages (sender_id, sender_name, message) VALUES (?, ?, ?)";
-        connection.query(query, [session.user.id, session.user.name, message], (err, result) => {
-            if (err) {
-                console.error('Error saving message:', err);
+        const messageWithId = {
+            id: result.insertId,  
+            teamName: msg.teamName,
+            channelName: msg.channelName,
+            sender: msg.sender,
+            text: msg.text,
+            quoted: msg.quoted
+        };
+        // TODO: Review io.emit vs potentially targeting specific channel/team rooms
+        io.emit("ChannelMessages", messageWithId);
+    });
+    });
+
+    // Handle Group Messages (send-message) (Moved from line 1970)
+    socket.on("send-message", (data) => {
+        const { groupId, userId, message } = data;
+        const session = socket.handshake.session; // Ensure session is accessible
+
+        // Basic validation
+        if (!groupId || !userId || !message || !session || !session.user || session.user.id !== userId) {
+            console.error("Invalid send-message data or unauthorized user");
+            socket.emit('error', { message: 'Failed to send message due to invalid data or auth.' });
+            return;
+        }
+
+        // Get sender's name
+        const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
+        connection.query(getUserQuery, [userId], (err, result) => {
+            if (err || result.length === 0) {
+                console.error("Error getting user info:", err);
                 socket.emit('error', { message: 'Failed to send message' });
                 return;
             }
             
-            // Now emit the message with the ID from the database
-            io.emit('message', {
-                id: result.insertId, 
-                SSocketId: socket.id, 
-                user: user, 
-                text: message, 
-                userID: session.user.id
+            const senderName = result[0].name;
+            
+            // Insert message into database
+            const insertQuery = "INSERT INTO group_messages (group_id, user_id, text) VALUES (?, ?, ?)";
+            connection.query(insertQuery, [groupId, userId, message], (err, result) => {
+                if (err) {
+                    console.error("Error storing message:", err);
+                    socket.emit('error', { message: 'Failed to save message' });
+                    return;
+                }
+
+                const messageData = {
+                    id: result.insertId,
+                    sender: senderName,
+                    text: message,
+                    timestamp: new Date()
+                };
+                
+                // Broadcast message to all connected clients in that specific group room
+                // NOTE: Ensure clients join `group-room-${groupId}` when they select a group
+                io.to(`group-room-${groupId}`).emit(`group-message-${groupId}`, messageData);
             });
         });
     });
 
-    let inactivityTimer;
+    // Handle user status: online
     socket.on("userOnline", (userId) => {
         if (!socket.userId) {
             socket.emit('error', { message: 'You must be logged in to update status' });
@@ -327,6 +257,7 @@ io.on('connection', socket => {
         resetInactivityTimer(userIdStr);
     });
 
+    // Handle user status: away
     socket.on("userAway", (userId) => {
         if (!socket.userId) {
             socket.emit('error', { message: 'You must be logged in to update status' });
@@ -422,7 +353,8 @@ io.on('connection', socket => {
             away: Array.from(awayUsers.keys())
         });
     });
-})
+
+}); // End of main io.on('connection', ...)
 
 
 
@@ -526,136 +458,6 @@ function preloadChannelMessages() {
     });
 }
 
-io.on("connection", (socket) => {
-    socket.on("private-message", (msg) => {
-        // Store the client-generated message ID
-        const tempId = msg.id;
-        
-        // Use only the fields present in schema.sql
-        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text, timestamp) VALUES (?, ?, ?, NOW())";
-        
-        connection.query(insertQuery, [msg.senderId, msg.recipientId, msg.text], (err, result) => {
-            if (err) {
-                console.error("Error saving message:", err);
-                return;
-            }
-            
-            // Send back the full message including the quoted data, but only store essential fields in DB
-            const fullMessage = {
-                ...msg,
-                id: result.insertId,
-                tempId: tempId, // Return the tempId so client can match it
-                quoted: msg.quoted // Keep this for UI, but don't store in DB
-            };
-
-            io.emit("private-message", fullMessage);
-        });
-    });
-});
-
-
-app.get('/get-user-chats', (req, res) => {
-    const { userId } = req.query;
-    const query = `
-        SELECT DISTINCT uf.id AS user_id, uf.name AS username
-        FROM direct_messages dm
-        JOIN user_form uf ON (dm.sender_id = uf.id OR dm.recipient_id = uf.id)
-        WHERE (dm.sender_id = ? OR dm.recipient_id = ?) AND uf.id != ?
-    `;
-
-    connection.query(query, [userId, userId, userId], (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: "Database error fetching chats." });
-        }
-        res.json(results);
-    });
-});
-
-// Add a new route to initialize a chat between users
-app.post('/init-chat', (req, res) => {
-    const { userId, recipientId } = req.body;
-    
-    if (!userId || !recipientId) {
-        return res.status(400).json({ error: "Both user IDs are required" });
-    }
-    
-    // First check if a message already exists between these users
-    const checkQuery = `
-        SELECT id FROM direct_messages 
-        WHERE (sender_id = ? AND recipient_id = ?) 
-        OR (sender_id = ? AND recipient_id = ?)
-        LIMIT 1
-    `;
-    
-    connection.query(checkQuery, [userId, recipientId, recipientId, userId], (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: "Database error checking messages." });
-        }
-        
-        if (results.length > 0) {
-            // Messages already exist, no need to initialize
-            return res.json({ success: true, message: "Chat already exists" });
-        }
-        
-        // If no messages exist, create a system message to initialize the chat
-        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text) VALUES (?, ?, ?)";
-        const systemMessage = "Chat initialized";
-        
-        connection.query(insertQuery, [userId, recipientId, systemMessage], (err, result) => {
-            if (err) {
-                return res.status(500).json({ error: "Failed to initialize chat." });
-            }
-            
-            res.json({ success: true, message: "Chat initialized successfully" });
-        });
-    });
-});
-
-
-
-app.get('/get-messages', (req, res) => {
-    const { senderId, recipientId } = req.query;
-    
-    // Use only the fields present in the original schema
-    const query = `
-        SELECT dm.id, dm.text, dm.sender_id, dm.recipient_id, dm.timestamp, uf.name AS senderName
-        FROM direct_messages dm
-        JOIN user_form uf ON dm.sender_id = uf.id
-        WHERE (dm.sender_id = ? AND dm.recipient_id = ?)
-           OR (dm.sender_id = ? AND dm.recipient_id = ?)
-        ORDER BY dm.timestamp
-    `;
-
-    connection.query(query, [senderId, recipientId, recipientId, senderId], (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: "Error fetching messages." });
-        }
-        
-        const formattedResults = results.map(msg => ({
-            id: msg.id,
-            senderId: msg.sender_id,
-            recipientId: msg.recipient_id,
-            senderName: msg.senderName,
-            text: msg.text,
-            timestamp: msg.timestamp,
-            // Don't include quoted field since it's not in the database
-        }));
-
-        res.json(formattedResults);
-    });
-});
-
-
-
-app.get("/get-user-id", (req, res) => {
-    const { username } = req.query;
-    const query = "SELECT id FROM user_form WHERE name = ?";
-    connection.query(query, [username], (err, results) => {
-        if (err) return res.status(500).json({ error: "Database error." });
-        if (results.length === 0) return res.status(404).json({ error: "User not found." });
-        res.json({ userId: results[0].id });
-    });
-});
 
 
 // =============================================
@@ -1060,6 +862,9 @@ app.post('/delete-team', (req, res) => {
                                 });
                             });
                         });
+
+                        // Continue with deletion process
+                        continueWithDeletion();
                     };
 
                     // Continue with deletion process
@@ -1069,6 +874,9 @@ app.post('/delete-team', (req, res) => {
         });
     });
 });
+
+        
+    
 
 // Remove a user from a team
 app.post('/remove-team-member', (req, res) => {
@@ -1636,83 +1444,6 @@ app.post("/get-channels", (req, res) => {
     });
 });
 
-app.post("/get-channel-messages", (req, res) => {
-    const { teamName, channelName } = req.body;
-
-    if (!teamName || !channelName) {
-        return res.status(400).json({ error: "Team name and channel name are required." });
-    }
-
-    const query = `
-        SELECT id, sender, text, quoted_message FROM channels_messages 
-        WHERE team_name = ? AND channel_name = ? 
-        ORDER BY created_at ASC
-    `;
-
-    connection.query(query, [teamName, channelName], (err, results) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Internal Server Error: Database query failed." });
-        }
-
-        const formattedResults = results.map(msg => ({
-            id: msg.id,
-            sender: msg.sender,
-            text: msg.text,
-            quoted: msg.quoted_message
-        }));
-
-        res.json(formattedResults);
-    });
-});
-app.post("/remove-message", (req, res) => {
-    const { messageId } = req.body;
-
-    if (!messageId) {
-        return res.status(400).json({ error: "Message ID is required." });
-    }
-
-    const query = `
-        UPDATE channels_messages
-        SET text = 'Removed by Moderator'
-        WHERE id = ?
-    `;
-
-    connection.query(query, [messageId], (err, result) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Database update failed." });
-        }
-
-        res.json({ success: true });
-    });
-});
-
-app.post("/sendChannelMessage", (req, res) => {
-    const { teamName, channelName, sender, text, quoted } = req.body;
-
-    console.log("🟦 Quoted Message Received:", quoted);
-
-    if (!teamName || !channelName || !sender || !text) {
-        return res.status(400).json({ error: "All fields are required." });
-    }
-
-    const quotedMessageText = quoted;
-
-    const query = `
-        INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
-        VALUES (?, ?, ?, ?, ?)
-    `;
-
-    connection.query(query, [teamName, channelName, sender, text, quotedMessageText], (err, results) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Failed to save message." });
-        }
-        res.json({ success: true });
-    });
-});
-
 app.post("/create-group", (req, res) => {
     const { name, description } = req.body;
     const createdBy = req.session.user.id;
@@ -2107,166 +1838,6 @@ app.post("/remove-group-member", (req, res) => {
                 });
             });
         });
-    });
-});
-
-// Enhance group message handling with better status management
-io.on("connection", (socket) => {
-    const session = socket.handshake.session;
-    
-    // Group message handling
-    socket.on("send-message", (data) => {
-        const { groupId, userId, message } = data;
-
-        // Get sender's name
-        const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
-        connection.query(getUserQuery, [userId], (err, result) => {
-            if (err || result.length === 0) {
-                console.error("Error getting user info:", err);
-                socket.emit('error', { message: 'Failed to send message' });
-                return;
-            }
-            
-            const senderName = result[0].name;
-            
-            // Insert message into database
-            const insertQuery = "INSERT INTO group_messages (group_id, user_id, text) VALUES (?, ?, ?)";
-            connection.query(insertQuery, [groupId, userId, message], (err, result) => {
-                if (err) {
-                    console.error("Error storing message:", err);
-                    socket.emit('error', { message: 'Failed to save message' });
-                    return;
-                }
-
-                const messageData = {
-                    id: result.insertId,
-                    sender: senderName,
-                    text: message,
-                    timestamp: new Date()
-                };
-                
-                // Broadcast message to all connected clients
-                io.emit(`group-message-${groupId}`, messageData);
-            });
-        });
-    });
-
-    // Enhanced status request functionality
-    socket.on("requestStatusUpdate", () => {
-        if (!socket.userId && session && session.user) {
-            socket.userId = session.user.id;
-        }
-        
-        // Only respond to authenticated requests
-        if (!socket.userId) {
-            console.log("Unauthenticated status request");
-            socket.emit('error', { message: 'Authentication required for status updates' });
-            return;
-        }
-        
-        socket.emit("updateUserStatus", {
-            online: Array.from(onlineUsers.keys()),
-            away: Array.from(awayUsers.keys())
-        });
-    });
-});
-
-// Fetch previous messages
-app.get("/group-messages/:groupId", (req, res) => {
-    const { groupId } = req.params;
-
-    const query = `
-        SELECT u.name AS sender, gm.text, gm.is_system_message
-        FROM group_messages gm 
-        JOIN user_form u ON gm.user_id = u.id 
-        WHERE gm.group_id = ?
-        ORDER BY gm.created_at ASC
-    `;
-
-    connection.query(query, [groupId], (err, results) => {
-        if (err) return res.status(500).json({ error: "Error fetching messages." });
-        res.json(results);
-    });
-});
-
-
-io.on("connection", (socket) => {
-    socket.on("ChannelMessages", (msg) => {
-        const query = `
-        INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
-        VALUES (?, ?, ?, ?, ?)
-    `;
-
-    connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted], (err, result) => {
-        if (err) {
-            console.error("Database error:", err);
-            socket.emit("error", { message: "Failed to save message" });
-            return;
-        }
-        
-        const messageWithId = {
-            id: result.insertId,  
-            teamName: msg.teamName,
-            channelName: msg.channelName,
-            sender: msg.sender,
-            text: msg.text,
-            quoted: msg.quoted
-        };
-        io.emit("ChannelMessages", messageWithId);
-    });
-    });
-});
-
-// Add endpoint to fetch global chat messages
-app.get('/global-messages', (req, res) => {
-    const query = `
-        SELECT gm.*, uf.name as sender_name 
-        FROM global_messages gm
-        JOIN user_form uf ON gm.sender_id = uf.id
-        ORDER BY gm.timestamp DESC
-        LIMIT 50
-    `;
-
-    connection.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching global messages:', err);
-            return res.status(500).json({ error: 'Failed to fetch global messages' });
-        }
-        res.json(results);
-    });
-});
-
-// Add endpoint to remove global messages (admin only)
-app.post("/remove-global-message", (req, res) => {
-    if (!req.session.user || req.session.user.user_type !== "admin") {
-        return res.status(403).json({ error: "Only admins can remove messages" });
-    }
-
-    const { messageId } = req.body;
-
-    if (!messageId) {
-        return res.status(400).json({ error: "Message ID is required" });
-    }
-
-    const query = `
-        UPDATE global_messages
-        SET message = 'Removed by Moderator'
-        WHERE id = ?
-    `;
-
-    connection.query(query, [messageId], (err, result) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Database update failed" });
-        }
-
-        // Broadcast to all users that this message was removed
-        io.to('global-chat').emit('global-message-removed', { 
-            id: messageId,
-            removedBy: req.session.user.name 
-        });
-
-        res.json({ success: true });
     });
 });
 
