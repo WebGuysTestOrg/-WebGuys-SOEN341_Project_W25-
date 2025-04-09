@@ -931,7 +931,7 @@ function initializeUserStatus() {
     // Function to close status panel
     function closeStatusPanel() {
         statusPanelOpen = false;
-        statusContainer.style.right = '-450px';
+        statusContainer.style.right = '-300px';
         
         // Clear search when panel closes
         if (userSearchInput) {
@@ -1047,6 +1047,7 @@ function updateUserStatusUI(onlineUsers = [], awayUsers = []) {
             const userRole = data.role || 'user';
             const roleLabel = userRole === 'admin' ? 'Admin' : 'User';
             const roleLabelClass = userRole === 'admin' ? 'admin-label' : 'user-label';
+            
             currentUserProfile.innerHTML = `
                 <div class="profile-header">
                     <h3>Your Profile</h3>
@@ -1064,7 +1065,7 @@ function updateUserStatusUI(onlineUsers = [], awayUsers = []) {
                 </div>
             `;
             
-            usersStatusDiv.replaceChildren(currentUserProfile);
+            usersStatusDiv.appendChild(currentUserProfile);
             
             // Add divider
             const divider = document.createElement('div');
@@ -1077,7 +1078,6 @@ function updateUserStatusUI(onlineUsers = [], awayUsers = []) {
         .catch(err => {
             console.error("Error fetching user role:", err);
             // Fallback if user role fetch fails
-            
             currentUserProfile.innerHTML = `
                 <div class="profile-header">
                     <h3>Your Profile</h3>
@@ -1095,7 +1095,7 @@ function updateUserStatusUI(onlineUsers = [], awayUsers = []) {
                 </div>
             `;
             
-            usersStatusDiv.replaceChildren(currentUserProfile);
+            usersStatusDiv.appendChild(currentUserProfile);
             
             // Add divider
             const divider = document.createElement('div');
@@ -1447,9 +1447,9 @@ statusStyle.textContent = `
     
     #status-container {
         position: fixed;
-        right: -450px;
+        right: -300px;
         top: 0;
-        width: 450px;
+        width: 300px;
         height: 100vh;
         background: #1a1a1a;
         transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1520,7 +1520,7 @@ statusStyle.textContent = `
         display: flex;
         flex-direction: column;
         gap: 4px;
-        flex: 3;
+        flex: 1;
     }
     
     .user-name {
@@ -1545,7 +1545,6 @@ statusStyle.textContent = `
         padding: 4px 8px;
         border-radius: 12px;
         background: rgba(255, 255, 255, 0.05);
-        flex: 2;
     }
     
     .status.online {
@@ -1715,10 +1714,9 @@ const chatFrame = document.getElementById("ai-chat-frame");
 const chatLauncher = document.getElementById("ai-chat-launcher");
 
 chatLauncher.addEventListener("click", () => {
-
     const isVisible = chatFrame.style.display === "block";
     chatFrame.style.display = isVisible ? "none" : "block";
-    chatFrame.classList.add('fade-in');
+    
     // If opening the chat, send a message to the iframe
     if (!isVisible) {
         chatFrame.contentWindow.postMessage({ action: 'openChat' }, '*');
