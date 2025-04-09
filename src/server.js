@@ -1,177 +1,62 @@
-const express = require("express");
-const mysql = require("mysql2");
-const bodyParser = require("body-parser");
 const crypto = require("crypto");
-const session = require("express-session");
 const path = require("path");
 const sharedSession = require("express-socket.io-session"); 
-const {Server} =require("socket.io") 
+const {Server} = require("socket.io");
+const connection = require('./config/db');
+const { app, sessionMiddleware } = require('./app');
 
+// Import routes
+const userRoutes = require('./routes/userRoutes');
+const teamRoutes = require('./routes/teamRoutes');
+const channelRoutes = require('./routes/channelRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const groupMessagesRoute = require('./routes/groupMessages');
 
+// Use routes
+app.use('/api/users', userRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/channels', channelRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api', groupMessagesRoute);
 
-const app = express();
-
-const PORT= process.env.PORT|| 3000
+const PORT = process.env.PORT || 3000;
 let expressServer;
 
 // =============================================
-// DATABASE CONNECTION AND SETUP
+// SERVER INITIALIZATION & APP CONFIGURATION - REVISED
 // =============================================
-const connection = mysql.createConnection({
-    host: process.env.DB_HOST || "localhost",
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "",
-});
 
-// Check if database exists and create if it doesn't
-connection.connect((err) => {
-    if (err) {
-        console.error("Initial database connection failed:", err);
-        process.exit(1);
-    }
-    
-    // Check if database exists
-    connection.query("SHOW DATABASES LIKE 'chathaven'", (err, results) => {
-        if (err) {
-            console.error("Error checking database:", err);
-            process.exit(1);
-        }
-        
-        if (results.length === 0) {
-            // Database doesn't exist, create it
-            connection.query("CREATE DATABASE chathaven", (err) => {
-                if (err) {
-                    console.error("Error creating database:", err);
-                    process.exit(1);
-                }
-                console.log("Database 'chathaven' created successfully");
-                setupDatabase();
-            });
-        } else {
-            console.log("Database 'chathaven' already exists");
-            setupDatabase();
-        }
-    });
-});
-
-function setupDatabase() {
-    // Use the chathaven database
-    connection.query("USE chathaven", (err) => {
-        if (err) {
-            console.error("Error using database:", err);
-            process.exit(1);
-        }
-        console.log("Connected to MySQL database 'chathaven'");
-        
-        // Create or update channels_messages table
-        const createChannelsMessagesTable = `
-            CREATE TABLE IF NOT EXISTS channels_messages (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                team_name VARCHAR(255) NOT NULL,
-                channel_name VARCHAR(255) NOT NULL,
-                sender_name VARCHAR(255) NOT NULL,
-                text TEXT NOT NULL,
-                quoted_message TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX (team_name, channel_name)
-            )
-        `;
-        
-        connection.query(createChannelsMessagesTable, (err) => {
-            if (err) {
-                console.error("Error creating channels_messages table:", err);
-                return;
-            }
-            console.log("Channels messages table ready");
-            
-            // Check if sender column exists, if not rename sender_name to sender
-            connection.query("SHOW COLUMNS FROM channels_messages LIKE 'sender'", (err, results) => {
-                if (err) {
-                    console.error("Error checking columns:", err);
-                    return;
-                }
-                
-                // If sender column doesn't exist but sender_name does, rename it
-                if (results.length === 0) {
-                    connection.query("SHOW COLUMNS FROM channels_messages LIKE 'sender_name'", (err, results) => {
-                        if (err) {
-                            console.error("Error checking sender_name column:", err);
-                            return;
-                        }
-                        
-                        if (results.length > 0) {
-                            // Rename sender_name to sender for compatibility
-                            connection.query("ALTER TABLE channels_messages CHANGE sender_name sender VARCHAR(255) NOT NULL", (err) => {
-                                if (err) {
-                                    console.error("Error renaming sender_name column:", err);
-                                    return;
-                                }
-                                console.log("Renamed sender_name to sender for backward compatibility");
-                                preloadChannelMessages();
-                            });
-                        } else {
-                            // Add sender column if neither exists
-                            connection.query("ALTER TABLE channels_messages ADD COLUMN sender VARCHAR(255) NOT NULL AFTER channel_name", (err) => {
-                                if (err) {
-                                    console.error("Error adding sender column:", err);
-                                    return;
-                                }
-                                console.log("Added sender column to channels_messages table");
-                                preloadChannelMessages();
-                            });
-                        }
-                    });
-                } else {
-                    // Sender column already exists, check if we need to preload messages
-                    preloadChannelMessages();
-                }
-            });
-        });
-    });
-}
-
-// =============================================
-// SERVER INITIALIZATION
-// =============================================
+// Start the server (using the imported app)
 if (process.env.NODE_ENV !== "test") {
     expressServer = app.listen(PORT, () => {
         console.log(`Server running at http://localhost:${PORT}`);
     });
 }
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-
-const sessionMiddleware= 
-    session({
-        secret: "your_secret_key",
-        resave: false,
-        saveUninitialized: true,
-        cookie: { maxAge: 3600000 },
-    });
-
-app.use(sessionMiddleware)
-app.use(express.static(path.join(__dirname, "public")));
-
 // =============================================
 // SOCKET.IO SETUP AND USER STATUS MANAGEMENT
 // =============================================
 const onlineUsers = new Map();
 const awayUsers = new Map();
-const INACTIVITY_TIME = 30000;
+const userInactivityTimers = new Map();
+const INACTIVITY_TIME = 30000; // 30 seconds
 
+// Pass the existing expressServer instance to Socket.IO
 const io = new Server(expressServer, {
     cors: {
-        origin: process.env.NODE_ENV === "production" ? false : ["http://localhost:3000", "http://127.0.0.1:3000"]
+        origin: process.env.NODE_ENV === "production" ? false : ["http://localhost:3000"]
     }
 });
 
+// Use the imported sessionMiddleware for Socket.IO
 io.use(sharedSession(sessionMiddleware, {
     autoSave: true,
 }));
 
 // Socket connection handling
 io.on('connection', socket => {
+    console.log('New socket connection:', socket.id);
+
     const session = socket.handshake.session;
 
     if (!session || !session.user || !session.user.name) {
@@ -180,108 +65,32 @@ io.on('connection', socket => {
         return;
     }
 
-    console.log(`User ${session.user.name} connected`);
+    console.log(`User ${session.user.name} connected (${session.user.user_type})`);
     socket.userId = session.user.id;
     socket.userName = session.user.name;
+    socket.userType = session.user.user_type;
     
     // Join global chat room
     socket.join('global-chat');
     
-    // Emit last 50 messages when user connects
-    const getLastMessagesQuery = `
-        SELECT 
-            gm.*, 
-            uf.name as sender_name,
-            gm.quoted_text,
-            gm.quoted_sender,
-            gm.timestamp
-        FROM global_messages gm
-        JOIN user_form uf ON gm.sender_id = uf.id
-        ORDER BY gm.timestamp DESC
-        LIMIT 50
-    `;
-    
-    connection.query(getLastMessagesQuery, (err, results) => {
-        if (err) {
-            console.error('Error fetching global messages:', err);
-            return;
-        }
-        socket.emit('global-chat-history', results.reverse());
-    });
-    
-    // Handle global chat messages
-    socket.on('global-message', async (data) => {
-        if (!socket.userId) {
-            socket.emit('error', { message: 'You must be logged in to send messages' });
-            return;
-        }
+    // Initialize socket handlers
+    require('./socket/handlers/globalChat')(socket, io, connection);
+    require('./socket/handlers/privateMessages')(socket, io, connection);
+    require('./socket/handlers/groupMessages')(socket, io, connection);
+    require('./socket/handlers/channelMessages')(socket, io, connection);
 
-        const message = {
-            sender_id: socket.userId,
-            sender_name: socket.userName,
-            message: data.text,
-            quoted_text: data.quoted_text,
-            quoted_sender: data.quoted_sender,
-            timestamp: new Date()
-        };
-
-        // Save message to database with all fields
-        const insertQuery = `
-            INSERT INTO global_messages 
-            (sender_id, sender_name, message, quoted_text, quoted_sender, timestamp) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        `;
-
-        connection.query(
-            insertQuery,
-            [
-                message.sender_id,
-                message.sender_name,
-                message.message,
-                message.quoted_text,
-                message.quoted_sender,
-                message.timestamp
-            ],
-            (err, result) => {
-                if (err) {
-                    console.error('Error saving global message:', err);
-                    socket.emit('error', { message: 'Failed to send message' });
-                    return;
-                }
-
-                message.id = result.insertId;
-                io.to('global-chat').emit('global-message', message);
-            }
-        );
-    });
-    
-    socket.on('message', data => {
-        if (!socket.userId) {
-            socket.emit('error', { message: 'You must be logged in to send messages' });
-            return;
-        }
-        
-        const message = data.text;
-        const user = `${session.user.name}[${session.user.user_type}_${session.user.id.toString().padStart(3, '0')}]`;
-        io.emit('message', {SSocketId: socket.id, user: user, text: message, userID: session.user.id});
-    });
-
-    let inactivityTimer;
+    // Handle user status
     socket.on("userOnline", (userId) => {
         if (!socket.userId) {
             socket.emit('error', { message: 'You must be logged in to update status' });
             return;
         }
         
-        // Convert userId to string to ensure consistent comparison
         const userIdStr = userId.toString();
-        console.log(`Setting user ${userIdStr} as ONLINE (socket: ${socket.id})`);
+        console.log(`Setting user ${userIdStr} as ONLINE (socket: ${socket.id}, type: ${socket.userType})`);
         
         onlineUsers.set(userIdStr, socket.id);
         awayUsers.delete(userIdStr);
-        
-        // Log the current online users for debugging
-        console.log("Current online users:", Array.from(onlineUsers.keys()));
         
         io.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
@@ -297,7 +106,6 @@ io.on('connection', socket => {
             return;
         }
         
-        // Convert userId to string to ensure consistent comparison
         const userIdStr = userId.toString();
         console.log(`Setting user ${userIdStr} as AWAY (socket: ${socket.id})`);
         
@@ -309,7 +117,7 @@ io.on('connection', socket => {
             away: Array.from(awayUsers.keys())
         });
     });
-    
+
     // Handle status update requests
     socket.on("requestStatusUpdate", () => {
         if (!socket.userId) {
@@ -322,17 +130,13 @@ io.on('connection', socket => {
             away: Array.from(awayUsers.keys())
         });
     });
-    
-    // Handle inactivity timers for each user
-    const userInactivityTimers = new Map();
 
+    // Inactivity timer functions
     function startInactivityTimer(userId) {
-        // Clear existing timer if there is one
         if (userInactivityTimers.has(userId)) {
             clearTimeout(userInactivityTimers.get(userId));
         }
         
-        // Set new timer
         const timer = setTimeout(() => {
             console.log(`User ${userId} is now away due to inactivity`);
             socket.emit("userAway", userId);
@@ -346,15 +150,13 @@ io.on('connection', socket => {
         startInactivityTimer(userId);
         console.log(`Reset inactivity timer for user ${userId}`);
     }
-    
-    // Clean up timers when user disconnects
+
+    // Handle disconnection
     socket.on("disconnect", (reason) => {
         console.log(`User ${socket.id} disconnected`);
 
-        // Find and remove the user from online/away lists
         let disconnectedUserId = null;
         
-        // Check online users
         onlineUsers.forEach((socketId, userId) => {
             if (socketId === socket.id) {
                 disconnectedUserId = userId;
@@ -363,7 +165,6 @@ io.on('connection', socket => {
             }
         });
         
-        // Check away users
         if (!disconnectedUserId) {
             awayUsers.forEach((socketId, userId) => {
                 if (socketId === socket.id) {
@@ -374,253 +175,17 @@ io.on('connection', socket => {
             });
         }
         
-        // Clean up timers for this user
         if (disconnectedUserId && userInactivityTimers.has(disconnectedUserId)) {
             clearTimeout(userInactivityTimers.get(disconnectedUserId));
             userInactivityTimers.delete(disconnectedUserId);
         }
         
-        // Broadcast updated status
         io.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
             away: Array.from(awayUsers.keys())
         });
     });
-})
-
-
-
-// Function to preload initial messages for testing
-function preloadChannelMessages() {
-    // Check if messages already exist
-    connection.query("SELECT COUNT(*) as count FROM channels_messages", (err, results) => {
-        if (err) {
-            console.error("Error checking messages count:", err);
-            return;
-        }
-        
-        // If no messages, add some initial ones for testing
-        if (results[0].count === 0) {
-            console.log("Preloading initial channel messages for testing...");
-            
-            const teams = ['1211', 'Team Alpha', 'Team Beta'];
-            const channels = ['general', '123', '122133', 'general2', '1212', '321', '123123', '23312', 'dasd'];
-            const senders = ['Admin', 'User1', 'User2', 'ChatBot'];
-            
-            // Generate welcome messages for each team/channel combination
-            const messages = [];
-            
-            // Sample conversation messages
-            const conversations = [
-                {
-                    sender: 'Admin',
-                    text: 'Welcome to the channel! This is where we discuss project updates.',
-                    quoted: null
-                },
-                {
-                    sender: 'ChatBot',
-                    text: 'This channel is now active. You can start chatting!',
-                    quoted: null
-                },
-                {
-                    sender: 'User1',
-                    text: 'Hi everyone! Excited to be part of this team.',
-                    quoted: null
-                },
-                {
-                    sender: 'User2',
-                    text: 'Welcome aboard! Let me know if you have any questions.',
-                    quoted: 'Hi everyone! Excited to be part of this team.'
-                },
-                {
-                    sender: 'User1',
-                    text: 'Thanks for the warm welcome! I do have a question about our meeting schedule.',
-                    quoted: null
-                },
-                {
-                    sender: 'Admin',
-                    text: 'We meet every Tuesday at 10am EST. I\'ll send a calendar invite.',
-                    quoted: 'Thanks for the warm welcome! I do have a question about our meeting schedule.'
-                },
-                {
-                    sender: 'ChatBot',
-                    text: 'Meeting reminder: Don\'t forget to prepare your updates for the weekly sync.',
-                    quoted: null
-                },
-                {
-                    sender: 'User2',
-                    text: 'I\'ve uploaded the project files to our shared drive. Please review when you get a chance.',
-                    quoted: null
-                },
-                {
-                    sender: 'User1',
-                    text: 'Will do! I should be able to review them by tomorrow.',
-                    quoted: 'I\'ve uploaded the project files to our shared drive. Please review when you get a chance.'
-                }
-            ];
-
-            teams.forEach(team => {
-                channels.forEach(channel => {
-                    // Add conversation messages
-                    conversations.forEach(msg => {
-                        messages.push([
-                            team, channel, msg.sender, 
-                            msg.text, 
-                            msg.quoted
-                        ]);
-                    });
-                });
-            });
-            
-            // Insert all preloaded messages
-            const insertQuery = `
-                INSERT INTO channels_messages 
-                (team_name, channel_name, sender, text, quoted_message)
-                VALUES ?
-            `;
-            
-            connection.query(insertQuery, [messages], (err) => {
-                if (err) {
-                    console.error("Error preloading messages:", err);
-                    return;
-                }
-                console.log("Successfully preloaded channel messages for testing");
-            });
-        }
-    });
-}
-
-io.on("connection", (socket) => {
-    socket.on("private-message", (msg) => {
-        // Store the client-generated message ID
-        const tempId = msg.id;
-        
-        // Use only the fields present in schema.sql
-        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text, timestamp) VALUES (?, ?, ?, NOW())";
-        
-        connection.query(insertQuery, [msg.senderId, msg.recipientId, msg.text], (err, result) => {
-            if (err) {
-                console.error("Error saving message:", err);
-                return;
-            }
-            
-            // Send back the full message including the quoted data, but only store essential fields in DB
-            const fullMessage = {
-                ...msg,
-                id: result.insertId,
-                tempId: tempId, // Return the tempId so client can match it
-                quoted: msg.quoted // Keep this for UI, but don't store in DB
-            };
-
-            io.emit("private-message", fullMessage);
-        });
-    });
 });
-
-
-app.get('/get-user-chats', (req, res) => {
-    const { userId } = req.query;
-    const query = `
-        SELECT DISTINCT uf.id AS user_id, uf.name AS username
-        FROM direct_messages dm
-        JOIN user_form uf ON (dm.sender_id = uf.id OR dm.recipient_id = uf.id)
-        WHERE (dm.sender_id = ? OR dm.recipient_id = ?) AND uf.id != ?
-    `;
-
-    connection.query(query, [userId, userId, userId], (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: "Database error fetching chats." });
-        }
-        res.json(results);
-    });
-});
-
-// Add a new route to initialize a chat between users
-app.post('/init-chat', (req, res) => {
-    const { userId, recipientId } = req.body;
-    
-    if (!userId || !recipientId) {
-        return res.status(400).json({ error: "Both user IDs are required" });
-    }
-    
-    // First check if a message already exists between these users
-    const checkQuery = `
-        SELECT id FROM direct_messages 
-        WHERE (sender_id = ? AND recipient_id = ?) 
-        OR (sender_id = ? AND recipient_id = ?)
-        LIMIT 1
-    `;
-    
-    connection.query(checkQuery, [userId, recipientId, recipientId, userId], (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: "Database error checking messages." });
-        }
-        
-        if (results.length > 0) {
-            // Messages already exist, no need to initialize
-            return res.json({ success: true, message: "Chat already exists" });
-        }
-        
-        // If no messages exist, create a system message to initialize the chat
-        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text) VALUES (?, ?, ?)";
-        const systemMessage = "Chat initialized";
-        
-        connection.query(insertQuery, [userId, recipientId, systemMessage], (err, result) => {
-            if (err) {
-                return res.status(500).json({ error: "Failed to initialize chat." });
-            }
-            
-            res.json({ success: true, message: "Chat initialized successfully" });
-        });
-    });
-});
-
-
-
-app.get('/get-messages', (req, res) => {
-    const { senderId, recipientId } = req.query;
-    
-    // Use only the fields present in the original schema
-    const query = `
-        SELECT dm.id, dm.text, dm.sender_id, dm.recipient_id, dm.timestamp, uf.name AS senderName
-        FROM direct_messages dm
-        JOIN user_form uf ON dm.sender_id = uf.id
-        WHERE (dm.sender_id = ? AND dm.recipient_id = ?)
-           OR (dm.sender_id = ? AND dm.recipient_id = ?)
-        ORDER BY dm.timestamp
-    `;
-
-    connection.query(query, [senderId, recipientId, recipientId, senderId], (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: "Error fetching messages." });
-        }
-        
-        const formattedResults = results.map(msg => ({
-            id: msg.id,
-            senderId: msg.sender_id,
-            recipientId: msg.recipient_id,
-            senderName: msg.senderName,
-            text: msg.text,
-            timestamp: msg.timestamp,
-            // Don't include quoted field since it's not in the database
-        }));
-
-        res.json(formattedResults);
-    });
-});
-
-
-
-app.get("/get-user-id", (req, res) => {
-    const { username } = req.query;
-    const query = "SELECT id FROM user_form WHERE name = ?";
-    connection.query(query, [username], (err, results) => {
-        if (err) return res.status(500).json({ error: "Database error." });
-        if (results.length === 0) return res.status(404).json({ error: "User not found." });
-        res.json({ userId: results[0].id });
-    });
-});
-
 
 // =============================================
 // AUTHENTICATION AND USER MANAGEMENT ROUTES
@@ -687,10 +252,6 @@ app.post("/register", (req, res) => {
   });
 });
 
-
-
-
-
 app.post("/login", (req, res) => {
     const { email, password } = req.body;
 
@@ -724,7 +285,7 @@ app.post("/login", (req, res) => {
 
             if (user.user_type === "admin") {
                 return res.json({ 
-                    redirect: "/admin_page.html",
+                    redirect: "/AdminDashboard.html",
                     user: req.session.user // <- Include this
                 });
             } else {
@@ -739,10 +300,7 @@ app.post("/login", (req, res) => {
     });
 });
 
-
-
 app.get("/user-info", (req, res) => {
-
     if (!req.session.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
@@ -761,7 +319,6 @@ app.get("/admin-info", (req, res) => {
     }
     res.json({ name: req.session.user.name });
 });
-
 
 app.post("/create-team", (req, res) => {
     if (!req.session.user || req.session.user.user_type !== "admin") {
@@ -798,10 +355,6 @@ app.post("/create-team", (req, res) => {
         });
     });
 });
-
-
-
-
 
 app.get("/get-team-id", (req, res) => {
     const { teamName } = req.query;
@@ -865,7 +418,6 @@ app.post("/create-channel", (req, res) => {
     });
 });
 
-
 app.post('/assign-user-to-team', (req, res) => {
     const { teamId, userName } = req.body;
 
@@ -903,8 +455,258 @@ app.post('/assign-user-to-team', (req, res) => {
     });
 });
 
+// Delete team and all associated channels
+app.post('/delete-team', (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
 
+    const { teamId } = req.body;
+    const userId = req.session.user.id;
 
+    if (!teamId) {
+        return res.status(400).json({ error: "Team ID is required." });
+    }
+
+    // First verify that this user is the team creator (owner)
+    const checkTeamCreatorQuery = "SELECT created_by FROM teams WHERE id = ?";
+    connection.query(checkTeamCreatorQuery, [teamId], (err, results) => {
+        if (err) {
+            console.error("Error checking team creator:", err);
+            return res.status(500).json({ error: "Database error." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Team not found." });
+        }
+
+        const creatorId = results[0].created_by;
+
+        // Only allow team creator or admin to delete the team
+        if (creatorId !== userId && req.session.user.user_type !== 'admin') {
+            return res.status(403).json({ error: "Only the team creator or an admin can delete a team." });
+        }
+
+        // Get all channels in this team
+        const getChannelsQuery = "SELECT id FROM channels WHERE team_id = ?";
+        connection.query(getChannelsQuery, [teamId], (err, channelResults) => {
+            if (err) {
+                console.error("Error fetching team channels:", err);
+                return res.status(500).json({ error: "Error fetching team channels." });
+            }
+
+            // Extract channel IDs
+            const channelIds = channelResults.map(channel => channel.id);
+
+            // Begin transaction for the multi-step deletion
+            connection.beginTransaction(err => {
+                if (err) {
+                    console.error("Error starting transaction:", err);
+                    return res.status(500).json({ error: "Error starting database transaction." });
+                }
+
+                // Delete channel messages for this team
+                const deleteMessagesQuery = "DELETE FROM channels_messages WHERE team_name = (SELECT name FROM teams WHERE id = ?)";
+                connection.query(deleteMessagesQuery, [teamId], err => {
+                    if (err) {
+                        console.error("Error deleting team channel messages:", err);
+                        return connection.rollback(() => {
+                            res.status(500).json({ error: "Error deleting team channel messages." });
+                        });
+                    }
+
+                    // Function to continue with deletion steps
+                    const continueWithDeletion = () => {
+                        // Delete user_channels entries
+                        const deleteUserChannelsQuery = channelIds.length > 0 ? 
+                            "DELETE FROM user_channels WHERE channel_id IN (?)" : 
+                            "SELECT 1"; // Dummy query if no channels
+                        
+                        const queryParams = channelIds.length > 0 ? [channelIds] : [];
+                        
+                        connection.query(deleteUserChannelsQuery, queryParams, err => {
+                            if (err) {
+                                console.error("Error deleting user_channels:", err);
+                                return connection.rollback(() => {
+                                    res.status(500).json({ error: "Error deleting user channel associations." });
+                                });
+                            }
+
+                            // Delete channels
+                            const deleteChannelsQuery = "DELETE FROM channels WHERE team_id = ?";
+                            connection.query(deleteChannelsQuery, [teamId], err => {
+                                if (err) {
+                                    console.error("Error deleting channels:", err);
+                                    return connection.rollback(() => {
+                                        res.status(500).json({ error: "Error deleting team channels." });
+                                    });
+                                }
+
+                                // Delete user_teams entries
+                                const deleteUserTeamsQuery = "DELETE FROM user_teams WHERE team_id = ?";
+                                connection.query(deleteUserTeamsQuery, [teamId], err => {
+                                    if (err) {
+                                        console.error("Error deleting user_teams:", err);
+                                        return connection.rollback(() => {
+                                            res.status(500).json({ error: "Error deleting user team associations." });
+                                        });
+                                    }
+
+                                    // Finally delete the team
+                                    const deleteTeamQuery = "DELETE FROM teams WHERE id = ?";
+                                    connection.query(deleteTeamQuery, [teamId], err => {
+                                        if (err) {
+                                            console.error("Error deleting team:", err);
+                                            return connection.rollback(() => {
+                                                res.status(500).json({ error: "Error deleting team." });
+                                            });
+                                        }
+
+                                        // Commit the transaction
+                                        connection.commit(err => {
+                                            if (err) {
+                                                console.error("Error committing transaction:", err);
+                                                return connection.rollback(() => {
+                                                    res.status(500).json({ error: "Error completing deletion, transaction failed." });
+                                                });
+                                            }
+
+                                            res.json({ message: "Team and all associated channels successfully deleted." });
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                        
+                        // Execute the deletion process
+                        continueWithDeletion();
+                    };
+                });
+            });
+        });
+    });
+});
+
+// Remove a user from a team
+app.post('/remove-team-member', (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { teamId, userId: memberIdToRemove } = req.body;
+    const userId = req.session.user.id;
+
+    if (!teamId || !memberIdToRemove) {
+        return res.status(400).json({ error: "Team ID and User ID are required." });
+    }
+
+    // First verify that this user is the team creator (owner) or an admin
+    const checkTeamCreatorQuery = "SELECT created_by FROM teams WHERE id = ?";
+    connection.query(checkTeamCreatorQuery, [teamId], (err, results) => {
+        if (err) {
+            console.error("Error checking team creator:", err);
+            return res.status(500).json({ error: "Database error." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Team not found." });
+        }
+
+        const creatorId = results[0].created_by;
+
+        // Only allow team creator or admin to remove members
+        if (creatorId !== userId && req.session.user.user_type !== 'admin') {
+            return res.status(403).json({ error: "Only the team creator or an admin can remove team members." });
+        }
+
+        // Don't allow removing the team creator
+        if (memberIdToRemove == creatorId) {
+            return res.status(403).json({ error: "Cannot remove the team creator from their own team." });
+        }
+
+        // Check if user is in the team
+        const checkUserInTeamQuery = "SELECT * FROM user_teams WHERE user_id = ? AND team_id = ?";
+        connection.query(checkUserInTeamQuery, [memberIdToRemove, teamId], (err, userTeamResults) => {
+            if (err) {
+                console.error("Error checking user team membership:", err);
+                return res.status(500).json({ error: "Database error." });
+            }
+
+            if (userTeamResults.length === 0) {
+                return res.status(404).json({ error: "User is not a member of this team." });
+            }
+
+            // Begin transaction for the multi-step removal
+            connection.beginTransaction(err => {
+                if (err) {
+                    console.error("Error starting transaction:", err);
+                    return res.status(500).json({ error: "Error starting database transaction." });
+                }
+
+                // Get all channels in this team
+                const getChannelsQuery = "SELECT id FROM channels WHERE team_id = ?";
+                connection.query(getChannelsQuery, [teamId], (err, channelResults) => {
+                    if (err) {
+                        console.error("Error fetching team channels:", err);
+                        return connection.rollback(() => {
+                            res.status(500).json({ error: "Error fetching team channels." });
+                        });
+                    }
+
+                    // Extract channel IDs
+                    const channelIds = channelResults.map(channel => channel.id);
+
+                    // Function to continue with removal steps
+                    const continueWithRemoval = () => {
+                        // Remove user from all channels in the team
+                        if (channelIds.length > 0) {
+                            const deleteUserChannelsQuery = "DELETE FROM user_channels WHERE user_id = ? AND channel_id IN (?)";
+                            connection.query(deleteUserChannelsQuery, [memberIdToRemove, channelIds], err => {
+                                if (err) {
+                                    console.error("Error removing user from channels:", err);
+                                    return connection.rollback(() => {
+                                        res.status(500).json({ error: "Error removing user from team channels." });
+                                    });
+                                }
+                                removeFromTeam();
+                            });
+                        } else {
+                            removeFromTeam();
+                        }
+                    };
+
+                    // Remove user from team
+                    const removeFromTeam = () => {
+                        const deleteUserTeamQuery = "DELETE FROM user_teams WHERE user_id = ? AND team_id = ?";
+                        connection.query(deleteUserTeamQuery, [memberIdToRemove, teamId], err => {
+                            if (err) {
+                                console.error("Error removing user from team:", err);
+                                return connection.rollback(() => {
+                                    res.status(500).json({ error: "Error removing user from team." });
+                                });
+                            }
+
+                            // Commit the transaction
+                            connection.commit(err => {
+                                if (err) {
+                                    console.error("Error committing transaction:", err);
+                                    return connection.rollback(() => {
+                                        res.status(500).json({ error: "Error completing removal, transaction failed." });
+                                    });
+                                }
+
+                                res.json({ message: "User successfully removed from team and all associated channels." });
+                            });
+                        });
+                    };
+
+                    // Continue with removal process
+                    continueWithRemoval();
+                });
+            });
+        });
+    });
+});
 
 app.post("/assign-user", async (req, res) => {
     const { teamId, channelName, userName } = req.body;
@@ -1004,7 +806,6 @@ app.post("/assign-user", async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
-
 
 app.get("/get-teams-with-members", (req, res) => {
     const query = `
@@ -1156,7 +957,6 @@ app.get("/get-user-channels", (req, res) => {
     });
 });
 
-
 app.get("/get-user-teams", (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -1242,11 +1042,6 @@ app.get("/get-user-teams", (req, res) => {
     });
 });
 
-
-
-
-
-
 app.get("/logout", (req, res) => {
     if (!req.session.user) {
         return res.redirect("/Login-Form.html");
@@ -1280,7 +1075,6 @@ app.get("/logout", (req, res) => {
 });
 
 app.post("/update-password", (req, res) => {
-
     const {newPassword, confirmPassword} = req.body;
 
     if (!req.session.user) {
@@ -1348,83 +1142,6 @@ app.post("/get-channels", (req, res) => {
     });
 });
 
-app.post("/get-channel-messages", (req, res) => {
-    const { teamName, channelName } = req.body;
-
-    if (!teamName || !channelName) {
-        return res.status(400).json({ error: "Team name and channel name are required." });
-    }
-
-    const query = `
-        SELECT id, sender, text, quoted_message FROM channels_messages 
-        WHERE team_name = ? AND channel_name = ? 
-        ORDER BY created_at ASC
-    `;
-
-    connection.query(query, [teamName, channelName], (err, results) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Internal Server Error: Database query failed." });
-        }
-
-        const formattedResults = results.map(msg => ({
-            id: msg.id,
-            sender: msg.sender,
-            text: msg.text,
-            quoted: msg.quoted_message
-        }));
-
-        res.json(formattedResults);
-    });
-});
-app.post("/remove-message", (req, res) => {
-    const { messageId } = req.body;
-
-    if (!messageId) {
-        return res.status(400).json({ error: "Message ID is required." });
-    }
-
-    const query = `
-        UPDATE channels_messages
-        SET text = 'Removed by Admin'
-        WHERE id = ?
-    `;
-
-    connection.query(query, [messageId], (err, result) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Database update failed." });
-        }
-
-        res.json({ success: true });
-    });
-});
-
-app.post("/sendChannelMessage", (req, res) => {
-    const { teamName, channelName, sender, text, quoted } = req.body;
-
-    console.log("🟦 Quoted Message Received:", quoted);
-
-    if (!teamName || !channelName || !sender || !text) {
-        return res.status(400).json({ error: "All fields are required." });
-    }
-
-    const quotedMessageText = quoted;
-
-    const query = `
-        INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
-        VALUES (?, ?, ?, ?, ?)
-    `;
-
-    connection.query(query, [teamName, channelName, sender, text, quotedMessageText], (err, results) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Failed to save message." });
-        }
-        res.json({ success: true });
-    });
-});
-
 app.post("/create-group", (req, res) => {
     const { name, description } = req.body;
     const createdBy = req.session.user.id;
@@ -1461,6 +1178,7 @@ app.post("/create-group", (req, res) => {
         });
     });
 });
+
 app.post("/add-user", (req, res) => {
     const { groupId, username } = req.body;
     const addedBy = req.session.user.name;
@@ -1531,6 +1249,7 @@ app.get("/group-members/:groupId", (req, res) => {
         res.json(results);
     });
 });
+
 app.get("/group-owner/:groupId", (req, res) => {
     const { groupId } = req.params;
     
@@ -1592,7 +1311,6 @@ app.get("/group-requests/:groupId", (req, res) => {
     });
 });
 
-
 app.post("/request-join", (req, res) => {
     const { groupId } = req.body;
     const userId = req.session.user.id;
@@ -1632,7 +1350,6 @@ app.post("/request-join", (req, res) => {
     });
 });
 
-
 app.post("/approve-user", (req, res) => {
     const { groupId, userId } = req.body;
     const approvedBy = req.session.user.name;
@@ -1671,8 +1388,6 @@ app.post("/approve-user", (req, res) => {
         });
     });
 });
-
-
 
 app.post("/leave-group", (req, res) => {
     const { groupId } = req.body;
@@ -1819,132 +1534,6 @@ app.post("/remove-group-member", (req, res) => {
                 });
             });
         });
-    });
-});
-
-// Enhance group message handling with better status management
-io.on("connection", (socket) => {
-    const session = socket.handshake.session;
-    
-    // Group message handling
-    socket.on("send-message", (data) => {
-        const { groupId, userId, message } = data;
-
-        // Get sender's name
-        const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
-        connection.query(getUserQuery, [userId], (err, result) => {
-            if (err || result.length === 0) {
-                console.error("Error getting user info:", err);
-                socket.emit('error', { message: 'Failed to send message' });
-                return;
-            }
-            
-            const senderName = result[0].name;
-            
-            // Insert message into database
-            const insertQuery = "INSERT INTO group_messages (group_id, user_id, text) VALUES (?, ?, ?)";
-            connection.query(insertQuery, [groupId, userId, message], (err, result) => {
-                if (err) {
-                    console.error("Error storing message:", err);
-                    socket.emit('error', { message: 'Failed to save message' });
-                    return;
-                }
-
-                const messageData = {
-                    id: result.insertId,
-                    sender: senderName,
-                    text: message,
-                    timestamp: new Date()
-                };
-                
-                // Broadcast message to all connected clients
-                io.emit(`group-message-${groupId}`, messageData);
-            });
-        });
-    });
-
-    // Enhanced status request functionality
-    socket.on("requestStatusUpdate", () => {
-        if (!socket.userId && session && session.user) {
-            socket.userId = session.user.id;
-        }
-        
-        // Only respond to authenticated requests
-        if (!socket.userId) {
-            console.log("Unauthenticated status request");
-            socket.emit('error', { message: 'Authentication required for status updates' });
-            return;
-        }
-        
-        socket.emit("updateUserStatus", {
-            online: Array.from(onlineUsers.keys()),
-            away: Array.from(awayUsers.keys())
-        });
-    });
-});
-
-// Fetch previous messages
-app.get("/group-messages/:groupId", (req, res) => {
-    const { groupId } = req.params;
-
-    const query = `
-        SELECT u.name AS sender, gm.text, gm.is_system_message
-        FROM group_messages gm 
-        JOIN user_form u ON gm.user_id = u.id 
-        WHERE gm.group_id = ?
-        ORDER BY gm.created_at ASC
-    `;
-
-    connection.query(query, [groupId], (err, results) => {
-        if (err) return res.status(500).json({ error: "Error fetching messages." });
-        res.json(results);
-    });
-});
-
-
-io.on("connection", (socket) => {
-    socket.on("ChannelMessages", (msg) => {
-        const query = `
-        INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
-        VALUES (?, ?, ?, ?, ?)
-    `;
-
-    connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted], (err, result) => {
-        if (err) {
-            console.error("Database error:", err);
-            socket.emit("error", { message: "Failed to save message" });
-            return;
-        }
-        
-        const messageWithId = {
-            id: result.insertId,  
-            teamName: msg.teamName,
-            channelName: msg.channelName,
-            sender: msg.sender,
-            text: msg.text,
-            quoted: msg.quoted
-        };
-        io.emit("ChannelMessages", messageWithId);
-    });
-    });
-});
-
-// Add endpoint to fetch global chat messages
-app.get('/global-messages', (req, res) => {
-    const query = `
-        SELECT gm.*, uf.name as sender_name 
-        FROM global_messages gm
-        JOIN user_form uf ON gm.sender_id = uf.id
-        ORDER BY gm.timestamp DESC
-        LIMIT 50
-    `;
-
-    connection.query(query, (err, results) => {
-        if (err) {
-            console.error('Error fetching global messages:', err);
-            return res.status(500).json({ error: 'Failed to fetch global messages' });
-        }
-        res.json(results);
     });
 });
 

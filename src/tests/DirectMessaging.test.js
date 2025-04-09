@@ -1,455 +1,326 @@
-const request = require("supertest");
-const { connection } = require("../server");
-const { app, createTestUser, loginTestUser } = require("./authentication.test");
-const crypto = require("crypto");
-const http = require("http");
-const socketIO = require("socket.io");
-const { io } = require("socket.io-client");
+const chatController = require('../controllers/chatController');
+const connection = require('../config/db');
 
-process.env.NODE_ENV = "test";
+// Mock the database connection
+jest.mock('../config/db', () => ({
+  query: jest.fn()
+}));
 
-// Generate random identifiers to avoid test conflicts
-const random = crypto.randomBytes(3).toString("hex");
-
-// Create test users
-const admin = {
-    name: `Admin_${random}`,
-    email: `admin_${random}@example.com`,
-    password: `Password123!`,
-    user_type: "admin"
-};
-
-const user = {
-    name: `User_${random}`,
-    email: `user_${random}@example.com`,
-    password: `Password123!`,
-    user_type: "user"
-};
-
-let adminSession;
-let userSession;
-let adminId;
-let userId;
-let teamId;
-let channelName = `channel_${random}`;
-let ioAdmin, ioUser;
-
-let server, ioServer;
-const TEST_PORT = 4002;
-
-// Setup before all tests
-beforeAll((done) => {
-    // First ensure database is set up
-    connection.query("USE chathaven", (err) => {
-        if (err) {
-            console.error("Error connecting to database:", err);
-            done(err);
-            return;
-        }
-
-        try {
-            // Create test users
-            Promise.all([
-                createTestUser(admin),
-                createTestUser(user)
-            ]).then(() => {
-                // Start HTTP server for Socket.IO
-        server = http.createServer(app);
-                
-                // Setup Socket.IO server
-        ioServer = socketIO(server);
-
-        ioServer.on("connection", (socket) => {
-                    // Global messages
-            socket.on("message", (msg) => {
-                ioServer.emit("message", msg);
-            });
-
-                    // Direct messages
-            socket.on("private-message", (msg) => {
-                ioServer.emit("private-message", msg);
-            });
-
-                    // Channel messages
-            socket.on("ChannelMessages", (msg) => {
-                ioServer.emit("ChannelMessages", msg);
-            });
-        });
-
-                // Start the server
-                server.listen(TEST_PORT, () => {
-            console.log("Test socket server running on port", TEST_PORT);
-                
-                    // Login admin and user to get IDs
-                    adminSession = request.agent(app);
-                    adminSession.post("/login").send({
-                        email: admin.email,
-                        password: admin.password
-                    }).then((adminLoginRes) => {
-                        adminId = adminLoginRes.body.user.id;
-                        
-                        userSession = request.agent(app);
-                        return userSession.post("/login").send({
-                            email: user.email,
-                            password: user.password
-                        });
-                    }).then((userLoginRes) => {
-                        userId = userLoginRes.body.user.id;
-                        
-                        // Create a team for channel message testing
-                        return adminSession.post("/create-team").send({
-                            teamName: `team_${random}`
-                        });
-                    }).then(() => {
-                        return adminSession.get(`/get-team-id?teamName=team_${random}`);
-                    }).then((getTeamIdRes) => {
-                        teamId = getTeamIdRes.body.teamId;
-                        
-                        // Assign the user to the team
-                        return adminSession.post("/assign-user-to-team").send({
-                            teamId,
-                            userName: user.name
-                        });
-                    }).then(() => {
-                        // Create a channel for testing
-                        return adminSession.post("/create-channel").send({
-                            channelName,
-                            teamId
-                        });
-                    }).then(() => {
-            done();
-                    }).catch((err) => {
-                        console.error("Setup error:", err);
-                        done(err);
-                    });
-        });
-            }).catch(err => {
-                console.error("Setup error:", err);
-            done(err);
-        });
-    } catch (err) {
-            console.error("Setup error:", err);
-        done(err);
-    }
-});
-}, 30000);
-
-// Cleanup after all tests
-afterAll((done) => {
-    try {
-        console.log("Cleaning up resources...");
-        
-        // Disconnect any active socket connections
-    if (ioUser?.connected) ioUser.disconnect();
-    if (ioAdmin?.connected) ioAdmin.disconnect();
+describe('Direct Messaging', () => {
+  let req;
+  let res;
   
-        // Clean up database - delete messages
-        connection.query(
-            "DELETE FROM direct_messages WHERE sender_id IN (?, ?) OR recipient_id IN (?, ?)",
-            [adminId, userId, adminId, userId],
-            (err) => {
-                if (err) console.error("Error cleaning direct messages:", err);
-                
-                // Clean up database - delete channel messages
-                connection.query(
-                    "DELETE FROM channels_messages WHERE team_name = ? AND channel_name = ?",
-                    [`team_${random}`, channelName],
-                    (err) => {
-                        if (err) console.error("Error cleaning channel messages:", err);
-                        
-                        // Clean up database - delete user_channels
-                        connection.query(
-                            "DELETE FROM user_channels WHERE user_id IN (?, ?)",
-                            [adminId, userId],
-                            (err) => {
-                                if (err) console.error("Error cleaning user_channels:", err);
-                                
-                                // Clean up database - delete channels
-                                connection.query(
-                                    "DELETE FROM channels WHERE name = ?",
-                                    [channelName],
-                                    (err) => {
-                                        if (err) console.error("Error cleaning channels:", err);
-                                        
-                                        // Clean up database - delete user_teams
-                                        connection.query(
-                                            "DELETE FROM user_teams WHERE user_id IN (?, ?)",
-                                            [adminId, userId],
-                                            (err) => {
-                                                if (err) console.error("Error cleaning user_teams:", err);
-                                                
-                                                // Clean up database - delete teams
-                                                connection.query(
-                                                    "DELETE FROM teams WHERE name = ?",
-                                                    [`team_${random}`],
-                                                    (err) => {
-                                                        if (err) console.error("Error cleaning teams:", err);
-                                                        
-                                                        // Clean up database - delete users
-                                                        connection.query(
-                                                            "DELETE FROM user_form WHERE email IN (?, ?)",
-                                                            [admin.email, user.email],
-                                                            (err) => {
-                                                                if (err) console.error("Error cleaning users:", err);
-                                                                
-                                                                // Close the server
-                                                                server.close(() => {
-                                                                    console.log("Test socket server closed");
-                                                                    done();
-                                                                });
-                                                            }
-                                                        );
-                                                    }
-                                                );
-                                            }
-                                        );
-                                    }
-                                );
-                            }
-                        );
-                    }
-                );
-            }
-        );
-    } catch (error) {
-        console.error("Error during cleanup:", error);
-        done(error);
-    }
-}, 30000);
-
-describe("Chat & Messaging Tests", () => {
-    test("Users can send and receive global messages", (done) => {
-        const testMessage = "Hello world!";
-        let messageReceived = false;
-
-        // Create a timeout to fail the test if message isn't received
-        const timeout = setTimeout(() => {
-            done(new Error("Global message not received within timeout"));
-        }, 5000);
-        
-        // Connect user socket
-        ioUser = io(`http://localhost:${TEST_PORT}`, {
-            transports: ["websocket"],
-            forceNew: true,
-        });
-
-        ioUser.on("connect", () => {
-            // Set up message listener
-            ioUser.on("message", (msg) => {
-                try {
-                    expect(msg.text).toBe(testMessage);
-                    messageReceived = true;
-                    clearTimeout(timeout);
-                    done();
-                } catch (err) {
-                    clearTimeout(timeout);
-                    done(err);
-                }
-            });
-
-            // Connect admin socket and send message
-            ioAdmin = io(`http://localhost:${TEST_PORT}`, {
-                transports: ["websocket"],
-                forceNew: true,
-            });
-
-            ioAdmin.on("connect", () => {
-                ioAdmin.emit("message", { text: testMessage });
-            });
-            
-            ioAdmin.on("connect_error", (err) => {
-                clearTimeout(timeout);
-                done(err);
-            });
-        });
-        
-        ioUser.on("connect_error", (err) => {
-            clearTimeout(timeout);
-            done(err);
-        });
-        }, 15000);
-
-    test("Users can send and receive direct messages", (done) => {
-        const payload = {
-          senderId: adminId,
-          recipientId: userId,
-            text: "DM test message"
-        };
-      
-        // Create a timeout to fail the test if message isn't received
-        const timeout = setTimeout(() => {
-            done(new Error("Direct message not received within timeout"));
-        }, 5000);
-      
-        // Disconnect previous connections if they exist
-        if (ioUser?.connected) ioUser.disconnect();
-        if (ioAdmin?.connected) ioAdmin.disconnect();
-        
-        // Connect user socket
-        ioUser = io(`http://localhost:${TEST_PORT}`, {
-          transports: ["websocket"],
-          forceNew: true,
-        });
-      
-        ioUser.on("connect", () => {
-            // Listen for direct messages
-          ioUser.on("private-message", (msg) => {
-            try {
-              expect(msg.text).toBe(payload.text);
-              expect(msg.senderId).toBe(payload.senderId);
-              expect(msg.recipientId).toBe(payload.recipientId);
-      
-              clearTimeout(timeout);
-              done();
-            } catch (err) {
-              clearTimeout(timeout);
-              done(err);
-            }
-          });
-      
-            // Connect admin socket and send message
-            ioAdmin = io(`http://localhost:${TEST_PORT}`, {
-            transports: ["websocket"],
-            forceNew: true,
-          });
-      
-          ioAdmin.on("connect", () => {
-            setTimeout(() => {
-              ioAdmin.emit("private-message", payload);
-                }, 500);
-            });
-            
-            ioAdmin.on("connect_error", (err) => {
-                clearTimeout(timeout);
-                done(err);
-            });
-        });
-        
-        ioUser.on("connect_error", (err) => {
-            clearTimeout(timeout);
-            done(err);
-        });
-    }, 15000);
+  beforeEach(() => {
+    // Clear all mocks before each test
+    jest.clearAllMocks();
     
-    test("Messages can be stored and retrieved", async () => {
-        // Ensure at least one message exists
-        const messageText = `Test message ${random}`;
-        
-        // Insert a test message directly to database
-        await new Promise((resolve, reject) => {
-            connection.query(
-                "INSERT INTO direct_messages (sender_id, recipient_id, text) VALUES (?, ?, ?)",
-                [adminId, userId, messageText],
-                (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
-        
-        // Retrieve messages with the API
-        const res = await userSession.get(`/get-messages?senderId=${adminId}&recipientId=${userId}`);
-        
-        expect(res.status).toBe(200);
-        expect(Array.isArray(res.body)).toBe(true);
-        
-        // Find our test message
-        const testMessage = res.body.find(msg => msg.text === messageText);
-        expect(testMessage).toBeDefined();
-        expect(testMessage.senderId).toBe(adminId);
-        expect(testMessage.recipientId).toBe(userId);
-    }, 10000);
+    // Mock request and response objects
+    req = {
+      query: {},
+      body: {}
+    };
     
-    test("Team channel messages can be sent and received", (done) => {
-        const payload = {
-          senderId: adminId,
-            channelName: channelName,
-          teamId: teamId,
-            text: "Channel test message",
-            teamName: `team_${random}`,
-            sender: admin.name
-        };
+    res = {
+      json: jest.fn(),
+      status: jest.fn().mockReturnThis()
+    };
+  });
+
+  describe('getUserChats', () => {
+    test('should get list of chat partners for a user', () => {
+      // Set up request query
+      req.query = { userId: '1' };
       
-        // Create a timeout to fail the test if message isn't received
-        const timeout = setTimeout(() => {
-            done(new Error("Channel message not received within timeout"));
-        }, 5000);
+      // Mock database response
+      const mockChatPartners = [
+        { user_id: 2, username: 'User2' },
+        { user_id: 3, username: 'User3' }
+      ];
       
-        // Disconnect previous connections if they exist
-        if (ioUser?.connected) ioUser.disconnect();
-        if (ioAdmin?.connected) ioAdmin.disconnect();
-        
-        // Connect user socket
-        ioUser = io(`http://localhost:${TEST_PORT}`, {
-          transports: ["websocket"],
-          forceNew: true,
-        });
+      // Configure mock to return data
+      connection.query.mockImplementation((query, params, callback) => {
+        callback(null, mockChatPartners);
+      });
       
-        ioUser.on("connect", () => {
-            // Listen for channel messages
-          ioUser.on("ChannelMessages", (msg) => {
-            try {
-              expect(msg.text).toBe(payload.text);
-              expect(msg.channelName).toBe(payload.channelName);
-                    expect(msg.teamName).toBe(payload.teamName);
+      // Call the controller function
+      chatController.getUserChats(req, res);
       
-              clearTimeout(timeout);
-              done();
-            } catch (err) {
-              clearTimeout(timeout);
-              done(err);
-            }
-          });
+      // Verify database was queried correctly
+      expect(connection.query).toHaveBeenCalledTimes(1);
+      expect(connection.query.mock.calls[0][1]).toEqual(['1', '1', '1']);
       
-            // Connect admin socket and send message
-            ioAdmin = io(`http://localhost:${TEST_PORT}`, {
-            transports: ["websocket"],
-            forceNew: true,
-          });
-      
-          ioAdmin.on("connect", () => {
-            setTimeout(() => {
-              ioAdmin.emit("ChannelMessages", payload);
-                }, 500);
-            });
-            
-            ioAdmin.on("connect_error", (err) => {
-                clearTimeout(timeout);
-                done(err);
-            });
-        });
-        
-        ioUser.on("connect_error", (err) => {
-            clearTimeout(timeout);
-            done(err);
-        });
-    }, 15000);
+      // Verify response
+      expect(res.json).toHaveBeenCalledWith(mockChatPartners);
+    });
     
-    test("Channel messages can be stored and retrieved", async () => {
-        // Send a channel message via the API
-        const messageText = `Channel message ${random}`;
-        await adminSession.post("/sendChannelMessage").send({
-            teamName: `team_${random}`,
-            channelName: channelName,
-            sender: admin.name,
-            text: messageText
+    test('should return error when userId is missing', () => {
+      // Set up request with missing userId
+      req.query = {};
+      
+      // Call the controller function
+      chatController.getUserChats(req, res);
+      
+      // Verify error response
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "User ID is required in query parameters." });
+      
+      // Verify database was not queried
+      expect(connection.query).not.toHaveBeenCalled();
+    });
+    
+    test('should handle database error', () => {
+      // Set up request query
+      req.query = { userId: '1' };
+      
+      // Configure mock to return error
+      connection.query.mockImplementation((query, params, callback) => {
+        callback(new Error('Database error'), null);
+      });
+      
+      // Call the controller function
+      chatController.getUserChats(req, res);
+      
+      // Verify error response
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: "Database error fetching chats." });
+    });
+  });
+
+  describe('initChat', () => {
+    test('should initialize a new chat between users', () => {
+      // Set up request body
+      req.body = { userId: '1', recipientId: '2' };
+      
+      // First call - check existing messages (none found)
+      // Second call - insert system message
+      connection.query
+        .mockImplementationOnce((query, params, callback) => {
+          callback(null, []); // No existing messages
+        })
+        .mockImplementationOnce((query, params, callback) => {
+          callback(null, { insertId: 1 }); // Message inserted
         });
-        
-        // Wait a bit for DB operation to complete
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Retrieve channel messages
-        const res = await adminSession.post("/get-channel-messages").send({
-            teamName: `team_${random}`,
-            channelName: channelName
-        });
-        
-        expect(res.status).toBe(200);
-        expect(Array.isArray(res.body)).toBe(true);
-        
-        // Find our test message
-        const testMessage = res.body.find(msg => msg.text === messageText);
-        expect(testMessage).toBeDefined();
-        expect(testMessage.sender).toBe(admin.name);
-    }, 10000);
-});
+      
+      // Call the controller function
+      chatController.initChat(req, res);
+      
+      // Verify database queries
+      expect(connection.query).toHaveBeenCalledTimes(2);
+      
+      // Verify first query checks for existing messages
+      expect(connection.query.mock.calls[0][1]).toEqual(['1', '2', '2', '1']);
+      
+      // Verify second query inserts system message
+      expect(connection.query.mock.calls[1][0]).toContain('INSERT INTO direct_messages');
+      expect(connection.query.mock.calls[1][1]).toEqual(['1', '2', 'Chat initialized']);
+      
+      // Verify success response
+      expect(res.json).toHaveBeenCalledWith({ success: true, message: "Chat initialized successfully" });
+    });
+    
+    test('should not initialize chat if it already exists', () => {
+      // Set up request body
+      req.body = { userId: '1', recipientId: '2' };
+      
+      // Configure mock to return existing messages
+      connection.query.mockImplementationOnce((query, params, callback) => {
+        callback(null, [{ id: 1 }]); // Existing message found
+      });
+      
+      // Call the controller function
+      chatController.initChat(req, res);
+      
+      // Verify only one query was made
+      expect(connection.query).toHaveBeenCalledTimes(1);
+      
+      // Verify response indicates chat already exists
+      expect(res.json).toHaveBeenCalledWith({ success: true, message: "Chat already exists" });
+    });
+    
+    test('should return error when required parameters are missing', () => {
+      // Set up request with missing recipientId
+      req.body = { userId: '1' };
+      
+      // Call the controller function
+      chatController.initChat(req, res);
+      
+      // Verify error response
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ 
+        error: "Both user IDs (userId, recipientId) are required in the request body." 
+      });
+      
+      // Verify database was not queried
+      expect(connection.query).not.toHaveBeenCalled();
+    });
+    
+    test('should handle database error when checking existing messages', () => {
+      // Set up request body
+      req.body = { userId: '1', recipientId: '2' };
+      
+      // Configure mock to return error
+      connection.query.mockImplementationOnce((query, params, callback) => {
+        callback(new Error('Database error'), null);
+      });
+      
+      // Call the controller function
+      chatController.initChat(req, res);
+      
+      // Verify error response
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: "Database error checking messages." });
+    });
+  });
+
+  describe('getDirectMessages', () => {
+    test('should get message history between two users', () => {
+      // Set up request query
+      req.query = { senderId: '1', recipientId: '2' };
+      
+      // Mock message data
+      const mockMessages = [
+        { 
+          id: 1, 
+          text: 'Hello', 
+          sender_id: 1, 
+          recipient_id: 2, 
+          timestamp: '2023-01-01 12:00:00',
+          senderName: 'User1' 
+        },
+        { 
+          id: 2, 
+          text: 'Hi there', 
+          sender_id: 2, 
+          recipient_id: 1, 
+          timestamp: '2023-01-01 12:01:00',
+          senderName: 'User2' 
+        }
+      ];
+      
+      // Configure mock to return message data
+      connection.query.mockImplementationOnce((query, params, callback) => {
+        callback(null, mockMessages);
+      });
+      
+      // Call the controller function
+      chatController.getDirectMessages(req, res);
+      
+      // Verify database query
+      expect(connection.query).toHaveBeenCalledTimes(1);
+      expect(connection.query.mock.calls[0][1]).toEqual(['1', '2', '2', '1']);
+      
+      // Verify response contains formatted messages
+      expect(res.json).toHaveBeenCalled();
+      const formattedMessages = res.json.mock.calls[0][0];
+      expect(formattedMessages.length).toBe(2);
+      expect(formattedMessages[0]).toHaveProperty('id', 1);
+      expect(formattedMessages[0]).toHaveProperty('senderId', 1);
+      expect(formattedMessages[0]).toHaveProperty('senderName', 'User1');
+    });
+    
+    test('should return error when required parameters are missing', () => {
+      // Set up request with missing recipientId
+      req.query = { senderId: '1' };
+      
+      // Call the controller function
+      chatController.getDirectMessages(req, res);
+      
+      // Verify error response
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ 
+        error: "Both senderId and recipientId are required in query parameters." 
+      });
+      
+      // Verify database was not queried
+      expect(connection.query).not.toHaveBeenCalled();
+    });
+    
+    test('should handle database error', () => {
+      // Set up request query
+      req.query = { senderId: '1', recipientId: '2' };
+      
+      // Configure mock to return error
+      connection.query.mockImplementationOnce((query, params, callback) => {
+        callback(new Error('Database error'), null);
+      });
+      
+      // Call the controller function
+      chatController.getDirectMessages(req, res);
+      
+      // Verify error response
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: "Error fetching messages." });
+    });
+  });
+
+  describe('getUserIdByName', () => {
+    test('should get user ID by username', () => {
+      // Set up request query
+      req.query = { username: 'User1' };
+      
+      // Configure mock to return user ID
+      connection.query.mockImplementationOnce((query, params, callback) => {
+        callback(null, [{ id: 1 }]);
+      });
+      
+      // Call the controller function
+      chatController.getUserIdByName(req, res);
+      
+      // Verify database query
+      expect(connection.query).toHaveBeenCalledTimes(1);
+      expect(connection.query.mock.calls[0][1]).toEqual(['User1']);
+      
+      // Verify response
+      expect(res.json).toHaveBeenCalledWith({ userId: 1 });
+    });
+    
+    test('should return error when username is missing', () => {
+      // Set up request with missing username
+      req.query = {};
+      
+      // Call the controller function
+      chatController.getUserIdByName(req, res);
+      
+      // Verify error response
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "Username is required in query parameters." });
+      
+      // Verify database was not queried
+      expect(connection.query).not.toHaveBeenCalled();
+    });
+    
+    test('should return not found when username does not exist', () => {
+      // Set up request query
+      req.query = { username: 'NonExistentUser' };
+      
+      // Configure mock to return empty result
+      connection.query.mockImplementationOnce((query, params, callback) => {
+        callback(null, []);
+      });
+      
+      // Call the controller function
+      chatController.getUserIdByName(req, res);
+      
+      // Verify not found response
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: "User not found." });
+    });
+    
+    test('should handle database error', () => {
+      // Set up request query
+      req.query = { username: 'User1' };
+      
+      // Configure mock to return error
+      connection.query.mockImplementationOnce((query, params, callback) => {
+        callback(new Error('Database error'), null);
+      });
+      
+      // Call the controller function
+      chatController.getUserIdByName(req, res);
+      
+      // Verify error response
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: "Database error." });
+    });
+  });
+}); 
