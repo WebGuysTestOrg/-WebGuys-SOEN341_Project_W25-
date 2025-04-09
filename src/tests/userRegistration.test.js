@@ -5,7 +5,10 @@ const connection = require('../config/db');
 
 // Mock the database connection
 jest.mock('../config/db', () => ({
-  query: jest.fn()
+  query: jest.fn(),
+  beginTransaction: jest.fn((callback) => callback(null)),
+  commit: jest.fn((callback) => callback(null)),
+  rollback: jest.fn((callback) => callback(null))
 }));
 
 describe('User Registration', () => {
