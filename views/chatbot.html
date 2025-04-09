@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Assistant</title>
+
+    <!-- Fonts and Styles -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="styles/chatbot.css">
+    <link rel="icon" type="image/png" href="assets/ChatHavenLogo.png">
+</head>
+<body>
+
+    <section class="chat-window">
+        <div class="chat-header">
+            <div class="chat-info">
+                <div class="chat-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="chat-details">
+                    <h3 class="chat-assistant-name">AI Assistant</h3>
+                    <span class="chat-status">Ready to help</span>
+                </div>
+            </div>
+
+            <!-- Close button with &times; symbol -->
+            <button id="close-chat" class="close-chat">&times;</button>
+        </div>
+
+        <div class="chat">
+            <div class="model">
+                <p>Hi, how can I help you?</p>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="task-selector" style="margin-bottom: 8px;">
+                <select id="task-select" style="padding: 6px; font-size: 14px; width: 100%;">
+                    <option value="paraphrase">Paraphrase</option>
+                    <option value="check grammar">Check Grammar</option>
+                    <option value="fact check">Fact Check</option>
+                </select>
+            </div>
+        
+            <div class="input-container">
+                <input placeholder="Type your sentence here..." type="text">
+                <button class="enter_msg" title="Send message">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+        
+    </section>
+
+    <!-- Import map for generative AI -->
+    <script type="importmap">
+        {
+            "imports": {
+                "@google/generative-ai": "https://esm.run/@google/generative-ai"
+            }
+        }
+    </script>
+    <script type="module" src="js/ChatBot.js"></script>
+</body>
+</html>

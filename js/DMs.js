@@ -90,7 +90,7 @@ document.getElementById("back-btn").addEventListener("click", () => {
     fetch('/user-info')
         .then(response => response.json())
         .then(data => {
-            window.location.href = data.role === "admin" ? "/admin_page.html" : "/UserDashboard.html";
+            window.location.href = data.role === "admin" ? "/AdminDashboard.html" : "/UserDashboard.html";
         })
         .catch(() => window.location.href = "/UserDashboard.html");
 });
@@ -787,7 +787,7 @@ const chatLauncher = document.getElementById("ai-chat-launcher");
 chatLauncher.addEventListener("click", () => {
     const isVisible = chatFrame.style.display === "block";
     chatFrame.style.display = isVisible ? "none" : "block";
-    
+    chatFrame.classList.add('fade-in');
     // If opening the chat, send a message to the iframe
     if (!isVisible) {
         chatFrame.contentWindow.postMessage({ action: 'openChat' }, '*');
