@@ -7,7 +7,6 @@ let globalChatOpen = false;
 // Initialize user data and socket connection
 let currentUserId = null;
 let currentUserName = null;
-let currentUserRole = null;
 
 function fetchUserTeams() {
     fetch('/get-user-teams')
@@ -295,9 +294,6 @@ function initializeGlobalChat() {
     const emojiBtn = document.getElementById('emoji-btn');
     const emojiPickerContainer = document.getElementById('emoji-picker-container');
 
-    // Log user role for debugging
-    console.log("Initializing global chat for user:", currentUserName, "Role:", currentUserRole);
-
     // Toggle chat visibility
     chatToggle.addEventListener('click', () => {
         globalChatOpen = !globalChatOpen;
@@ -313,51 +309,22 @@ function initializeGlobalChat() {
         chatContainer.style.right = '-700px';
     });
 
-    // Improved Emoji picker initialization
+    // Emoji picker
     let picker = null;
-    
-    function initEmojiPicker() {
-        if (!picker && window.EmojiMart) {
-            try {
-                picker = new EmojiMart.Picker({
-                    onEmojiSelect: (emoji) => {
-                        messageInput.value += emoji.native;
-                        messageInput.focus();
-                    },
-                    theme: 'dark',
-                    set: 'native',
-                    showPreview: false,
-                    showSkinTones: true,
-                    emojiSize: 20
-                });
-                
-                // Clear and append the picker
-                emojiPickerContainer.innerHTML = '';
-                emojiPickerContainer.appendChild(picker);
-                console.log("Emoji picker initialized successfully");
-            } catch (e) {
-                console.error("Error initializing emoji picker:", e);
-            }
-        } else if (!window.EmojiMart) {
-            console.error("EmojiMart not loaded yet");
-        }
-    }
-    
-    // Initialize emoji picker when button is clicked
-    emojiBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent click from closing the picker immediately
-        
-        // Initialize picker if not already done
+    emojiBtn.addEventListener('click', () => {
         if (!picker) {
-            initEmojiPicker();
+            picker = new EmojiMart.Picker({
+                onEmojiSelect: (emoji) => {
+                    messageInput.value += emoji.native;
+                    messageInput.focus();
+                }
+            });
+            emojiPickerContainer.innerHTML = '';
+            emojiPickerContainer.appendChild(picker);
         }
         
-        // Toggle the emoji picker display
-        if (emojiPickerContainer.style.display === 'none' || !emojiPickerContainer.style.display) {
-            emojiPickerContainer.style.display = 'block';
-        } else {
-            emojiPickerContainer.style.display = 'none';
-        }
+        // Toggle the emoji picker
+        emojiPickerContainer.style.display = emojiPickerContainer.style.display === 'none' ? 'block' : 'none';
     });
 
     // Send message
@@ -398,22 +365,56 @@ function initializeGlobalChat() {
         }
     }
 
-    // Click outside emoji picker to close it
-    document.addEventListener('click', (e) => {
-        if (emojiPickerContainer.style.display === 'block' && 
-            !emojiPickerContainer.contains(e.target) && 
-            e.target !== emojiBtn) {
-            emojiPickerContainer.style.display = 'none';
-        }
-    });
+    // Fix message input structure for proper layout
+    function setupChatInput() {
+        const chatInput = document.getElementById('chat-input');
+        const messageInputWrapper = chatInput.querySelector('.message-input-wrapper');
+        
+        // Clear current structure
+        messageInputWrapper.innerHTML = `
+            <div class="quote-container"></div>
+            <div class="input-container">
+                <input type="text" id="message" placeholder="Type a message...">
+                <div class="input-buttons">
+                    <button id="emoji-btn" title="Add Emoji">😊</button>
+                    <button id="send" title="Send Message">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Re-attach event listeners
+        const messageInput = document.getElementById('message');
+        const sendButton = document.getElementById('send');
+        const emojiBtn = document.getElementById('emoji-btn');
+        
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        emojiBtn.addEventListener('click', () => {
+            if (!picker) {
+                picker = new EmojiMart.Picker({
+                    onEmojiSelect: (emoji) => {
+                        messageInput.value += emoji.native;
+                        messageInput.focus();
+                    }
+                });
+                emojiPickerContainer.innerHTML = '';
+                emojiPickerContainer.appendChild(picker);
+            }
+            
+            emojiPickerContainer.style.display = emojiPickerContainer.style.display === 'none' ? 'block' : 'none';
+        });
+    }
 
-    sendButton.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
+    // Call this function after initializing the chat
+    setupChatInput();
 
     // Handle incoming messages
     socket.on('global-message', (message) => {
@@ -423,43 +424,6 @@ function initializeGlobalChat() {
         }
     });
 
-    // Handle removed messages
-    socket.on('global-message-removed', (data) => {
-        const messageId = data.id;
-        const messageElements = document.querySelectorAll('.message-container');
-        
-        messageElements.forEach(element => {
-            if (element.dataset.messageId === messageId.toString()) {
-                // Skip if already moderated
-                if (isMessageModerated(element)) return;
-                
-                const messageText = element.querySelector('.message-text');
-                if (messageText) {
-                    messageText.textContent = 'Removed by Moderator';
-                    messageText.classList.add('removed-message');
-                    
-                    // Add visual indication that a moderator removed this message
-                    const moderatorFlag = document.createElement('div');
-                    moderatorFlag.className = 'moderator-flag';
-                    moderatorFlag.innerHTML = '<i class="fas fa-shield-alt"></i> Moderated';
-                    
-                    // Check if the flag is already there to avoid duplicates
-                    if (!element.querySelector('.moderator-flag')) {
-                        element.querySelector('.message-content').appendChild(moderatorFlag);
-                    }
-                }
-                
-                // Remove any action buttons
-                const buttons = element.querySelectorAll('button');
-                buttons.forEach(button => {
-                    if (button.classList.contains('quote-btn') || button.classList.contains('delete-btn')) {
-                        button.remove();
-                    }
-                });
-            }
-        });
-    });
-
     // Load chat history
     socket.on('global-chat-history', (messages) => {
         chatMessages.innerHTML = '';
@@ -467,21 +431,15 @@ function initializeGlobalChat() {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 
-    // Initialize emoji picker after chat is ready
-    setTimeout(initEmojiPicker, 500);
-
     function appendMessage(message) {
         const messageDiv = document.createElement('div');
         const isMyMessage = message.sender_id === currentUserId;
-        const isAdmin = currentUserRole === "admin";
         messageDiv.className = `message-container ${isMyMessage ? 'right' : 'left'}`;
-        messageDiv.dataset.messageId = message.id;
         
         const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         // Handle both message formats from different sources
         const messageText = message.message || message.text;
-        const isModerated = messageText === 'Removed by Moderator' || messageText === 'Removed by Admin';
         
         messageDiv.innerHTML = `
             <div class="message ${isMyMessage ? 'sent' : 'received'} ${message.quoted_text ? 'has-quote' : ''}">
@@ -493,23 +451,11 @@ function initializeGlobalChat() {
                             <div class="quoted-text">${message.quoted_text}</div>
                         </div>
                     ` : ''}
-                    <div class="message-text ${isModerated ? 'removed-message' : ''}">${messageText}</div>
+                    <div class="message-text">${messageText}</div>
                     <div class="message-time">${time}</div>
-                    ${!isModerated ? `
                     <button class="quote-btn" title="Reply to this message">
                         <i class="fas fa-reply"></i>
                     </button>
-                    ` : ''}
-                    ${isAdmin && !isModerated ? `
-                    <button class="delete-btn" title="Delete message">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    ` : ''}
-                    ${isModerated ? `
-                    <div class="moderator-flag">
-                        <i class="fas fa-shield-alt"></i> Moderated
-                    </div>
-                    ` : ''}
                 </div>
             </div>
         `;
@@ -560,20 +506,17 @@ function initializeGlobalChat() {
             });
         }
         
-        // Add delete functionality for admin
-        if (isAdmin) {
-            const deleteBtn = messageDiv.querySelector('.delete-btn');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', () => {
-                    deleteGlobalMessage(message.id, messageDiv);
-                });
-            }
-        }
-        
         const chatMessages = document.getElementById('chat-messages');
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
+
+    // Click outside emoji picker to close it
+    document.addEventListener('click', (e) => {
+        if (!emojiPickerContainer.contains(e.target) && e.target !== emojiBtn) {
+            emojiPickerContainer.style.display = 'none';
+        }
+    });
 }
 
 // Function to fetch and display private channels (groups)
@@ -677,13 +620,11 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById('username').textContent = data.name;
             currentUserId = data.id;
             currentUserName = data.name;
-            currentUserRole = data.role;
             socket.userId = data.id;
             socket.userName = data.name;
             
             // Signal that the user is online after all data is loaded
             console.log("Emitting online status for user ID:", currentUserId);
-            console.log("User role:", currentUserRole);
             socket.emit("userOnline", currentUserId);
             
             // Initialize components
@@ -962,51 +903,43 @@ socket.on('connect', () => {
     }
 });
 
-// User status panel functionality
+// Initialize and handle user status panel
+let statusPanelOpen = false;
+let inactivityTimer;
+const INACTIVITY_TIME = 30000; // 30 seconds of inactivity before going to away status
+
 function initializeUserStatus() {
-    // Get DOM elements
     const statusToggle = document.getElementById('status-toggle');
     const statusContainer = document.getElementById('status-container');
     const closeStatus = document.getElementById('close-status');
-    const searchInput = document.getElementById('user-search');
+    const usersStatusDiv = document.getElementById('users-status');
+    const onlineUsersIndicator = document.getElementById('online-users-indicator');
+    const userSearchInput = document.getElementById('user-search');
     
-    // Track panel state
-    let statusPanelOpen = false;
-    
-    // Open status panel and fetch data
+    // Function to open status panel
     function openStatusPanel() {
-        statusContainer.style.right = '0';
         statusPanelOpen = true;
+        statusContainer.style.right = '0';
+        fetchUserStatus();
         
-        // Show loading state
-        document.getElementById('users-status').innerHTML = `
-            <div class="loading-container">
-                <i class="fas fa-spinner fa-spin"></i>
-                <p>Loading users...</p>
-            </div>
-        `;
-        
-        // Fetch user data
-        fetchUserData();
-        
-        // Focus search input
-        if (searchInput) {
-            setTimeout(() => searchInput.focus(), 300);
+        // Focus search input when panel opens
+        if (userSearchInput) {
+            setTimeout(() => userSearchInput.focus(), 300);
         }
     }
     
-    // Close status panel
+    // Function to close status panel
     function closeStatusPanel() {
-        statusContainer.style.right = '-300px';
         statusPanelOpen = false;
+        statusContainer.style.right = '-300px';
         
         // Clear search when panel closes
-        if (searchInput) {
-            searchInput.value = '';
+        if (userSearchInput) {
+            userSearchInput.value = '';
         }
     }
     
-    // Toggle panel visibility
+    // Toggle status panel visibility with the float button
     statusToggle.addEventListener('click', () => {
         if (statusPanelOpen) {
             closeStatusPanel();
@@ -1015,162 +948,175 @@ function initializeUserStatus() {
         }
     });
     
-    // Close button event
+    // Close with the X button
     closeStatus.addEventListener('click', closeStatusPanel);
     
-    // Search functionality
-    if (searchInput) {
-        searchInput.addEventListener('input', () => {
-            renderUsers(window.onlineUsers || [], window.awayUsers || []);
-        });
-    }
-    
-    // Listen for header indicator clicks
-    const onlineUsersIndicator = document.getElementById('online-users-indicator');
+    // Open with header indicator
     if (onlineUsersIndicator) {
         onlineUsersIndicator.addEventListener('click', openStatusPanel);
     }
     
-    // Set up activity monitoring
+    // Add search functionality
+    if (userSearchInput) {
+        userSearchInput.addEventListener('input', filterUsers);
+    }
+    
+    // Setup activity monitoring to manage user status
     setupActivityMonitoring();
     
-    // Listen for user status updates
-    socket.on('updateUserStatus', ({ online, away }) => {
-        // Save to window for access in other functions
-        window.onlineUsers = online || [];
-        window.awayUsers = away || [];
+    // Handle socket events for user status updates
+    socket.on("updateUserStatus", ({ online, away }) => {
+        // Store the status arrays in window variables for searching
+        window.onlineUsers = online;
+        window.awayUsers = away;
         
-        // Update header counter
-        updateOnlineCounter(online ? online.length : 0);
+        console.log("Received status update:", { 
+            online, 
+            away,
+            currentUserId,
+            isCurrentUserOnline: online.includes(currentUserId.toString())
+        });
         
-        // Only update full UI if panel is open
-        if (statusPanelOpen) {
-            renderUsers(online, away);
-        }
+        updateUserStatusUI(online, away);
     });
 }
 
-// Fetch all user data
-function fetchUserData() {
-    fetch('/api/users')
+function fetchUserStatus() {
+    fetch("/api/users")
         .then(response => response.json())
         .then(data => {
-            // Store users data
-            window.allUsers = data.all_users || [];
-            window.userLogoutTimes = data.user_logout_times || [];
+            // Request current online/away status from server
+            socket.emit("requestStatusUpdate");
             
-            // Request status updates from server
-            socket.emit('requestStatusUpdate');
+            // Store all users for filtering
+            window.allUsers = data.all_users;
+            window.userLogoutTimes = data.user_logout_times;
         })
-        .catch(error => {
-            console.error('Error fetching users:', error);
-            document.getElementById('users-status').innerHTML = `
-                <div class="error-container">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <p>Failed to load user data</p>
-                    <button id="retry-fetch-btn" class="btn">Try Again</button>
-                </div>
-            `;
-            
-            // Add retry handler
-            document.getElementById('retry-fetch-btn').addEventListener('click', fetchUserData);
+        .catch(err => {
+            console.error("Error fetching users:", err);
+            showToast("Failed to load user status information", "error");
         });
 }
 
-// Update counter in header
-function updateOnlineCounter(count) {
-    // Update main counter
-    const userCounter = document.getElementById('user-counter');
-    if (userCounter) {
-        userCounter.textContent = `(${count} online)`;
-    }
-    
-    // Update header indicator counter
-    const headerCounter = document.getElementById('header-online-count');
-    if (headerCounter) {
-        headerCounter.textContent = `(${count} online)`;
-    }
-}
-
-// Render users in status panel
-function renderUsers(onlineUsers = [], awayUsers = []) {
-    // Get required data
+function updateUserStatusUI(onlineUsers = [], awayUsers = []) {
     if (!window.allUsers) return;
     
     const usersStatusDiv = document.getElementById('users-status');
+    usersStatusDiv.innerHTML = "";
+    
     const searchInput = document.getElementById('user-search');
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
     
-    // Clear container
-    usersStatusDiv.innerHTML = '';
+    // Update user counter in header
+    const userCounter = document.getElementById('user-counter');
+    const onlineCount = onlineUsers.length;
+    userCounter.textContent = `(${onlineCount} online)`;
+    userCounter.className = 'user-counter ' + (onlineCount > 0 ? 'has-online' : '');
     
-    // Create UI containers
-    const container = document.createElement('div');
-    container.className = 'status-panel-content';
-    
-    // 1. User's own profile section
-    container.appendChild(createUserProfile(currentUserId, currentUserName, onlineUsers, awayUsers));
-    
-    // 2. User stats section
-    container.appendChild(createStatsSection(onlineUsers, awayUsers, window.allUsers.length));
-    
-    // 3. All users section (filtered by search if needed)
-    container.appendChild(createUsersSection(searchTerm, onlineUsers, awayUsers));
-    
-    // Add container to panel
-    usersStatusDiv.appendChild(container);
-}
-
-// Create user's own profile card
-function createUserProfile(userId, userName, onlineUsers, awayUsers) {
-    const section = document.createElement('div');
-    section.className = 'status-section';
-    
-    // Determine user status
-    const isOnline = onlineUsers.includes(userId.toString());
-    const isAway = awayUsers.includes(userId.toString());
-    
-    let statusText = 'Offline';
-    let statusClass = 'status-offline';
-    let statusIcon = '<i class="fas fa-circle-xmark offline-icon"></i>';
-    
-    if (isOnline) {
-        statusText = 'Available';
-        statusClass = 'status-online';
-        statusIcon = '<i class="fas fa-circle-check online-icon"></i>';
-    } else if (isAway) {
-        statusText = 'Away';
-        statusClass = 'status-away';
-        statusIcon = '<i class="fas fa-clock away-icon"></i>';
+    // Update header online indicator
+    const headerOnlineCount = document.getElementById('header-online-count');
+    if (headerOnlineCount) {
+        headerOnlineCount.textContent = `(${onlineCount} online)`;
     }
     
-    section.innerHTML = `
-        <h3 class="status-section-title">Your Profile</h3>
-        <div class="user-profile-card">
-            <div class="user-profile-header">
-                <div class="user-profile-name">${userName}</div>
-                <div class="user-role-badge">User</div>
-            </div>
-            <div class="user-status-display ${statusClass}">
-                ${statusIcon} <span>${statusText}</span>
-            </div>
-        </div>
-    `;
+    // Add current user profile section
+    const currentUserProfile = document.createElement('div');
+    currentUserProfile.classList.add('current-user-profile');
     
-    return section;
+    // Determine current user status
+    const isCurrentUserOnline = onlineUsers.includes(currentUserId.toString());
+    const isCurrentUserAway = awayUsers.includes(currentUserId.toString());
+    let currentUserStatusText = "Offline";
+    let currentUserStatusClass = "offline";
+    let currentUserStatusIcon = `<i class="fas fa-circle-xmark offline-icon"></i>`;
+    
+    if (isCurrentUserOnline) {
+        currentUserStatusText = "Available";
+        currentUserStatusClass = "online";
+        currentUserStatusIcon = `<i class="fas fa-circle-check online-icon"></i>`;
+    } else if (isCurrentUserAway) {
+        currentUserStatusText = "Away";
+        currentUserStatusClass = "away";
+        currentUserStatusIcon = `<i class="fas fa-clock away-icon"></i>`;
+    }
+    
+    // Fetch user role from session data
+    fetch('/user-info')
+        .then(response => response.json())
+        .then(data => {
+            const userRole = data.role || 'user';
+            const roleLabel = userRole === 'admin' ? 'Admin' : 'User';
+            const roleLabelClass = userRole === 'admin' ? 'admin-label' : 'user-label';
+            
+            currentUserProfile.innerHTML = `
+                <div class="profile-header">
+                    <h3>Your Profile</h3>
+                </div>
+                <div class="profile-content">
+                    <div class="profile-info">
+                        <div class="profile-name-container">
+                            <span class="profile-name">${currentUserName}</span>
+                            <span class="role-label ${roleLabelClass}">${roleLabel}</span>
+                        </div>
+                        <div class="profile-status ${currentUserStatusClass}">
+                            ${currentUserStatusIcon} <span class="status-text">${currentUserStatusText}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            usersStatusDiv.appendChild(currentUserProfile);
+            
+            // Add divider
+            const divider = document.createElement('div');
+            divider.classList.add('users-divider');
+            usersStatusDiv.appendChild(divider);
+            
+            // Continue with user stats counter
+            addUserStats(usersStatusDiv, onlineCount, awayUsers.length, window.allUsers.length, searchTerm);
+        })
+        .catch(err => {
+            console.error("Error fetching user role:", err);
+            // Fallback if user role fetch fails
+            currentUserProfile.innerHTML = `
+                <div class="profile-header">
+                    <h3>Your Profile</h3>
+                </div>
+                <div class="profile-content">
+                    <div class="profile-info">
+                        <div class="profile-name-container">
+                            <span class="profile-name">${currentUserName}</span>
+                            <span class="role-label user-label">User</span>
+                        </div>
+                        <div class="profile-status ${currentUserStatusClass}">
+                            ${currentUserStatusIcon} <span class="status-text">${currentUserStatusText}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            usersStatusDiv.appendChild(currentUserProfile);
+            
+            // Add divider
+            const divider = document.createElement('div');
+            divider.classList.add('users-divider');
+            usersStatusDiv.appendChild(divider);
+            
+            // Continue with user stats counter
+            addUserStats(usersStatusDiv, onlineCount, awayUsers.length, window.allUsers.length, searchTerm);
+        });
 }
 
-// Create stats section showing online/away/offline counts
-function createStatsSection(onlineUsers, awayUsers, totalUsers) {
-    const section = document.createElement('div');
-    section.className = 'status-section';
+// Function to add user stats section - extracted from updateUserStatusUI
+function addUserStats(usersStatusDiv, onlineCount, awayCount, totalCount, searchTerm) {
+    // Add user stats counter
+    const statsDiv = document.createElement('div');
+    statsDiv.classList.add('user-stats');
     
-    const onlineCount = onlineUsers.length;
-    const awayCount = awayUsers.length;
-    const offlineCount = totalUsers - onlineCount - awayCount;
+    // Count users by status
+    const offlineCount = totalCount - onlineCount - awayCount;
     
-    section.innerHTML = `
-        <h3 class="status-section-title">User Stats</h3>
+    statsDiv.innerHTML = `
         <div class="status-counts">
             <div class="status-count online">
                 <i class="fas fa-circle-check"></i> ${onlineCount} Online
@@ -1184,131 +1130,212 @@ function createStatsSection(onlineUsers, awayUsers, totalUsers) {
         </div>
     `;
     
-    return section;
-}
-
-// Create list of all users (filtered by search if needed)
-function createUsersSection(searchTerm, onlineUsers, awayUsers) {
-    const section = document.createElement('div');
-    section.className = 'status-section';
-    
-    // Set section title based on search
-    section.innerHTML = `
-        <h3 class="status-section-title">
-            ${searchTerm ? `Users matching "${searchTerm}"` : 'All Users'}
-        </h3>
-    `;
-    
-    // Filter and sort users
-    let users = window.allUsers
-        .filter(user => {
-            // Filter out current user and apply search term
-            return user.name !== currentUserName && 
-                   (!searchTerm || user.name.toLowerCase().includes(searchTerm));
-        })
-        .sort((a, b) => {
-            // Sort by status: online first, then away, then offline
-            const aId = a.id ? a.id.toString() : '';
-            const bId = b.id ? b.id.toString() : '';
-            
-            const aIsOnline = onlineUsers.includes(aId);
-            const bIsOnline = onlineUsers.includes(bId);
-            const aIsAway = awayUsers.includes(aId);
-            const bIsAway = awayUsers.includes(bId);
-            
-            if (aIsOnline && !bIsOnline) return -1;
-            if (!aIsOnline && bIsOnline) return 1;
-            if (aIsAway && !bIsAway) return -1;
-            if (!aIsAway && bIsAway) return 1;
-            
-            // Same status, sort alphabetically
-            return a.name.localeCompare(b.name);
+    // Add view all button if searching
+    if (searchTerm) {
+        const viewAllBtn = document.createElement('button');
+        viewAllBtn.classList.add('view-all-btn');
+        viewAllBtn.innerHTML = `<i class="fas fa-list"></i> View All Users`;
+        viewAllBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            updateUserStatusUI(window.onlineUsers, window.awayUsers);
         });
-    
-    // Create users list
-    const usersContainer = document.createElement('div');
-    usersContainer.className = 'users-list-container';
-    
-    // Show message if no users found
-    if (users.length === 0) {
-        usersContainer.innerHTML = `
-            <div class="no-users-found">
-                <i class="fas fa-user-slash"></i>
-                <p>No users found${searchTerm ? ` matching "${searchTerm}"` : ''}</p>
-            </div>
-        `;
-        section.appendChild(usersContainer);
-        return section;
+        statsDiv.appendChild(viewAllBtn);
     }
     
-    // Add each user
-    users.forEach(user => {
-        const userId = user.id ? user.id.toString() : '';
-        const isOnline = onlineUsers.includes(userId);
-        const isAway = awayUsers.includes(userId);
+    usersStatusDiv.appendChild(statsDiv);
+    
+    // Create users list section
+    const usersListSection = document.createElement('div');
+    usersListSection.classList.add('users-list-section');
+    usersListSection.innerHTML = `<h3>Other Users</h3>`;
+    usersStatusDiv.appendChild(usersListSection);
+    
+    // Create filtered users list (excluding current user)
+    createUsersList(usersListSection, searchTerm);
+}
+
+// Function to create the users list - extracted from updateUserStatusUI
+function createUsersList(container, searchTerm) {
+    let filteredUsers = [];
+    
+    // First add online users
+    window.allUsers.forEach(user => {
+        const userName = user.name;
+        // Skip current user
+        if (userName === currentUserName) {
+            return;
+        }
         
-        // Create user element
-        const userElement = document.createElement('div');
-        userElement.className = 'user-status';
+        // Get user ID from user object if available
+        let userId;
         
-        // Add status class for styling
-        if (isOnline) userElement.classList.add('online');
-        else if (isAway) userElement.classList.add('away');
+        if (user.id) {
+            userId = user.id.toString();
+        } else {
+            // If ID is not available, try to find it
+            const userObj = window.allUsers.find(u => u.name === userName && u.id);
+            userId = userObj ? userObj.id.toString() : null;
+        }
         
-        // Set status text and icon
-        let statusText = 'Offline';
-        let statusClass = 'offline';
-        let statusIcon = '<i class="fas fa-circle-xmark offline-icon"></i>';
-        let lastSeenInfo = '';
+        // Check if user is online by ID if possible, otherwise fallback to name
+        const isOnline = userId ? window.onlineUsers.includes(userId) : window.onlineUsers.includes(userName);
+        
+        // Skip if not online or doesn't match search
+        if (!isOnline || (searchTerm && !userName.toLowerCase().includes(searchTerm))) {
+            return;
+        }
+        
+        filteredUsers.push({
+            userName,
+            userId,
+            isOnline: true, 
+            isAway: false
+        });
+    });
+    
+    // Then add away users
+    window.allUsers.forEach(user => {
+        const userName = user.name;
+        // Skip current user
+        if (userName === currentUserName) {
+            return;
+        }
+        
+        // Get user ID from user object if available
+        let userId;
+        
+        if (user.id) {
+            userId = user.id.toString();
+        } else {
+            // If ID is not available, try to find it
+            const userObj = window.allUsers.find(u => u.name === userName && u.id);
+            userId = userObj ? userObj.id.toString() : null;
+        }
+        
+        // Check if user is away by ID if possible, otherwise fallback to name
+        const isAway = userId ? window.awayUsers.includes(userId) : window.awayUsers.includes(userName);
+        
+        // Skip if not away or doesn't match search or already added
+        if (!isAway || (searchTerm && !userName.toLowerCase().includes(searchTerm)) || 
+            filteredUsers.some(u => u.userName === userName)) {
+            return;
+        }
+        
+        filteredUsers.push({
+            userName,
+            userId,
+            isOnline: false, 
+            isAway: true
+        });
+    });
+    
+    // Finally add offline users
+    window.allUsers.forEach(user => {
+        const userName = user.name;
+        // Skip current user
+        if (userName === currentUserName) {
+            return;
+        }
+        
+        // Get user ID from user object if available
+        let userId;
+        
+        if (user.id) {
+            userId = user.id.toString();
+        } else {
+            // If ID is not available, try to find it
+            const userObj = window.allUsers.find(u => u.name === userName && u.id);
+            userId = userObj ? userObj.id.toString() : null;
+        }
+        
+        // Check if user is online or away by ID if possible, otherwise fallback to name
+        const isOnline = userId ? window.onlineUsers.includes(userId) : window.onlineUsers.includes(userName);
+        const isAway = userId ? window.awayUsers.includes(userId) : window.awayUsers.includes(userName);
+        
+        // Skip if online/away or doesn't match search or already added
+        if (isOnline || isAway || (searchTerm && !userName.toLowerCase().includes(searchTerm)) || 
+            filteredUsers.some(u => u.userName === userName)) {
+            return;
+        }
+        
+        filteredUsers.push({
+            userName,
+            userId,
+            isOnline: false, 
+            isAway: false
+        });
+    });
+    
+    // Users list container
+    const usersListContainer = document.createElement('div');
+    usersListContainer.classList.add('users-list-container');
+    
+    // Render filtered users
+    filteredUsers.forEach(({userName, isOnline, isAway}) => {
+        const userDiv = document.createElement("div");
+        userDiv.classList.add("user-status");
+        
+        let statusText = "Offline";
+        let statusClass = "offline";
+        let statusIcon = `<i class="fas fa-circle-xmark offline-icon"></i>`; // default offline
+        let logoutTimestamp = "";
         
         if (isOnline) {
-            statusText = 'Available';
-            statusClass = 'online';
-            statusIcon = '<i class="fas fa-circle-check online-icon"></i>';
+            statusText = "Available";
+            statusClass = "online";
+            statusIcon = `<i class="fas fa-circle-check online-icon"></i>`;
         } else if (isAway) {
-            statusText = 'Away';
-            statusClass = 'away';
-            statusIcon = '<i class="fas fa-clock away-icon"></i>';
+            statusText = "Away";
+            statusClass = "away";
+            statusIcon = `<i class="fas fa-clock away-icon"></i>`;
         } else {
-            // Show last seen for offline users
-            const userLogout = window.userLogoutTimes && 
-                               window.userLogoutTimes.find(logout => logout.name === user.name);
-                               
+            // Get last logout timestamp for this user
+            const userLogout = window.userLogoutTimes.find(logout => logout.name === userName);
             if (userLogout && userLogout.last_logout) {
                 const logoutDate = new Date(userLogout.last_logout);
-                lastSeenInfo = `<div class="last-seen">Last seen: ${formatTimestamp(logoutDate)}</div>`;
+                logoutTimestamp = `<div class="last-seen">Last seen: ${formatTimestamp(logoutDate)}</div>`;
             }
         }
         
-        // Set user element content
-        userElement.innerHTML = `
+        userDiv.innerHTML = `
             <div class="user-info">
-                <span class="user-name">${user.name}</span>
-                ${lastSeenInfo}
+                <span class="user-name">${userName}</span>
+                ${logoutTimestamp}
             </div>
             <div class="status ${statusClass}">
                 ${statusIcon} <span class="status-text">${statusText}</span>
             </div>
-            <button class="message-user-btn" title="Message ${user.name}" data-username="${user.name}">
+            <button class="message-user-btn" title="Message ${userName}" data-username="${userName}">
                 <i class="fas fa-paper-plane"></i>
             </button>
         `;
         
-        // Add message button event
-        const messageBtn = userElement.querySelector('.message-user-btn');
-        messageBtn.addEventListener('click', () => {
-            window.location.href = `DMs.html?user=${encodeURIComponent(user.name)}`;
-        });
+        usersListContainer.appendChild(userDiv);
         
-        // Add to container
-        usersContainer.appendChild(userElement);
+        // Add event listener for message button
+        const messageBtn = userDiv.querySelector('.message-user-btn');
+        messageBtn.addEventListener('click', () => {
+            // Redirect to direct message page with this user
+            window.location.href = `DMs.html?user=${encodeURIComponent(userName)}`;
+        });
     });
     
-    section.appendChild(usersContainer);
-    return section;
+    container.appendChild(usersListContainer);
+    
+    // Show "no users found" message if search has no results
+    if (filteredUsers.length === 0 && searchTerm) {
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.classList.add('no-users-found');
+        noResultsDiv.innerHTML = `<i class="fas fa-search"></i> No users found matching "${searchTerm}"`;
+        container.appendChild(noResultsDiv);
+    }
 }
 
-// Format timestamp for last seen
+function filterUsers() {
+    const searchTerm = document.getElementById('user-search').value.toLowerCase();
+    updateUserStatusUI(window.onlineUsers, window.awayUsers);
+}
+
 function formatTimestamp(date) {
     const now = new Date();
     const diffMs = now - date;
@@ -1329,21 +1356,22 @@ function formatTimestamp(date) {
     }
 }
 
-// Monitor user activity to update status
 function setupActivityMonitoring() {
+    // Monitor user activity to update status
     const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    const INACTIVITY_TIME = 30000; // 30 seconds before away status
     
+    // Variable to track last activity time
     let lastActivityTime = Date.now();
     let isAway = false;
     
-    // Handle user activity
+    // Function to handle user activity
     function handleUserActivity() {
         const now = Date.now();
         
         // If user was away, set them back to online
         if (isAway) {
-            socket.emit('userOnline', currentUserId);
+            console.log('User returned from away state');
+            socket.emit("userOnline", currentUserId);
             isAway = false;
         }
         
@@ -1351,28 +1379,29 @@ function setupActivityMonitoring() {
         lastActivityTime = now;
     }
     
-    // Add event listeners
+    // Add event listeners for user activity
     activityEvents.forEach(event => {
         document.addEventListener(event, handleUserActivity);
     });
     
-    // Set up periodic check
+    // Set up periodic check for inactivity
     const inactivityChecker = setInterval(() => {
         const now = Date.now();
         
-        // If user inactive for threshold and not already away
+        // If user has been inactive for the threshold and is not already away
         if (!isAway && (now - lastActivityTime > INACTIVITY_TIME)) {
-            socket.emit('userAway', currentUserId);
+            console.log('User has gone away due to inactivity');
+            socket.emit("userAway", currentUserId);
             isAway = true;
         }
-    }, 5000);
+    }, 5000); // Check every 5 seconds
     
     // Ensure initial online status is sent
     if (currentUserId) {
-        socket.emit('userOnline', currentUserId);
+        socket.emit("userOnline", currentUserId);
     }
     
-    // Clean up
+    // Clean up on page unload
     window.addEventListener('beforeunload', () => {
         clearInterval(inactivityChecker);
     });
@@ -1418,9 +1447,9 @@ statusStyle.textContent = `
     
     #status-container {
         position: fixed;
-        right: -450px;
+        right: -300px;
         top: 0;
-        width: 450px;
+        width: 300px;
         height: 100vh;
         background: #1a1a1a;
         transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1491,7 +1520,7 @@ statusStyle.textContent = `
         display: flex;
         flex-direction: column;
         gap: 4px;
-        flex: 3;
+        flex: 1;
     }
     
     .user-name {
@@ -1516,7 +1545,6 @@ statusStyle.textContent = `
         padding: 4px 8px;
         border-radius: 12px;
         background: rgba(255, 255, 255, 0.05);
-        flex: 2;
     }
     
     .status.online {
@@ -1686,10 +1714,9 @@ const chatFrame = document.getElementById("ai-chat-frame");
 const chatLauncher = document.getElementById("ai-chat-launcher");
 
 chatLauncher.addEventListener("click", () => {
-
     const isVisible = chatFrame.style.display === "block";
     chatFrame.style.display = isVisible ? "none" : "block";
-    chatFrame.classList.add('fade-in');
+    
     // If opening the chat, send a message to the iframe
     if (!isVisible) {
         chatFrame.contentWindow.postMessage({ action: 'openChat' }, '*');
@@ -1702,119 +1729,3 @@ window.addEventListener('message', (event) => {
         chatFrame.style.display = "none";
     }
 });
-
-// Function for admin to delete global messages
-function deleteGlobalMessage(messageId, messageElement) {
-    fetch('/remove-global-message', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ messageId: messageId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const messageText = messageElement.querySelector('.message-text');
-            if (messageText) {
-                messageText.textContent = 'Removed by Moderator';
-                messageText.classList.add('removed-message');
-            }
-            
-            // Add visual indication that a moderator removed this message
-            const moderatorFlag = document.createElement('div');
-            moderatorFlag.className = 'moderator-flag';
-            moderatorFlag.innerHTML = '<i class="fas fa-shield-alt"></i> Moderated';
-            
-            // Check if the flag is already there to avoid duplicates
-            if (!messageElement.querySelector('.moderator-flag')) {
-                messageElement.querySelector('.message-content').appendChild(moderatorFlag);
-            }
-            
-            // Remove any action buttons
-            const buttons = messageElement.querySelectorAll('button');
-            buttons.forEach(button => {
-                if (button.classList.contains('quote-btn') || button.classList.contains('delete-btn')) {
-                    button.remove();
-                }
-            });
-            
-            showToast('Message removed successfully', 'success');
-        } else {
-            showToast('Failed to remove message: ' + (data.error || 'Unknown error'), 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Failed to remove message', 'error');
-    });
-}
-
-// Add styles for the delete button and removed messages if they don't exist
-const deleteButtonStyle = document.createElement('style');
-deleteButtonStyle.textContent = `
-    .message-content {
-        position: relative;
-    }
-    
-    .delete-btn {
-        position: absolute;
-        right: -40px;
-        top: calc(50% - 20px);
-        opacity: 0;
-        transition: all 0.3s ease;
-        background: rgba(177, 68, 60, 0.8);
-        border: none;
-        color: #fff;
-        cursor: pointer;
-        padding: 6px;
-        font-size: 0.9em;
-        border-radius: 50%;
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10;
-    }
-    
-    .message:hover .delete-btn {
-        opacity: 1;
-        right: -35px;
-    }
-    
-    .quote-btn {
-        position: absolute;
-        right: -40px;
-        top: calc(50% + 15px);
-    }
-    
-    .message:hover .quote-btn {
-        right: -35px;
-    }
-    
-    .delete-btn:hover {
-        background: #b1443c;
-        color: #fff;
-        transform: scale(1.1);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-    
-    .removed-message {
-        font-style: italic;
-        color: #888;
-        text-decoration: line-through;
-        opacity: 0.7;
-    }
-`;
-document.head.appendChild(deleteButtonStyle);
-
-// Function to check if a message has already been moderated
-function isMessageModerated(messageElement) {
-    const messageText = messageElement.querySelector('.message-text');
-    if (!messageText) return false;
-    
-    return messageText.textContent === 'Removed by Moderator' || 
-           messageText.textContent === 'Removed by Admin' ||
-           messageText.classList.contains('removed-message');
-}
