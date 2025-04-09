@@ -1,25 +1,22 @@
-const connection = require('../config/db');
-const { EVENTS, ROOMS } = require('../socket/constants');
+// Define constants for tests
+const MOCK_EVENTS = {
+  GLOBAL_MESSAGE: 'global-message',
+  GLOBAL_CHAT_HISTORY: 'global-chat-history',
+  ERROR: 'error'
+};
+
+const MOCK_ROOMS = {
+  GLOBAL_CHAT: 'global-chat'
+};
 
 // Mock the socket/constants module
-jest.mock('../socket/constants', () => ({
-  EVENTS: {
-    GLOBAL_MESSAGE: 'global-message',
-    GLOBAL_CHAT_HISTORY: 'global-chat-history',
-    ERROR: 'error'
-  },
-  ROOMS: {
-    GLOBAL_CHAT: 'global-chat'
-  }
+jest.doMock('../socket/constants', () => ({
+  EVENTS: MOCK_EVENTS,
+  ROOMS: MOCK_ROOMS
 }));
 
-// Mock the database connection
-jest.mock('../config/db', () => ({
-  query: jest.fn()
-}));
-
-// Create a mock message manager
-const mockGetGlobalMessages = jest.fn().mockResolvedValue([
+// Create mock message data for tests
+const mockMessages = [
   {
     id: 1,
     sender_id: 1,
@@ -34,12 +31,19 @@ const mockGetGlobalMessages = jest.fn().mockResolvedValue([
     message: 'Hi there!',
     timestamp: new Date()
   }
-]);
+];
 
+// Create a mock message manager
+const mockGetGlobalMessages = jest.fn().mockResolvedValue(mockMessages);
 const mockSaveGlobalMessage = jest.fn().mockResolvedValue(123);
 
+// Mock the database connection
+jest.doMock('../config/db', () => ({
+  query: jest.fn()
+}));
+
 // Mock the messageManager class
-jest.mock('../socket/utils/messageManager', () => {
+jest.doMock('../socket/utils/messageManager', () => {
   return jest.fn().mockImplementation(() => ({
     getGlobalMessages: mockGetGlobalMessages,
     saveGlobalMessage: mockSaveGlobalMessage
@@ -47,12 +51,13 @@ jest.mock('../socket/utils/messageManager', () => {
 });
 
 // Mock the socket event handlers module
-jest.mock('../socket/handlers/globalChat', () => {
-  return (socket, io, connection) => {
-    // Mock connection event handler
+jest.doMock('../socket/handlers/globalChat', () => {
+  return function mockGlobalChatHandler(socket, io, connection) {
+    // Create connection event handler with locally scoped constants
     socket.on('connection', async () => {
       try {
         const MessageManager = require('../socket/utils/messageManager');
+        const { EVENTS } = require('../socket/constants');
         const msgManager = new MessageManager();
         const messages = await msgManager.getGlobalMessages();
         socket.emit(EVENTS.GLOBAL_CHAT_HISTORY, messages.reverse());
@@ -61,10 +66,11 @@ jest.mock('../socket/handlers/globalChat', () => {
       }
     });
 
-    // Mock global message handler
-    socket.on(EVENTS.GLOBAL_MESSAGE, async (data) => {
+    // Create global message handler with locally scoped constants
+    socket.on(MOCK_EVENTS.GLOBAL_MESSAGE, async (data) => {
       try {
         const MessageManager = require('../socket/utils/messageManager');
+        const { EVENTS, ROOMS } = require('../socket/constants');
         const msgManager = new MessageManager();
         
         const message = {
@@ -87,6 +93,10 @@ jest.mock('../socket/handlers/globalChat', () => {
     });
   };
 });
+
+// Now import modules after mocking
+const connection = require('../config/db');
+const { EVENTS, ROOMS } = require('../socket/constants');
 
 // Create mock socket and io objects
 const mockSocket = {

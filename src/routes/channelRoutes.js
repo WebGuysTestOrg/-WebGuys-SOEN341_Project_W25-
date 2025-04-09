@@ -21,6 +21,6 @@ router.get('/:channelId/messages', channelController.getChannelMessages);
 router.post('/:channelId/messages', channelController.sendChannelMessage);
 
 // Remove a message from a channel
-router.delete('/:channelId/messages/:messageId', channelController.removeMessage);
+router.post('/:channelId/messages/:messageId/delete', channelController.removeMessage);
 
 module.exports = router; 
