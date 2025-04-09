@@ -318,7 +318,7 @@ function removeMessage(messageId, messageDiv) {
 }
 
 // Listen for new channel messages
-socket.on("ChannelMessages", (msg) => {
+socket.on("ChannelMessages", (msg) => { 
     if (msg.channelName === channelClicked) {
         displayMessage(msg, msg.sender === currentUser);
     }
@@ -402,6 +402,14 @@ function sendMessage(teamName, channelName) {
         return;
     }
 
+    // Debug logging
+    console.log("Attempting to send message:", {
+        teamName,
+        channelName,
+        messageText,
+        currentUser
+    });
+
     // Temporarily disable input to prevent double-sending
     messageInput.disabled = true;
     
@@ -413,8 +421,11 @@ function sendMessage(teamName, channelName) {
         quoted: quotedMessage
     }; 
     
+    // Debug logging
+    console.log("Emitting channelMessages event with data:", messageData);
+    
     // Send message via socket.io
-    socket.emit("ChannelMessages", messageData);
+    socket.emit("channelMessages", messageData);        
     
     // Clear input and quoted message
     messageInput.value = "";
@@ -523,3 +534,47 @@ a.download = "DMchats.txt";
 a.click();
 URL.revokeObjectURL(url);
 })
+
+// Join the channel room
+socket.emit("join-channel", {
+    teamName: teamName,
+    channelName: channelClicked
+});
+console.log("Joining room:", `channel-room-${teamName}-${channelClicked}`);
+
+// Listen for channel messages
+socket.on("ChannelMessages", (message) => {
+    console.log("Received ChannelMessages event:", message);
+    if (message.teamName === teamName && message.channelName === channelClicked) {
+        console.log("Displaying message:", message);
+        displayMessage(message, message.sender === currentUser);
+    }
+});
+
+// Listen for errors
+socket.on("error", (error) => {
+    console.error("Socket error:", error);
+    // Show error to user
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.textContent = error.message || 'An error occurred while sending the message';
+    document.getElementById('chat-messages').appendChild(errorDiv);
+    setTimeout(() => errorDiv.remove(), 5000);
+});
+
+// Leave the channel room when leaving
+window.addEventListener("beforeunload", () => {
+    socket.emit("leave-channel", {
+        teamName: teamName,
+        channelName: channelClicked
+    });
+});
+
+// Add debug logging for socket events
+socket.on("connect", () => {
+    console.log("Socket connected, current user:", currentUser);
+});
+
+socket.on("disconnect", () => {
+    console.log("Socket disconnected");
+});

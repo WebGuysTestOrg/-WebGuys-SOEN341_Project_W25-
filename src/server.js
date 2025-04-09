@@ -43,6 +43,8 @@ io.use(sharedSession(sessionMiddleware, {
 
 // Socket connection handling - Shared global chat for all users (admin and regular)
 io.on('connection', socket => {
+    console.log('New socket connection:', socket.id);
+
     const session = socket.handshake.session;
 
     if (!session || !session.user || !session.user.name) {
@@ -158,31 +160,90 @@ io.on('connection', socket => {
         });
     });
 
-    // Handle Channel Messages (Moved from lines 2030-2056)
-    socket.on("ChannelMessages", (msg) => {
-        const query = `
-        INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
-        VALUES (?, ?, ?, ?, ?)
-    `;
+    // Handle Channel Messages
+    socket.on("channelMessages", (msg) => {
+        console.log("Received channelMessages event:", msg);
+        console.log("Socket userId:", socket.userId);
 
-    connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted], (err, result) => {
-        if (err) {
-            console.error("Database error:", err);
-            socket.emit("error", { message: "Failed to save message" });
-            return;
-        }
-        
-        const messageWithId = {
-            id: result.insertId,  
-            teamName: msg.teamName,
-            channelName: msg.channelName,
-            sender: msg.sender,
-            text: msg.text,
-            quoted: msg.quoted
-        };
-        // TODO: Review io.emit vs potentially targeting specific channel/team rooms
-        io.emit("ChannelMessages", messageWithId);
+        // Verify user is a member of the channel
+        const checkMembershipQuery = `
+            SELECT 1 FROM user_channels uc
+            JOIN channels c ON uc.channel_id = c.id
+            JOIN teams t ON c.team_id = t.id
+            WHERE uc.user_id = ? AND c.name = ? AND t.name = ?
+        `;
+
+        console.log("Checking membership with query:", checkMembershipQuery);
+        console.log("Query parameters:", [socket.userId, msg.channelName, msg.teamName]);
+
+        connection.query(checkMembershipQuery, [socket.userId, msg.channelName, msg.teamName], (err, results) => {
+            if (err) {
+                console.error("Database error checking membership:", err);
+                socket.emit("error", { message: "Failed to verify channel membership" });
+                return;
+            }
+
+            console.log("Membership check results:", results);
+
+            if (results.length === 0) {
+                console.log("User is not a member of the channel");
+                socket.emit("error", { message: "You must be a member of the channel to send messages" });
+                return;
+            }
+
+            const query = `
+                INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
+                VALUES (?, ?, ?, ?, ?)
+            `;
+
+            console.log("Inserting message with query:", query);
+            console.log("Query parameters:", [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted]);
+
+            connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted], (err, result) => {
+                if (err) {
+                    console.error("Database error:", err);
+                    socket.emit("error", { message: "Failed to save message" });
+                    return;
+                }
+                
+                const messageWithId = {
+                    id: result.insertId,  
+                    teamName: msg.teamName,
+                    channelName: msg.channelName,
+                    sender: msg.sender,
+                    text: msg.text,
+                    quoted: msg.quoted
+                };
+                
+                console.log("Emitting message to room:", `channel-room-${msg.teamName}-${msg.channelName}`);
+                console.log("Message data:", messageWithId);
+                
+                // Emit only to users in the specific channel room
+                io.to(`channel-room-${msg.teamName}-${msg.channelName}`).emit("ChannelMessages", messageWithId);
+            });
+        });
     });
+
+    // Add handler for joining channel rooms
+    socket.on("join-channel", (data) => {
+        console.log("User joining channel room:", data);
+        const { teamName, channelName } = data;
+        if (teamName && channelName) {
+            const roomName = `channel-room-${teamName}-${channelName}`;
+            console.log("Joining room:", roomName);
+            socket.join(roomName);
+        }
+    });
+
+    // Add handler for leaving channel rooms
+    socket.on("leave-channel", (data) => {
+        console.log("User leaving channel room:", data);
+        const { teamName, channelName } = data;
+        if (teamName && channelName) {
+            const roomName = `channel-room-${teamName}-${channelName}`;
+            console.log("Leaving room:", roomName);
+            socket.leave(roomName);
+        }
     });
 
     // Handle Group Messages (send-message) (Moved from line 1970)
@@ -353,8 +414,7 @@ io.on('connection', socket => {
             away: Array.from(awayUsers.keys())
         });
     });
-
-}); // End of main io.on('connection', ...)
+});
 
 
 
@@ -862,12 +922,7 @@ app.post('/delete-team', (req, res) => {
                                 });
                             });
                         });
-
-                        // Continue with deletion process
-                        continueWithDeletion();
                     };
-
-                    // Continue with deletion process
                     continueWithDeletion();
                 });
             });
@@ -875,8 +930,6 @@ app.post('/delete-team', (req, res) => {
     });
 });
 
-        
-    
 
 // Remove a user from a team
 app.post('/remove-team-member', (req, res) => {
