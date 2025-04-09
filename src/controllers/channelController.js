@@ -62,8 +62,8 @@ const channelController = {
                 return res.status(400).json({ error: "Team ID is required." });
             }
 
-            const query = "SELECT name FROM channels WHERE team_id = ?";
-            const results = await query(query, [teamId]);
+            const channelQuery = "SELECT name FROM channels WHERE team_id = ?";
+            const results = await query(channelQuery, [teamId]);
             
             if (results.length === 0) {
                 return res.status(404).json({ error: "No channels found for this team." });

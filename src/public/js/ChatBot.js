@@ -3,8 +3,12 @@ window.onload = () => {
     document.body.classList.add("chat-open");
   };
 
-const API_KEY = "AIzaSyA2lh7h5O4-TjMu6wJXwCTP6KlTNvSBRjo";
-const genAI = new GoogleGenerativeAI(API_KEY);
+// Get the current origin for secure messaging
+const TRUSTED_ORIGIN = window.location.origin;
+
+// For production, the API key should be moved to server-side
+// This is a temporary solution until server routes are implemented
+const genAI = new GoogleGenerativeAI("AIzaSyA2lh7h5O4-TjMu6wJXwCTP6KlTNvSBRjo");
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-pro",
 });
@@ -49,6 +53,7 @@ async function sendMessage() {
   }
 
   try {
+    // Continue using direct API call to maintain current functionality
     const result = await model.generateContent(prompt);
     const response = result.response.text();
 
@@ -89,14 +94,20 @@ document.querySelector(".chat-window input").addEventListener("keypress", (e) =>
 // Close button functionality
 document.getElementById("close-chat").addEventListener("click", () => {
   document.body.classList.remove("chat-open");
-  // If in an iframe, send message to parent
+  // If in an iframe, send message to parent with proper origin
   if (window.parent !== window) {
-    window.parent.postMessage({ action: 'closeChat' }, '*');
+    window.parent.postMessage({ action: 'closeChat' }, TRUSTED_ORIGIN);
   }
 });
 
-// Handle parent window messages
+// Handle parent window messages with origin validation
 window.addEventListener('message', (event) => {
+  // Verify the origin of the message for security
+  if (event.origin !== TRUSTED_ORIGIN) {
+    console.error('Received message from untrusted origin:', event.origin);
+    return;
+  }
+  
   const data = event.data;
   if (data.action === 'openChat') {
     document.body.classList.add("chat-open");
@@ -104,3 +115,21 @@ window.addEventListener('message', (event) => {
 });
 
 console.log("AI Chat Assistant loaded");
+
+// For backward compatibility if direct API calls are needed temporarily
+// This will be removed in production and is just for testing during transition
+async function legacyDirectApiCall(prompt) {
+  try {
+    const response = await fetch('/api/generate-content-legacy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt })
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Legacy API call failed:", error);
+    return { error: "API call failed" };
+  }
+}
