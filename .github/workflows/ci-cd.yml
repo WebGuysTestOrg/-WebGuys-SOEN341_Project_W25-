@@ -53,12 +53,7 @@ jobs:
           NODE_ENV: test
         run: |
           cd src
-          node run-tests.js
-          # Make sure the workflow fails if any test fails
-          if grep -q "failed" <<< "$(cat test-results.log 2>/dev/null || echo '')"; then
-            echo "Tests failed! Check the output above for details."
-            exit 1
-          fi
+          npm test
 
   deploy:
     needs: test
