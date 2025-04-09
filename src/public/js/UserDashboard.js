@@ -1418,9 +1418,9 @@ statusStyle.textContent = `
     
     #status-container {
         position: fixed;
-        right: -300px;
+        right: -450px;
         top: 0;
-        width: 300px;
+        width: 450px;
         height: 100vh;
         background: #1a1a1a;
         transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1491,7 +1491,7 @@ statusStyle.textContent = `
         display: flex;
         flex-direction: column;
         gap: 4px;
-        flex: 1;
+        flex: 3;
     }
     
     .user-name {
@@ -1516,6 +1516,7 @@ statusStyle.textContent = `
         padding: 4px 8px;
         border-radius: 12px;
         background: rgba(255, 255, 255, 0.05);
+        flex: 2;
     }
     
     .status.online {
@@ -1685,9 +1686,10 @@ const chatFrame = document.getElementById("ai-chat-frame");
 const chatLauncher = document.getElementById("ai-chat-launcher");
 
 chatLauncher.addEventListener("click", () => {
+
     const isVisible = chatFrame.style.display === "block";
     chatFrame.style.display = isVisible ? "none" : "block";
-    
+    chatFrame.classList.add('fade-in');
     // If opening the chat, send a message to the iframe
     if (!isVisible) {
         chatFrame.contentWindow.postMessage({ action: 'openChat' }, '*');
