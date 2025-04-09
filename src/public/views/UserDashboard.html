@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatHaven - User Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" integrity="sha512-8ExARjWWkIllMlNzVg7JKq9RKWPlJABQUNq6YvAjE/HobctjH/NA+bSiDMDvouBVjp4Wwnf1VP1OEv7Zgjtuxw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="styles/UserDashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
+    <link rel="icon" type="image/png" href="assets/ChatHavenLogo.png">
+    <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
+</head>
+<body>
+    <div class="header-section">
+        <h3>Welcome back, <span id="username">User</span>!</h3>
+        <div class="quick-actions">
+            <a href="DMs.html" class="btn"><i class="fas fa-comments"></i> Direct Messages</a>
+            <a href="private_channels.html" class="btn"><i class="fas fa-users"></i> Private Channels</a>
+            <div class="online-users-indicator" id="online-users-indicator">
+                <i class="fas fa-users"></i> Online Users
+                <span class="online-count" id="header-online-count">(1 online)</span>
+            </div>
+            <a href="settings_page.html" class="btn settings-btn" title="Settings">
+                <i class="fa-solid fa-cog"></i> Settings
+            </a>
+            <a href="/logout" class="btn logout-btn" title="Logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- Teams Display Section -->
+        <div class="form-container">
+            <h2><i class="fas fa-layer-group"></i> Your Teams & Channels</h2>
+            <div id="teams-container"></div>
+        </div>
+        
+        <!-- Private Channels Section -->
+        <div class="form-container">
+            <h2><i class="fas fa-users"></i> Private Channels</h2>
+            <div id="private-channels-container">
+                <div class="private-channels-loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading your private channels...
+                </div>
+            </div>
+            <a href="private_channels.html" class="btn private-channel-btn">
+                <i class="fas fa-user-plus"></i> Manage Private Channels
+            </a>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Chat Toggle Button -->
+    <div id="chat-toggle" title="Global Chat">
+        <i class="fa-solid fa-globe"></i>
+    </div>
+
+    <!-- Global Chat Container -->
+    <div id="chat-container">
+        <div id="chat-header">
+            <span id="Chat-title"><i class="fas fa-globe"></i> Global Chat</span>
+            <button id="close-chat"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="chat-messages"></div>
+        <div id="chat-input">
+            <div class="message-input-wrapper">
+                <div class="quote-container"></div>
+                <input type="text" id="message" placeholder="Type a message...">
+                <div class="input-buttons">
+                    <button id="emoji-btn" title="Add Emoji">😊</button>
+                    <button id="send" title="Send Message">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="emoji-picker-container" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Status Toggle Button -->
+    <div id="status-toggle" title="User Status">
+        <i class="fa-solid fa-users"></i>
+    </div>
+
+    <!-- User Status Container -->
+    <div id="status-container">
+        <div id="chat-header">
+            <span id="Chat-title">
+                <i class="fas fa-users"></i> Online Users 
+                <span class="user-counter" id="user-counter"></span>
+            </span>
+            <button id="close-status" title="Close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="user-search-container">
+            <input type="text" id="user-search" placeholder="Search users..." class="user-search-input">
+            <i class="fas fa-search search-icon"></i>
+        </div>
+        <div id="users-status"></div>
+    </div>
+
+    <!-- AI Chatbot Integration -->
+    <iframe
+        id="ai-chat-frame"
+        src="chatbot.html"
+        style="position: fixed; bottom: 100px; right: 20px; width: 420px; height: 700px; border: none; border-radius: 20px; display: none; z-index: 9999;">
+    </iframe>
+
+    <div id="ai-chat-launcher" style="position: fixed; bottom: 160px; right: 30px; background: #000; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999;">
+        <i class="fas fa-robot"></i>
+    </div>
+
+    <script src="js/UserDashboard.js"></script>
+</body>
+</html>
