@@ -169,8 +169,22 @@ const filteredChannels = data.channels.filter(channel =>
                      </div>
                  `;
                  
+                 // Leave previous channel room if exists
+                 if (channelClicked) {
+                     socket.emit("leave-channel", {
+                         teamName: teamName,
+                         channelName: channelClicked
+                     });
+                 }
+                 
                  channelClicked = channel;
                  document.getElementById("chat-header").textContent = `${channel}`;
+                 
+                 // Join new channel room
+                 socket.emit("join-channel", {
+                     teamName: teamName,
+                     channelName: channel
+                 });
                  
                  // Enable input controls
                  const messageInput = document.getElementById("message");
@@ -244,7 +258,12 @@ function getChannelMessages(teamName, channelName) {
         },
         body: JSON.stringify({ teamName, channelName })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(messages => {
         const chatContainer = document.getElementById("chat-messages");
         chatContainer.innerHTML = "";
@@ -258,8 +277,7 @@ function getChannelMessages(teamName, channelName) {
         }
 
         // Process each message
-        console.log(messages)
-        exportChat=messages
+        exportChat = messages;
         messages.forEach(msg => {
             displayMessage(msg, msg.sender === currentUser);
         });
@@ -273,7 +291,7 @@ function getChannelMessages(teamName, channelName) {
         chatContainer.innerHTML = `
             <div class="error-message">
                 <div><i class="fas fa-exclamation-circle"></i></div>
-                <p>Error loading messages</p>
+                <p>Error loading messages: ${error.message}</p>
                 <button id="retry-messages">Retry</button>
             </div>
         `;
@@ -402,14 +420,6 @@ function sendMessage(teamName, channelName) {
         return;
     }
 
-    // Debug logging
-    console.log("Attempting to send message:", {
-        teamName,
-        channelName,
-        messageText,
-        currentUser
-    });
-
     // Temporarily disable input to prevent double-sending
     messageInput.disabled = true;
     
@@ -421,11 +431,8 @@ function sendMessage(teamName, channelName) {
         quoted: quotedMessage
     }; 
     
-    // Debug logging
-    console.log("Emitting channelMessages event with data:", messageData);
-    
     // Send message via socket.io
-    socket.emit("channelMessages", messageData);        
+    socket.emit("ChannelMessages", messageData);        
     
     // Clear input and quoted message
     messageInput.value = "";
@@ -535,18 +542,9 @@ a.click();
 URL.revokeObjectURL(url);
 })
 
-// Join the channel room
-socket.emit("join-channel", {
-    teamName: teamName,
-    channelName: channelClicked
-});
-console.log("Joining room:", `channel-room-${teamName}-${channelClicked}`);
-
 // Listen for channel messages
 socket.on("ChannelMessages", (message) => {
-    console.log("Received ChannelMessages event:", message);
     if (message.teamName === teamName && message.channelName === channelClicked) {
-        console.log("Displaying message:", message);
         displayMessage(message, message.sender === currentUser);
     }
 });

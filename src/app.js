@@ -5,6 +5,7 @@ const path = require("path");
 
 // --- Import Routers ---
 const chatRoutes = require('./routes/chatRoutes');
+const channelRoutes = require('./routes/channelRoutes');
 // Add other route imports here later (e.g., authRoutes, teamRoutes)
 
 const app = express();
@@ -38,6 +39,8 @@ app.use(express.static(path.join(__dirname, "public")));
 // --- Mount Routers ---
 // Mount chat routes (all routes starting with / defined in chatRoutes)
 app.use('/', chatRoutes);
+// Mount channel routes
+app.use('/channels', channelRoutes);
 // Example for API prefix: app.use('/api', chatRoutes); 
 // Add other router mount points here (e.g., app.use('/auth', authRoutes);)
 

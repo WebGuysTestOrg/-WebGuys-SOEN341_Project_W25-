@@ -4,8 +4,19 @@ const sharedSession = require("express-socket.io-session");
 const {Server} = require("socket.io");
 const connection = require('./config/db');
 const { app, sessionMiddleware } = require('./app');
+
+// Import routes
 const userRoutes = require('./routes/userRoutes');
+const teamRoutes = require('./routes/teamRoutes');
+const channelRoutes = require('./routes/channelRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const groupMessagesRoute = require('./routes/groupMessages');
+
+// Use routes
+app.use('/api/users', userRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/channels', channelRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/api', groupMessagesRoute);
 
 const PORT = process.env.PORT || 3000;
@@ -27,7 +38,8 @@ if (process.env.NODE_ENV !== "test") {
 // =============================================
 const onlineUsers = new Map();
 const awayUsers = new Map();
-const INACTIVITY_TIME = 30000;
+const userInactivityTimers = new Map();
+const INACTIVITY_TIME = 30000; // 30 seconds
 
 // Pass the existing expressServer instance to Socket.IO
 const io = new Server(expressServer, {
@@ -41,7 +53,7 @@ io.use(sharedSession(sessionMiddleware, {
     autoSave: true,
 }));
 
-// Socket connection handling - Shared global chat for all users (admin and regular)
+// Socket connection handling
 io.on('connection', socket => {
     console.log('New socket connection:', socket.id);
 
@@ -56,260 +68,30 @@ io.on('connection', socket => {
     console.log(`User ${session.user.name} connected (${session.user.user_type})`);
     socket.userId = session.user.id;
     socket.userName = session.user.name;
-    socket.userType = session.user.user_type; // Store user type for role-based features
+    socket.userType = session.user.user_type;
     
-    // Everyone joins the same global chat room
+    // Join global chat room
     socket.join('global-chat');
     
-    // Emit last 50 messages when user connects - Same history for admin and regular users
-    const getLastMessagesQuery = `
-        SELECT 
-            gm.*, 
-            uf.name as sender_name,
-            gm.quoted_text,
-            gm.quoted_sender,
-            gm.timestamp
-        FROM global_messages gm
-        JOIN user_form uf ON gm.sender_id = uf.id
-        ORDER BY gm.timestamp DESC
-        LIMIT 50
-    `;
-    
-    // Use the imported connection
-    connection.query(getLastMessagesQuery, (err, results) => {
-        if (err) {
-            console.error('Error fetching global messages:', err);
-            return;
-        }
-        // Send message history to the connected client
-        socket.emit('global-chat-history', results.reverse());
-    });
-    
-    // Handle global chat messages
-    socket.on('global-message', async (data) => {
-        if (!socket.userId) {
-            socket.emit('error', { message: 'You must be logged in to send messages' });
-            return;
-        }
+    // Initialize socket handlers
+    require('./socket/handlers/globalChat')(socket, io, connection);
+    require('./socket/handlers/privateMessages')(socket, io, connection);
+    require('./socket/handlers/groupMessages')(socket, io, connection);
+    require('./socket/handlers/channelMessages')(socket, io, connection);
 
-        const message = {
-            sender_id: socket.userId,
-            sender_name: socket.userName,
-            message: data.text,
-            quoted_text: data.quoted_text,
-            quoted_sender: data.quoted_sender,
-            timestamp: new Date()
-        };
-
-        // Save message to database with all fields
-        const insertQuery = `
-            INSERT INTO global_messages 
-            (sender_id, sender_name, message, quoted_text, quoted_sender, timestamp) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        `;
-
-        // Use the imported connection
-        connection.query(
-            insertQuery,
-            [
-                message.sender_id,
-                message.sender_name,
-                message.message,
-                message.quoted_text,
-                message.quoted_sender,
-                message.timestamp
-            ],
-            (err, result) => {
-                if (err) {
-                    console.error('Error saving global message:', err);
-                    socket.emit('error', { message: 'Failed to send message' });
-                    return;
-                }
-
-                message.id = result.insertId;
-                // Send to all connected clients in global-chat room
-                io.to('global-chat').emit('global-message', message);
-            }
-        );
-    });
-    
-    // Handle private messages (Moved from lines 347-368)
-    socket.on("private-message", (msg) => {
-        // Store the client-generated message ID
-        const tempId = msg.id;
-        
-        // Use only the fields present in schema.sql
-        const insertQuery = "INSERT INTO direct_messages (sender_id, recipient_id, text, timestamp) VALUES (?, ?, ?, NOW())";
-        
-        connection.query(insertQuery, [msg.senderId, msg.recipientId, msg.text], (err, result) => {
-            if (err) {
-                console.error("Error saving message:", err);
-                return;
-            }
-            
-            // Send back the full message including the quoted data, but only store essential fields in DB
-            const fullMessage = {
-                ...msg,
-                id: result.insertId,
-                tempId: tempId, // Return the tempId so client can match it
-                quoted: msg.quoted // Keep this for UI, but don't store in DB
-            };
-
-            // TODO: Review io.emit vs socket.emit or targeting specific user sockets
-            io.emit("private-message", fullMessage);
-        });
-    });
-
-    // Handle Channel Messages
-    socket.on("channelMessages", (msg) => {
-        console.log("Received channelMessages event:", msg);
-        console.log("Socket userId:", socket.userId);
-
-        // Verify user is a member of the channel
-        const checkMembershipQuery = `
-            SELECT 1 FROM user_channels uc
-            JOIN channels c ON uc.channel_id = c.id
-            JOIN teams t ON c.team_id = t.id
-            WHERE uc.user_id = ? AND c.name = ? AND t.name = ?
-        `;
-
-        console.log("Checking membership with query:", checkMembershipQuery);
-        console.log("Query parameters:", [socket.userId, msg.channelName, msg.teamName]);
-
-        connection.query(checkMembershipQuery, [socket.userId, msg.channelName, msg.teamName], (err, results) => {
-            if (err) {
-                console.error("Database error checking membership:", err);
-                socket.emit("error", { message: "Failed to verify channel membership" });
-                return;
-            }
-
-            console.log("Membership check results:", results);
-
-            if (results.length === 0) {
-                console.log("User is not a member of the channel");
-                socket.emit("error", { message: "You must be a member of the channel to send messages" });
-                return;
-            }
-
-            const query = `
-                INSERT INTO channels_messages (team_name, channel_name, sender, text, quoted_message) 
-                VALUES (?, ?, ?, ?, ?)
-            `;
-
-            console.log("Inserting message with query:", query);
-            console.log("Query parameters:", [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted]);
-
-            connection.query(query, [msg.teamName, msg.channelName, msg.sender, msg.text, msg.quoted], (err, result) => {
-                if (err) {
-                    console.error("Database error:", err);
-                    socket.emit("error", { message: "Failed to save message" });
-                    return;
-                }
-                
-                const messageWithId = {
-                    id: result.insertId,  
-                    teamName: msg.teamName,
-                    channelName: msg.channelName,
-                    sender: msg.sender,
-                    text: msg.text,
-                    quoted: msg.quoted
-                };
-                
-                console.log("Emitting message to room:", `channel-room-${msg.teamName}-${msg.channelName}`);
-                console.log("Message data:", messageWithId);
-                
-                // Emit only to users in the specific channel room
-                io.to(`channel-room-${msg.teamName}-${msg.channelName}`).emit("ChannelMessages", messageWithId);
-            });
-        });
-    });
-
-    // Add handler for joining channel rooms
-    socket.on("join-channel", (data) => {
-        console.log("User joining channel room:", data);
-        const { teamName, channelName } = data;
-        if (teamName && channelName) {
-            const roomName = `channel-room-${teamName}-${channelName}`;
-            console.log("Joining room:", roomName);
-            socket.join(roomName);
-        }
-    });
-
-    // Add handler for leaving channel rooms
-    socket.on("leave-channel", (data) => {
-        console.log("User leaving channel room:", data);
-        const { teamName, channelName } = data;
-        if (teamName && channelName) {
-            const roomName = `channel-room-${teamName}-${channelName}`;
-            console.log("Leaving room:", roomName);
-            socket.leave(roomName);
-        }
-    });
-
-    // Handle Group Messages (send-message) (Moved from line 1970)
-    socket.on("send-message", (data) => {
-        const { groupId, userId, message } = data;
-        const session = socket.handshake.session; // Ensure session is accessible
-
-        // Basic validation
-        if (!groupId || !userId || !message || !session || !session.user || session.user.id !== userId) {
-            console.error("Invalid send-message data or unauthorized user");
-            socket.emit('error', { message: 'Failed to send message due to invalid data or auth.' });
-            return;
-        }
-
-        // Get sender's name
-        const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
-        connection.query(getUserQuery, [userId], (err, result) => {
-            if (err || result.length === 0) {
-                console.error("Error getting user info:", err);
-                socket.emit('error', { message: 'Failed to send message' });
-                return;
-            }
-            
-            const senderName = result[0].name;
-            
-            // Insert message into database
-            const insertQuery = "INSERT INTO group_messages (group_id, user_id, text) VALUES (?, ?, ?)";
-            connection.query(insertQuery, [groupId, userId, message], (err, result) => {
-                if (err) {
-                    console.error("Error storing message:", err);
-                    socket.emit('error', { message: 'Failed to save message' });
-                    return;
-                }
-
-                const messageData = {
-                    id: result.insertId,
-                    sender: senderName,
-                    text: message,
-                    timestamp: new Date()
-                };
-                
-                // Broadcast message to all connected clients in that specific group room
-                // NOTE: Ensure clients join `group-room-${groupId}` when they select a group
-                io.to(`group-room-${groupId}`).emit(`group-message-${groupId}`, messageData);
-            });
-        });
-    });
-
-    // Handle user status: online
+    // Handle user status
     socket.on("userOnline", (userId) => {
         if (!socket.userId) {
             socket.emit('error', { message: 'You must be logged in to update status' });
             return;
         }
         
-        // Convert userId to string to ensure consistent comparison
         const userIdStr = userId.toString();
         console.log(`Setting user ${userIdStr} as ONLINE (socket: ${socket.id}, type: ${socket.userType})`);
         
         onlineUsers.set(userIdStr, socket.id);
         awayUsers.delete(userIdStr);
         
-        // Log the current online users for debugging
-        console.log("Current online users:", Array.from(onlineUsers.keys()));
-        
-        // Broadcast to ALL users (admin and regular) about the updated status
         io.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
             away: Array.from(awayUsers.keys())
@@ -318,14 +100,12 @@ io.on('connection', socket => {
         resetInactivityTimer(userIdStr);
     });
 
-    // Handle user status: away
     socket.on("userAway", (userId) => {
         if (!socket.userId) {
             socket.emit('error', { message: 'You must be logged in to update status' });
             return;
         }
         
-        // Convert userId to string to ensure consistent comparison
         const userIdStr = userId.toString();
         console.log(`Setting user ${userIdStr} as AWAY (socket: ${socket.id})`);
         
@@ -337,7 +117,7 @@ io.on('connection', socket => {
             away: Array.from(awayUsers.keys())
         });
     });
-    
+
     // Handle status update requests
     socket.on("requestStatusUpdate", () => {
         if (!socket.userId) {
@@ -350,17 +130,13 @@ io.on('connection', socket => {
             away: Array.from(awayUsers.keys())
         });
     });
-    
-    // Handle inactivity timers for each user
-    const userInactivityTimers = new Map();
 
+    // Inactivity timer functions
     function startInactivityTimer(userId) {
-        // Clear existing timer if there is one
         if (userInactivityTimers.has(userId)) {
             clearTimeout(userInactivityTimers.get(userId));
         }
         
-        // Set new timer
         const timer = setTimeout(() => {
             console.log(`User ${userId} is now away due to inactivity`);
             socket.emit("userAway", userId);
@@ -374,15 +150,13 @@ io.on('connection', socket => {
         startInactivityTimer(userId);
         console.log(`Reset inactivity timer for user ${userId}`);
     }
-    
-    // Clean up timers when user disconnects
+
+    // Handle disconnection
     socket.on("disconnect", (reason) => {
         console.log(`User ${socket.id} disconnected`);
 
-        // Find and remove the user from online/away lists
         let disconnectedUserId = null;
         
-        // Check online users
         onlineUsers.forEach((socketId, userId) => {
             if (socketId === socket.id) {
                 disconnectedUserId = userId;
@@ -391,7 +165,6 @@ io.on('connection', socket => {
             }
         });
         
-        // Check away users
         if (!disconnectedUserId) {
             awayUsers.forEach((socketId, userId) => {
                 if (socketId === socket.id) {
@@ -402,123 +175,17 @@ io.on('connection', socket => {
             });
         }
         
-        // Clean up timers for this user
         if (disconnectedUserId && userInactivityTimers.has(disconnectedUserId)) {
             clearTimeout(userInactivityTimers.get(disconnectedUserId));
             userInactivityTimers.delete(disconnectedUserId);
         }
         
-        // Broadcast updated status
         io.emit("updateUserStatus", {
             online: Array.from(onlineUsers.keys()),
             away: Array.from(awayUsers.keys())
         });
     });
 });
-
-
-
-// Function to preload initial messages for testing
-function preloadChannelMessages() {
-    // Check if messages already exist
-    connection.query("SELECT COUNT(*) as count FROM channels_messages", (err, results) => {
-        if (err) {
-            console.error("Error checking messages count:", err);
-            return;
-        }
-        
-        // If no messages, add some initial ones for testing
-        if (results[0].count === 0) {
-            console.log("Preloading initial channel messages for testing...");
-            
-            const teams = ['1211', 'Team Alpha', 'Team Beta'];
-            const channels = ['general', '123', '122133', 'general2', '1212', '321', '123123', '23312', 'dasd'];
-            const senders = ['Admin', 'User1', 'User2', 'ChatBot'];
-            
-            // Generate welcome messages for each team/channel combination
-            const messages = [];
-            
-            // Sample conversation messages
-            const conversations = [
-                {
-                    sender: 'Admin',
-                    text: 'Welcome to the channel! This is where we discuss project updates.',
-                    quoted: null
-                },
-                {
-                    sender: 'ChatBot',
-                    text: 'This channel is now active. You can start chatting!',
-                    quoted: null
-                },
-                {
-                    sender: 'User1',
-                    text: 'Hi everyone! Excited to be part of this team.',
-                    quoted: null
-                },
-                {
-                    sender: 'User2',
-                    text: 'Welcome aboard! Let me know if you have any questions.',
-                    quoted: 'Hi everyone! Excited to be part of this team.'
-                },
-                {
-                    sender: 'User1',
-                    text: 'Thanks for the warm welcome! I do have a question about our meeting schedule.',
-                    quoted: null
-                },
-                {
-                    sender: 'Admin',
-                    text: 'We meet every Tuesday at 10am EST. I\'ll send a calendar invite.',
-                    quoted: 'Thanks for the warm welcome! I do have a question about our meeting schedule.'
-                },
-                {
-                    sender: 'ChatBot',
-                    text: 'Meeting reminder: Don\'t forget to prepare your updates for the weekly sync.',
-                    quoted: null
-                },
-                {
-                    sender: 'User2',
-                    text: 'I\'ve uploaded the project files to our shared drive. Please review when you get a chance.',
-                    quoted: null
-                },
-                {
-                    sender: 'User1',
-                    text: 'Will do! I should be able to review them by tomorrow.',
-                    quoted: 'I\'ve uploaded the project files to our shared drive. Please review when you get a chance.'
-                }
-            ];
-
-            teams.forEach(team => {
-                channels.forEach(channel => {
-                    // Add conversation messages
-                    conversations.forEach(msg => {
-                        messages.push([
-                            team, channel, msg.sender, 
-                            msg.text, 
-                            msg.quoted
-                        ]);
-                    });
-                });
-            });
-            
-            // Insert all preloaded messages
-            const insertQuery = `
-                INSERT INTO channels_messages 
-                (team_name, channel_name, sender, text, quoted_message)
-                VALUES ?
-            `;
-            
-            connection.query(insertQuery, [messages], (err) => {
-                if (err) {
-                    console.error("Error preloading messages:", err);
-                    return;
-                }
-                console.log("Successfully preloaded channel messages for testing");
-            });
-        }
-    });
-}
-
-
 
 // =============================================
 // AUTHENTICATION AND USER MANAGEMENT ROUTES
@@ -585,10 +252,6 @@ app.post("/register", (req, res) => {
   });
 });
 
-
-
-
-
 app.post("/login", (req, res) => {
     const { email, password } = req.body;
 
@@ -637,8 +300,6 @@ app.post("/login", (req, res) => {
     });
 });
 
-
-
 app.get("/user-info", (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -658,7 +319,6 @@ app.get("/admin-info", (req, res) => {
     }
     res.json({ name: req.session.user.name });
 });
-
 
 app.post("/create-team", (req, res) => {
     if (!req.session.user || req.session.user.user_type !== "admin") {
@@ -695,10 +355,6 @@ app.post("/create-team", (req, res) => {
         });
     });
 });
-
-
-
-
 
 app.get("/get-team-id", (req, res) => {
     const { teamName } = req.query;
@@ -761,7 +417,6 @@ app.post("/create-channel", (req, res) => {
         });
     });
 });
-
 
 app.post('/assign-user-to-team', (req, res) => {
     const { teamId, userName } = req.body;
@@ -922,14 +577,15 @@ app.post('/delete-team', (req, res) => {
                                 });
                             });
                         });
+                        
+                        // Execute the deletion process
+                        continueWithDeletion();
                     };
-                    continueWithDeletion();
                 });
             });
         });
     });
 });
-
 
 // Remove a user from a team
 app.post('/remove-team-member', (req, res) => {
@@ -1052,9 +708,6 @@ app.post('/remove-team-member', (req, res) => {
     });
 });
 
-
-
-
 app.post("/assign-user", async (req, res) => {
     const { teamId, channelName, userName } = req.body;
 
@@ -1153,7 +806,6 @@ app.post("/assign-user", async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
-
 
 app.get("/get-teams-with-members", (req, res) => {
     const query = `
@@ -1305,7 +957,6 @@ app.get("/get-user-channels", (req, res) => {
     });
 });
 
-
 app.get("/get-user-teams", (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -1391,11 +1042,6 @@ app.get("/get-user-teams", (req, res) => {
     });
 });
 
-
-
-
-
-
 app.get("/logout", (req, res) => {
     if (!req.session.user) {
         return res.redirect("/Login-Form.html");
@@ -1429,7 +1075,6 @@ app.get("/logout", (req, res) => {
 });
 
 app.post("/update-password", (req, res) => {
-
     const {newPassword, confirmPassword} = req.body;
 
     if (!req.session.user) {
@@ -1533,6 +1178,7 @@ app.post("/create-group", (req, res) => {
         });
     });
 });
+
 app.post("/add-user", (req, res) => {
     const { groupId, username } = req.body;
     const addedBy = req.session.user.name;
@@ -1603,6 +1249,7 @@ app.get("/group-members/:groupId", (req, res) => {
         res.json(results);
     });
 });
+
 app.get("/group-owner/:groupId", (req, res) => {
     const { groupId } = req.params;
     
@@ -1664,7 +1311,6 @@ app.get("/group-requests/:groupId", (req, res) => {
     });
 });
 
-
 app.post("/request-join", (req, res) => {
     const { groupId } = req.body;
     const userId = req.session.user.id;
@@ -1704,7 +1350,6 @@ app.post("/request-join", (req, res) => {
     });
 });
 
-
 app.post("/approve-user", (req, res) => {
     const { groupId, userId } = req.body;
     const approvedBy = req.session.user.name;
@@ -1743,8 +1388,6 @@ app.post("/approve-user", (req, res) => {
         });
     });
 });
-
-
 
 app.post("/leave-group", (req, res) => {
     const { groupId } = req.body;
