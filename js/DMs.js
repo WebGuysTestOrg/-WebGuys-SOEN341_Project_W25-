@@ -1,4 +1,12 @@
-const socket = io('ws://localhost:3000');
+// Use dynamic WebSocket URL based on current origin
+const socketUrl = window.location.protocol === 'https:' 
+    ? `wss://${window.location.host}` 
+    : `ws://${window.location.host || 'localhost:3000'}`;
+const socket = io(socketUrl);
+
+// Get the current origin for secure messaging
+const TRUSTED_ORIGIN = window.location.origin;
+
 let loggedInUserId = null;
 let loggedInUserName = "";
 let quotedMessage = null;
@@ -6,7 +14,10 @@ let currentRecipientId = null;
 let currentRecipientName = null;
 let onlineUsers = [];
 let awayUsers = [];
-let ChatMessageToExport={};
+let exportChat = [];
+let unreadMessages = {};
+let userStatuses = {};
+let currentUserStatus = 'online';
 // Handle URL parameters for direct navigation
 const urlParams = new URLSearchParams(window.location.search);
 const directMessageUser = urlParams.get('user');
@@ -411,6 +422,48 @@ function loadChat(recipientId, recipientName) {
     chatHeader.textContent = recipientName;
     document.getElementById("chat-header").dataset.recipientId = recipientId;
     
+    // Add back button for mobile view
+    if (isMobile()) {
+        // Check if back button already exists
+        if (!document.getElementById('mobile-back-btn')) {
+            const backButton = document.createElement('button');
+            backButton.id = 'mobile-back-btn';
+            backButton.className = 'mobile-back-btn';
+            backButton.innerHTML = '<i class="fas fa-arrow-left"></i>';
+            backButton.addEventListener('click', () => {
+                // Show sidebar and hide chat content on mobile
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.add('active');
+                
+                // Hide chat window on mobile
+                const chatContent = document.querySelector('.chat-content');
+                if (chatContent) {
+                    chatContent.classList.add('hidden-mobile');
+                }
+            });
+            
+            // Add button to the chat header
+            const headerContainer = document.getElementById('chat-header');
+            headerContainer.prepend(backButton);
+            
+            // Hide sidebar when in chat view on mobile
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.remove('active');
+            
+            // Show chat content
+            const chatContent = document.querySelector('.chat-content');
+            if (chatContent) {
+                chatContent.classList.remove('hidden-mobile');
+            }
+        }
+    } else {
+        // Remove back button if exists when on desktop
+        const backButton = document.getElementById('mobile-back-btn');
+        if (backButton) {
+            backButton.remove();
+        }
+    }
+    
     // Update recipient status indicator
     updateRecipientStatus();
     
@@ -630,49 +683,13 @@ socket.on("private-message", (msg) => {
     }
 });
 
-function showNotification(msg) {
-    // Create a notification for new messages from other users
-    const notification = document.createElement('div');
-    notification.className = 'message-notification';
-    notification.innerHTML = `
-        <div class="notification-content">
-            <div class="notification-sender">${msg.senderName}</div>
-            <div class="notification-text">${msg.text.substring(0, 30)}${msg.text.length > 30 ? '...' : ''}</div>
-        </div>
-        <button class="view-message-btn">View</button>
-    `;
+// HTML sanitization function to prevent XSS attacks
+function sanitizeHTML(text) {
+    if (!text) return '';
     
-    // Remove any existing notification for the same sender
-    document.querySelectorAll('.message-notification').forEach(notif => {
-        if (notif.querySelector('.notification-sender').textContent === msg.senderName) {
-            notif.remove();
-        }
-    });
-    
-    document.body.appendChild(notification);
-    
-    // Play notification sound if available
-    const notificationSound = new Audio('/assets/notification.mp3');
-    notificationSound.volume = 0.5;
-    notificationSound.play().catch(err => console.log('Notification sound not available'));
-    
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-        notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 500);
-    }, 5000);
-    
-    // Handle click to view the message
-    notification.querySelector('.view-message-btn').addEventListener('click', () => {
-        // Find the chat item for this sender or create a new one
-        let chatItem = document.querySelector(`#chat-list li[data-recipient-id="${msg.senderId}"]`);
-        if (chatItem) {
-            chatItem.click();
-        } else {
-            startChat(msg.senderId, msg.senderName);
-        }
-        notification.remove();
-    });
+    const element = document.createElement('div');
+    element.textContent = text;
+    return element.innerHTML;
 }
 
 function displayMessage(msg, isOwnMessage) {
@@ -693,17 +710,21 @@ function displayMessage(msg, isOwnMessage) {
     const timestamp = msg.timestamp ? new Date(msg.timestamp) : new Date();
     const timeString = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
+    // Sanitize message text and sender name to prevent XSS
+    const sanitizedText = sanitizeHTML(msg.text);
+    const sanitizedSenderName = sanitizeHTML(msg.senderName);
+    
     // Create message content
     let messageContent = `
         <div class="message-content">
-            ${!isOwnMessage ? `<div class="message-sender">${msg.senderName}</div>` : ''}
+            ${!isOwnMessage ? `<div class="message-sender">${sanitizedSenderName}</div>` : ''}
             ${msg.quoted ? `
                 <div class="quoted-message">
                     <i class="fas fa-reply"></i>
-                    <span>${msg.quoted.text}</span>
+                    <span>${sanitizeHTML(msg.quoted.text)}</span>
                 </div>
             ` : ''}
-            <div class="message-text">${msg.text}</div>
+            <div class="message-text">${sanitizedText}</div>
             <div class="message-footer">
                 <span class="message-time">${timeString}</span>
                 ${isOwnMessage ? `
@@ -734,6 +755,82 @@ function displayMessage(msg, isOwnMessage) {
     
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function showNotification(msg) {
+    // Create a notification for new messages from other users
+    const notification = document.createElement('div');
+    notification.className = 'message-notification';
+    
+    // Sanitize content
+    const sanitizedSenderName = sanitizeHTML(msg.senderName);
+    const sanitizedText = sanitizeHTML(msg.text);
+    
+    notification.innerHTML = `
+        <div class="notification-content">
+            <div class="notification-sender">${sanitizedSenderName}</div>
+            <div class="notification-text">${sanitizedText.substring(0, 30)}${sanitizedText.length > 30 ? '...' : ''}</div>
+        </div>
+        <button class="view-message-btn">View</button>
+    `;
+    
+    // Remove any existing notification for the same sender
+    document.querySelectorAll('.message-notification').forEach(notif => {
+        // Clean up event listeners before removing
+        const viewBtn = notif.querySelector('.view-message-btn');
+        if (viewBtn) {
+            viewBtn.replaceWith(viewBtn.cloneNode(true));
+        }
+        if (notif.querySelector('.notification-sender').textContent === msg.senderName) {
+            notif.remove();
+        }
+    });
+    
+    document.body.appendChild(notification);
+    
+    // Play notification sound if available
+    const notificationSound = new Audio('/assets/notification.mp3');
+    notificationSound.volume = 0.5;
+    notificationSound.play().catch(err => console.log('Notification sound not available'));
+    
+    // Auto-dismiss after 5 seconds
+    const dismissTimeout = setTimeout(() => {
+        notification.classList.add('fade-out');
+        const removeTimeout = setTimeout(() => {
+            if (document.body.contains(notification)) {
+                notification.remove();
+            }
+            clearTimeout(removeTimeout);
+        }, 500);
+    }, 5000);
+    
+    // Store timeouts on the notification element to clear if needed
+    notification._timeouts = [dismissTimeout];
+    
+    // Handle click to view the message
+    const viewButton = notification.querySelector('.view-message-btn');
+    const clickHandler = () => {
+        // Find the chat item for this sender or create a new one
+        let chatItem = document.querySelector(`#chat-list li[data-recipient-id="${msg.senderId}"]`);
+        if (chatItem) {
+            chatItem.click();
+        } else {
+            startChat(msg.senderId, msg.senderName);
+        }
+        
+        // Clear timeouts to prevent errors
+        if (notification._timeouts) {
+            notification._timeouts.forEach(timeout => clearTimeout(timeout));
+        }
+        
+        // Remove notification and clean up event listener
+        viewButton.removeEventListener('click', clickHandler);
+        if (document.body.contains(notification)) {
+            notification.remove();
+        }
+    };
+    
+    viewButton.addEventListener('click', clickHandler);
 }
 
 function quoteMessage(msgId, messageText) {
@@ -788,31 +885,56 @@ chatLauncher.addEventListener("click", () => {
     const isVisible = chatFrame.style.display === "block";
     chatFrame.style.display = isVisible ? "none" : "block";
     chatFrame.classList.add('fade-in');
-    // If opening the chat, send a message to the iframe
+    // If opening the chat, send a message to the iframe with secure origin
     if (!isVisible) {
-        chatFrame.contentWindow.postMessage({ action: 'openChat' }, '*');
+        chatFrame.contentWindow.postMessage({ action: 'openChat' }, TRUSTED_ORIGIN);
     }
 });
 
 document.getElementById("export-chat").addEventListener("click", function (event) {
-  console.log(exportChat)
-  let chatText = "";
-  exportChat.forEach(msg => {
-    chatText += msg.senderName +": "+ msg.text+ "\n";
-  });
-  console.log(chatText)
-  const blob = new Blob([chatText], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "DMchats.txt";
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    if (!exportChat || !Array.isArray(exportChat) || exportChat.length === 0) {
+      console.error("No chat data available to export");
+      alert("No messages available to export. Please select a chat with messages first.");
+      return;
+    }
+    
+    console.log("Exporting chat data:", exportChat);
+    let chatText = "";
+    exportChat.forEach(msg => {
+      if (msg && msg.senderName && msg.text) {
+        chatText += msg.senderName +": "+ msg.text+ "\n";
+      }
+    });
+    
+    if (chatText.trim() === "") {
+      alert("No valid messages found to export.");
+      return;
+    }
+    
+    console.log("Exported content:", chatText);
+    const blob = new Blob([chatText], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "DMchats.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error exporting chat:", error);
+    alert("Failed to export chat. Please try again.");
+  }
 })
 
 
-// Listen for messages from the chatbot iframe
+// Listen for messages from the chatbot iframe with origin validation
 window.addEventListener('message', (event) => {
+    // Verify the origin of the message for security
+    if (event.origin !== TRUSTED_ORIGIN) {
+        console.error('Received message from untrusted origin:', event.origin);
+        return;
+    }
+    
     if (event.data.action === 'closeChat') {
         chatFrame.style.display = "none";
     }
