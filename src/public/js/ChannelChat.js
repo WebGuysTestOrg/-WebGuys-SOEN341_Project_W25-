@@ -383,7 +383,7 @@ function displayMessage(msg, isOwnMessage) {
     // Apply message class
     
     messageElement.classList.add("message", isOwnMessage ? "my-message" : "other-message");
-
+console.log(msg)
     // Add username styling (only for other people's messages)
     if (!isOwnMessage) {
         const usernameElement = document.createElement("div");
@@ -581,12 +581,7 @@ document.getElementById("export-chat").addEventListener("click", function (event
     URL.revokeObjectURL(url);
 })
 
-// Listen for channel messages
-socket.on("ChannelMessages", (message) => {
-    if (message.teamName === teamName && message.channelName === channelClicked) {
-        displayMessage(message, message.sender === currentUser);
-    }
-});
+
 
 // Listen for errors
 socket.on("error", (error) => {
