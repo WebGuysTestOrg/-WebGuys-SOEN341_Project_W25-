@@ -1027,3 +1027,52 @@ body {
 #retry-chats-btn:hover {
     background: #c0392b;
 }
+
+/* Mobile back button */
+.mobile-back-btn {
+    display: none;
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    color: var(--text-dark);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    margin-right: 0.8rem;
+    transition: all 0.2s ease;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-back-btn:hover {
+    background: rgba(0, 0, 0, 0.2);
+    transform: translateX(-2px);
+}
+
+.mobile-back-btn:active {
+    transform: translateX(-4px);
+}
+
+/* Show back button only on mobile */
+@media (max-width: 768px) {
+    .mobile-back-btn {
+        display: flex;
+    }
+    
+    .hidden-mobile {
+        display: none !important;
+    }
+    
+    /* Add space in chat header for the back button */
+    #chat-header {
+        padding-left: 10px;
+    }
+    
+    /* Adjust chat window padding to account for mobile back button */
+    .chat-recipient-name {
+        margin-left: 5px;
+    }
+}

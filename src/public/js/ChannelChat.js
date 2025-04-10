@@ -93,149 +93,182 @@ fetch('/user-info')
 // Set the team name in the header
 document.getElementById("chat-header").textContent = teamName || "Team Chat";
 
-// Fetch the team ID and then channels
-fetch('/get-team-id-from-name', {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ teamName })
-})
-.then(response => response.json())
-.then(data => {
-    if (!data.teamId) throw new Error("Team ID not found");
+// Get origin for secure messaging
+const TRUSTED_ORIGIN = window.location.origin;
 
-    const teamId = data.teamId;
-    console.log("Fetched Team ID:", teamId);
+// Main initialization function to reduce nesting
+async function initializeChannels() {
+    try {
+        // Get team ID
+        const teamIdResponse = await fetch('/get-team-id-from-name', {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ teamName })
+        });
+        
+        const teamIdData = await teamIdResponse.json();
+        if (!teamIdData.teamId) throw new Error("Team ID not found");
+        
+        const teamId = teamIdData.teamId;
+        console.log("Fetched Team ID:", teamId);
+        
+        // Get channels for team
+        const channelsResponse = await fetch('/get-channels', {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ teamId })
+        });
+        
+        const channelsData = await channelsResponse.json();
+        await populateChannelList(channelsData, teamId);
+    } catch (error) {
+        console.error("Fetch Error:", error);
+        displayChannelError(error);
+    }
+}
 
-    return fetch('/get-channels', {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ teamId })
-    });
-})
-.then(response => response.json())
-.then(data => {
+// Populate channel list with user's channels
+async function populateChannelList(data, teamId) {
     const chatList = document.getElementById("chat-list");
     chatList.innerHTML = "";
     isLoading = false;
 
     // Populate the channels list
     if (data.channels && data.channels.length > 0) {
-
-        fetch('/get-user-channels', {
-method: "GET",
-headers: {
- "Content-Type": "application/json",
-},
-})
-.then(response => {
-if (!response.ok) {
- throw new Error("Failed to fetch user channels");
-}
-return response.json(); // Convert response to JSON
-})
-.then(userChannels => {
-// Extract only channel names
-const channelNames = userChannels.flatMap(team => 
- team.channels.map(channel => channel.channelName)
-);
-console.log("User Channel Names:", channelNames);
-console.log("Team Channel Names:", data.channels);
-const filteredChannels = data.channels.filter(channel => 
-     channelNames.includes(channel)
- );
- 
- filteredChannels.forEach(channel => {
-             const listItem = document.createElement("li");
-             listItem.textContent = channel;
-             listItem.classList.add("channel-item");
-
-             // Add click event to load channel messages
-             listItem.addEventListener("click", () => {
-                 // Update active channel visual indicator
-                 document.querySelectorAll("#chat-list li").forEach(item => {
-                     item.classList.remove("active");
-                 });
-                 listItem.classList.add("active");
-                 
-                 // Show loading indicator in messages area
-                 document.getElementById("chat-messages").innerHTML = `
-                     <div class="loading-message">
-                         <div class="loading-spinner"></div>
-                         <span>Loading messages...</span>
-                     </div>
-                 `;
-                 
-                 // Leave previous channel room if exists
-                 if (channelClicked) {
-                     socket.emit("leave-channel", {
-                         teamName: teamName,
-                         channelName: channelClicked
-                     });
-                 }
-                 
-                 channelClicked = channel;
-                 document.getElementById("chat-header").textContent = `${channel}`;
-                 
-                 // Join new channel room
-                 socket.emit("join-channel", {
-                     teamName: teamName,
-                     channelName: channel
-                 });
-                 
-                 // Enable input controls
-                 const messageInput = document.getElementById("message");
-                 const emojiBtn = document.getElementById("emoji-btn");
-                 const sendBtn = document.getElementById("send");
-                 
-                 messageInput.disabled = false;
-                 emojiBtn.disabled = false;
-                 sendBtn.disabled = false;
-                 
-                 messageInput.placeholder = `Message #${channel}`;
-                 
-                 getChannelMessages(teamName, channel);
-             });
-
-             chatList.appendChild(listItem);
-         });
-         if (data.channels && data.channels.length > 0) {
-         const firstChannel = document.querySelector("#chat-list li");
-         firstChannel.click();
-     }
-     document.getElementById("send").addEventListener("click", function() {
-         sendMessage(teamName, channelClicked);
-     });
-
-     document.getElementById("message").addEventListener("keypress", function(e) {
-         if (e.key === "Enter") {
-             sendMessage(teamName, channelClicked);
-         }
-     });
-
-})
-         
-         
+        try {
+            // Get user's channels
+            const userChannelsResponse = await fetch('/get-user-channels', {
+                method: "GET",
+                headers: { "Content-Type": "application/json" }
+            });
+            
+            if (!userChannelsResponse.ok) {
+                throw new Error("Failed to fetch user channels");
+            }
+            
+            const userChannels = await userChannelsResponse.json();
+            
+            // Extract channel names
+            const channelNames = userChannels.flatMap(team => 
+                team.channels.map(channel => channel.channelName)
+            );
+            
+            console.log("User Channel Names:", channelNames);
+            console.log("Team Channel Names:", data.channels);
+            
+            const filteredChannels = data.channels.filter(channel => 
+                channelNames.includes(channel)
+            );
+            
+            // Create channel list items
+            filteredChannels.forEach(channel => {
+                const listItem = createChannelListItem(channel);
+                chatList.appendChild(listItem);
+            });
+            
+            // Setup message sending functionality
+            setupMessageHandlers();
+            
+            // Auto-select first channel
+            if (filteredChannels.length > 0) {
+                const firstChannel = document.querySelector("#chat-list li");
+                firstChannel.click();
+            }
+        } catch (error) {
+            console.error("Error loading user channels:", error);
+            displayChannelError(error);
+        }
     } else {
-        const noChannels = document.createElement("li");
-        noChannels.textContent = "No channels available";
-        noChannels.style.color = "#999";
-        noChannels.style.fontStyle = "italic";
-        noChannels.style.padding = "15px 20px";
-        chatList.appendChild(noChannels);
+        displayNoChannelsMessage(chatList);
     }
+}
 
-    // Add event listeners for sending messages
-     
-     
-    // Select first channel by default if available
-     
-})
-.catch(error => {
-    console.error("Fetch Error:", error);
+// Create a channel list item with event listeners
+function createChannelListItem(channel) {
+    const listItem = document.createElement("li");
+    listItem.textContent = channel;
+    listItem.classList.add("channel-item");
+
+    // Add click event to load channel messages
+    listItem.addEventListener("click", () => {
+        // Update active channel visual indicator
+        document.querySelectorAll("#chat-list li").forEach(item => {
+            item.classList.remove("active");
+        });
+        listItem.classList.add("active");
+        
+        // Show loading indicator in messages area
+        document.getElementById("chat-messages").innerHTML = `
+            <div class="loading-message">
+                <div class="loading-spinner"></div>
+                <span>Loading messages...</span>
+            </div>
+        `;
+        
+        // Leave previous channel room if exists
+        if (channelClicked) {
+            socket.emit("leave-channel", {
+                teamName: teamName,
+                channelName: channelClicked
+            });
+        }
+        
+        channelClicked = channel;
+        document.getElementById("chat-header").textContent = `${channel}`;
+        
+        // Join new channel room
+        socket.emit("join-channel", {
+            teamName: teamName,
+            channelName: channel
+        });
+        
+        // Enable input controls
+        enableInputControls(channel);
+        
+        getChannelMessages(teamName, channel);
+    });
+
+    return listItem;
+}
+
+// Enable message input controls
+function enableInputControls(channel) {
+    const messageInput = document.getElementById("message");
+    const emojiBtn = document.getElementById("emoji-btn");
+    const sendBtn = document.getElementById("send");
+    
+    messageInput.disabled = false;
+    emojiBtn.disabled = false;
+    sendBtn.disabled = false;
+    
+    messageInput.placeholder = `Message #${channel}`;
+}
+
+// Setup message sending event handlers
+function setupMessageHandlers() {
+    document.getElementById("send").addEventListener("click", function() {
+        sendMessage(teamName, channelClicked);
+    });
+
+    document.getElementById("message").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") {
+            sendMessage(teamName, channelClicked);
+        }
+    });
+}
+
+// Display empty channels message
+function displayNoChannelsMessage(chatList) {
+    const noChannels = document.createElement("li");
+    noChannels.textContent = "No channels available";
+    noChannels.style.color = "#999";
+    noChannels.style.fontStyle = "italic";
+    noChannels.style.padding = "15px 20px";
+    chatList.appendChild(noChannels);
+}
+
+// Display channel error message
+function displayChannelError(error) {
     const chatList = document.getElementById("chat-list");
     chatList.innerHTML = `
         <li class="error-message">
@@ -247,7 +280,7 @@ const filteredChannels = data.channels.filter(channel =>
     document.getElementById("retry-button").addEventListener("click", () => {
         window.location.reload();
     });
-});
+}
 
 // Fetch channel messages
 function getChannelMessages(teamName, channelName) {
@@ -515,31 +548,37 @@ chatLauncher.addEventListener("click", () => {
     chatFrame.classList.add('fade-in');
     // If opening the chat, send a message to the iframe
     if (!isVisible) {
-        chatFrame.contentWindow.postMessage({ action: 'openChat' }, '*');
+        chatFrame.contentWindow.postMessage({ action: 'openChat' }, TRUSTED_ORIGIN);
     }
 });
 
-// Listen for messages from the chatbot iframe
+// Listen for messages from the chatbot iframe with origin validation
 window.addEventListener('message', (event) => {
+    // Verify the origin of the message for security
+    if (event.origin !== TRUSTED_ORIGIN) {
+        console.error('Message received from untrusted origin:', event.origin);
+        return;
+    }
+    
     if (event.data.action === 'closeChat') {
         chatFrame.style.display = "none";
     }
 });
 
 document.getElementById("export-chat").addEventListener("click", function (event) {
-console.log(exportChat)
-let chatText = "";
-exportChat.forEach(msg => {
-chatText += msg.sender +": "+ msg.text+ "\n";
-});
-console.log(chatText)
-const blob = new Blob([chatText], { type: "text/plain" });
-const url = URL.createObjectURL(blob);
-const a = document.createElement("a");
-a.href = url;
-a.download = "DMchats.txt";
-a.click();
-URL.revokeObjectURL(url);
+    console.log(exportChat)
+    let chatText = "";
+    exportChat.forEach(msg => {
+        chatText += msg.sender +": "+ msg.text+ "\n";
+    });
+    console.log(chatText)
+    const blob = new Blob([chatText], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "DMchats.txt";
+    a.click();
+    URL.revokeObjectURL(url);
 })
 
 // Listen for channel messages
@@ -576,3 +615,6 @@ socket.on("connect", () => {
 socket.on("disconnect", () => {
     console.log("Socket disconnected");
 });
+
+// Start the initialization
+initializeChannels();
