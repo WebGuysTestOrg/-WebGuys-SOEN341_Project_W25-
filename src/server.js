@@ -410,7 +410,28 @@ app.post("/login", (req, res) => {
         }
     });
 });
+app.post("/remove-message", (req, res) => {
+    const { messageId } = req.body;
 
+    if (!messageId) {
+        return res.status(400).json({ error: "Message ID is required." });
+    }
+
+    const query = `
+        UPDATE channels_messages
+        SET text = 'Removed by Admin'
+        WHERE id = ?
+    `;
+
+    connection.query(query, [messageId], (err, result) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ error: "Database update failed." });
+        }
+
+        res.json({ success: true });
+    });
+});
 app.get("/user-info", (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ error: "Unauthorized" });
