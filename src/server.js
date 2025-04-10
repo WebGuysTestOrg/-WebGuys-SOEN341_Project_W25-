@@ -79,8 +79,20 @@ io.on('connection', socket => {
     require('./socket/handlers/groupMessages')(socket, io, connection);
     require('./socket/handlers/channelMessages')(socket, io, connection);
 
-    // Handle user status
-    socket.on("userOnline", (userId) => {
+    const fetchUserNames = async (userIds) => {
+        if (userIds.length === 0) return [];
+        const placeholders = userIds.map(() => '?').join(', ');
+        const sql = `SELECT name FROM user_form WHERE id IN (${placeholders})`;
+        
+        return new Promise((resolve, reject) => {
+            connection.query(sql, userIds, (err, results) => {
+                if (err) return reject(err);
+                resolve(results.map(row => row.name));
+            });
+        });
+    };
+
+    socket.on("userOnline", async (userId) => {
         if (!socket.userId) {
             socket.emit('error', { message: 'You must be logged in to update status' });
             return;
@@ -92,15 +104,25 @@ io.on('connection', socket => {
         onlineUsers.set(userIdStr, socket.id);
         awayUsers.delete(userIdStr);
         
-        io.emit("updateUserStatus", {
-            online: Array.from(onlineUsers.keys()),
-            away: Array.from(awayUsers.keys())
-        });
-
-        resetInactivityTimer(userIdStr);
+        try {
+            const [onlineNames, awayNames] = await Promise.all([
+                fetchUserNames(Array.from(onlineUsers.keys())),
+                fetchUserNames(Array.from(awayUsers.keys()))
+            ]);
+            
+            io.emit("updateUserStatus", {
+                online: Array.from(onlineUsers.keys()),
+                online_names: onlineNames,
+                away: Array.from(awayUsers.keys()),
+                away_names: awayNames
+            });
+            
+            resetInactivityTimer(userIdStr);
+        } catch (err) {
+            console.error('Error fetching user names:', err);
+        }
     });
-
-    socket.on("userAway", (userId) => {
+    socket.on("userAway", async (userId) => {
         if (!socket.userId) {
             socket.emit('error', { message: 'You must be logged in to update status' });
             return;
@@ -112,11 +134,100 @@ io.on('connection', socket => {
         awayUsers.set(userIdStr, socket.id);
         onlineUsers.delete(userIdStr);
         
-        io.emit("updateUserStatus", {
-            online: Array.from(onlineUsers.keys()),
-            away: Array.from(awayUsers.keys())
-        });
+        try {
+            const [onlineNames, awayNames] = await Promise.all([
+                fetchUserNames(Array.from(onlineUsers.keys())),
+                fetchUserNames(Array.from(awayUsers.keys()))
+            ]);
+            
+            io.emit("updateUserStatus", {
+                online: Array.from(onlineUsers.keys()),
+                online_names: onlineNames,
+                away: Array.from(awayUsers.keys()),
+                away_names: awayNames
+            });
+            
+            resetInactivityTimer(userIdStr);
+        } catch (err) {
+            console.error('Error fetching user names:', err);
+        }
     });
+
+
+
+    // Handle user status
+//     socket.on("userOnline", (userId) => {
+//         if (!socket.userId) {
+//             socket.emit('error', { message: 'You must be logged in to update status' });
+//             return;
+//         }
+        
+//         const userIdStr = userId.toString();
+//         console.log(`Setting user ${userIdStr} as ONLINE (socket: ${socket.id}, type: ${socket.userType})`);
+        
+//         onlineUsers.set(userIdStr, socket.id);
+//         awayUsers.delete(userIdStr);
+//         console.log(onlineUsers)
+
+//         const userIds = Array.from(onlineUsers.keys());
+        
+//         let onlineNames=[]
+//         if ((userIds.length) > 0) {
+//   const placeholders = userIds.map(() => '?').join(', ');
+//   const sql = `SELECT name FROM user_form WHERE id IN (${placeholders})`;
+
+//   connection.query(sql, userIds, (err, results) => {
+//     if (err) throw err;
+
+//     onlineNames= results.map(row => row.name);
+
+//     io.emit("updateUserStatus", {
+//         online: Array.from(onlineUsers.keys()),
+//         online_names:onlineNames,
+//         away: Array.from(awayUsers.keys())
+//     });
+
+//     resetInactivityTimer(userIdStr);
+//   });
+
+
+// } else {
+//   console.log('No online users');
+// }
+
+        
+//     });
+
+//     socket.on("userAway", (userId) => {
+//         if (!socket.userId) {
+//             socket.emit('error', { message: 'You must be logged in to update status' });
+//             return;
+//         }
+        
+//         const userIdStr = userId.toString();
+//         console.log(`Setting user ${userIdStr} as AWAY (socket: ${socket.id})`);
+        
+//         awayUsers.set(userIdStr, socket.id);
+//         onlineUsers.delete(userIdStr);
+        
+//         const AwayUserIds=Array.from(awayUsers.keys());
+//         let awayNames=[]
+//         if ((AwayUserIds.length) > 0) {
+//   const placeholders = AwayUserIds.map(() => '?').join(', ');
+//   const sql = `SELECT name FROM user_form WHERE id IN (${placeholders})`;
+
+//   connection.query(sql, AwayUserIds, (err, results) => {
+//     if (err) throw err;
+
+//     awayNames= results.map(row => row.name);
+//  console.log(awayNames)
+//         io.emit("updateUserStatus", {
+//             online: Array.from(onlineUsers.keys()),
+//             away: Array.from(awayUsers.keys()),
+//             away_names: awayNames
+//         });
+//     });
+// }})
 
     // Handle status update requests
     socket.on("requestStatusUpdate", () => {
@@ -317,7 +428,13 @@ app.get("/admin-info", (req, res) => {
     if (!req.session.user || req.session.user.user_type !== "admin") {
         return res.status(401).json({ error: "Unauthorized" });
     }
-    res.json({ name: req.session.user.name });
+    res.json({ 
+        name: req.session.user.name, 
+        email: req.session.user.email, 
+        id: req.session.user.id,
+        role: req.session.user.user_type
+    
+    });
 });
 
 app.post("/create-team", (req, res) => {

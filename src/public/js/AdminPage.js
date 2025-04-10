@@ -26,9 +26,9 @@ fetch('/admin-info')
         adminName = data.name;
         document.getElementById('admin-name').textContent = data.name;
 
-        document.addEventListener("click", () => resetInactivityTimer(data.name));
-        document.addEventListener("keydown", () => resetInactivityTimer(data.name));
-        socket.emit("userOnline", data.name);
+        document.addEventListener("click", () => resetInactivityTimer(data.id));
+        document.addEventListener("keydown", () => resetInactivityTimer(data.id));
+        socket.emit("userOnline", data.id);
         
         if (data.role === "user" && window.location.pathname !== "/UserDashboard.html") {
             window.location.href = "/UserDashboard.html";
@@ -469,11 +469,13 @@ function removeMemberFromTeam(teamId, userName) {
 }
 
 // User status management
-socket.on("updateUserStatus", ({ online, away }) => {
+socket.on("updateUserStatus", ({ online,online_names, away,away_names  }) => {
+    console.log(online,online_names)
     fetch("/api/users") 
         .then(response => response.json())
         .then(data => {
-            updateUserStatusUI(data.all_users, online, away, data.user_logout_times);
+            updateUserStatusUI(data.all_users, online_names, away_names, data.user_logout_times);
+            console.log(online,online_names, away,away_names)
         });
 });
         
@@ -482,18 +484,22 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
     usersStatusDiv.innerHTML = "";
 
     // Add header
+    
     const statusHeader = document.createElement('div');
     statusHeader.classList.add('status-header');
     statusHeader.innerHTML = `<h3>All Users (${allUsers.length})</h3>`;
     usersStatusDiv.appendChild(statusHeader);
-
+    const online = onlineUsers || [];
+    const away=awayUsers|| [];
     // Sort users: online first, then away, then offline
     // Within each status category, sort admins first
     allUsers.sort((a, b) => {
-        const aIsOnline = onlineUsers.includes(a.name);
-        const bIsOnline = onlineUsers.includes(b.name);
-        const aIsAway = awayUsers.includes(a.name);
-        const bIsAway = awayUsers.includes(b.name);
+       console.log(onlineUsers)
+       console.log(awayUsers)
+        const aIsOnline = online.includes(a.name);
+        const bIsOnline = online.includes(b.name);
+        const aIsAway = away.includes(a.name);
+        const bIsAway = away.includes(b.name);
         
         if (aIsOnline && !bIsOnline) return -1;
         if (!aIsOnline && bIsOnline) return 1;
@@ -509,8 +515,8 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
     });
 
     allUsers.forEach(user => {
-        const isOnline = onlineUsers.includes(user.name);
-        const isAway = awayUsers.includes(user.name);
+        const isOnline = online.includes(user.name);
+        const isAway = away.includes(user.name);
         const isCurrentUser = user.name === adminName;
 
         const userDiv = document.createElement("div");
@@ -1102,6 +1108,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     chatLauncher.addEventListener("click", () => {
         const isVisible = chatFrame.style.display === "block";
+        chatFrame.classList.add('fade-in');
         chatFrame.style.display = isVisible ? "none" : "block";
     });
 });
