@@ -1075,16 +1075,4 @@ body {
     .chat-recipient-name {
         margin-left: 5px;
     }
-
-    .pinned-box {
-        background: #fff8dc;
-        border-left: 4px solid #f0ad4e;
-        padding: 10px;
-        margin: 10px;
-        border-radius: 8px;
-        font-size: 14px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
 }
