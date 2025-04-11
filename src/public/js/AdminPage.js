@@ -541,9 +541,10 @@ function updateUserStatusUI(allUsers, onlineUsers, awayUsers, logoutTimes) {
         } else {
             // Get last logout timestamp for this user
             const userLogout = logoutTimes.find(logout => logout.name === user.name);
-            if (userLogout && userLogout.last_logout) {
+            if (userLogout?.last_logout) {
                 logoutTimestamp = `<div class="timestamp">Last seen: ${new Date(userLogout.last_logout).toLocaleString()}</div>`;
             }
+            
         }
 
         // Format registration date if available
@@ -1153,10 +1154,11 @@ function showAddToChannelModal(user) {
                         option.textContent = channel.channelName;
                         
                         // Check if user is already a member
-                        if (channel.members && channel.members.includes(user.name)) {
+                        if (channel.members?.includes(user.name)) {
                             option.disabled = true;
                             option.textContent += ' (Already a member)';
                         }
+                        
                         
                         optgroup.appendChild(option);
                     });
