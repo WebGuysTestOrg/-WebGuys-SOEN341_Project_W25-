@@ -708,25 +708,24 @@ function displayMessage(msg, isOwnMessage) {
     const chatMessages = document.getElementById("chat-messages");
     const messageElement = document.createElement("div");
     const messageId = msg.id || 'msg-' + Date.now();
-    
-    // Set id for the message element
+
     messageElement.id = messageId;
-    
-    // Differentiate between own message and message from others
     messageElement.classList.add("message-container", isOwnMessage ? "own-message" : "other-message");
     if (msg.pending) {
         messageElement.classList.add("pending");
     }
-    
-    // Format timestamp
+
     const timestamp = msg.timestamp ? new Date(msg.timestamp) : new Date();
     const timeString = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    // Sanitize message text and sender name to prevent XSS
+
     const sanitizedText = sanitizeHTML(msg.text);
     const sanitizedSenderName = sanitizeHTML(msg.senderName);
-    
-    // Create message content
+
+    // Extracted the ternary operation into a variable
+    const messageStatusIcon = msg.pending 
+        ? '<i class="fas fa-clock"></i>' 
+        : '<i class="fas fa-check"></i>';
+
     let messageContent = `
         <div class="message-content">
             ${!isOwnMessage ? `<div class="message-sender">${sanitizedSenderName}</div>` : ''}
@@ -741,40 +740,36 @@ function displayMessage(msg, isOwnMessage) {
                 <span class="message-time">${timeString}</span>
                 ${isOwnMessage ? `
                     <span class="message-status">
-                        ${msg.pending ? '<i class="fas fa-clock"></i>' : '<i class="fas fa-check"></i>'}
+                        ${messageStatusIcon}
                     </span>
                 ` : ''}
             </div>
         </div>
     `;
-    
-    // Add controls for non-own messages
-   
-        messageContent += `
+
+    messageContent += `
         <div class="message-actions">
-        ${!isOwnMessage ? `
-            <button class="reply-btn" title="Reply to this message"><i class="fas fa-reply"></i></button>
+            ${!isOwnMessage ? `
+                <button class="reply-btn" title="Reply to this message"><i class="fas fa-reply"></i></button>
             ` : ''}
             <button class="pin-btn" title="Pin this message"><i class="fas fa-thumbtack"></i></button>
         </div>
-        `;
-    
-    
+    `;
+
     messageElement.innerHTML = messageContent;
-    
+
     const pinBtn = messageElement.querySelector('.pin-btn');
     if (pinBtn) {
         pinBtn.addEventListener('click', () => {
-            pinMessageToChat(msg.id); 
+            pinMessageToChat(msg.id);
         });
     }
 
-    // Add event listener for reply button
     if (!isOwnMessage) {
         const replyBtn = messageElement.querySelector('.reply-btn');
         replyBtn.addEventListener('click', () => quoteMessage(messageId, msg.text));
     }
-    
+
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
@@ -783,13 +778,13 @@ function displayMessage(msg, isOwnMessage) {
         pinButton.innerHTML = '<i class="fas fa-thumbtack"></i>';
         pinButton.title = "Pin message";
         pinButton.classList.add("pin-btn");
-    
+
         pinButton.addEventListener("click", () => {
             fetch(`/api/channel-messages/${msg.id}/pin`, {
                 method: "PUT"
             }).then(() => loadPinnedMessage());
         });
-    
+
         messageElement.appendChild(pinButton);
     }
 }
@@ -939,10 +934,10 @@ document.getElementById("export-chat").addEventListener("click", function (event
     console.log("Exporting chat data:", exportChat);
     let chatText = "";
     exportChat.forEach(msg => {
-      if (msg && msg.senderName && msg.text) {
-        chatText += msg.senderName +": "+ msg.text+ "\n";
-      }
-    });
+        if (msg?.senderName && msg?.text) {
+            chatText += `${msg.senderName}: ${msg.text}\n`;
+        }
+    });    
     
     if (chatText.trim() === "") {
       alert("No valid messages found to export.");
@@ -1000,7 +995,6 @@ function loadPinnedMessage() {
             if (!msg) {
                 pinnedDiv.style.display = 'none';
                 pinnedDiv.innerHTML = '';
-                return;
             }
             else{
                 pinnedDiv.style.display = 'block';
