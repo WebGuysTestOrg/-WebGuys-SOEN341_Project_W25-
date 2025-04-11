@@ -221,90 +221,85 @@ function fetchUserChats(directChatUser = null) {
             }
             return response.json();
         })
-        .then(chats => {
-            const chatList = document.getElementById("chat-list");
-            // Save current active chat if any
-            const currentActive = currentRecipientId;
-            // Store list of chats with unread messages
-            const unreadChats = Array.from(document.querySelectorAll('#chat-list li.has-unread')).map(
-                li => li.dataset.recipientId
-            );
-            
-            chatList.innerHTML = "";
-            
-            chats.forEach(chat => {
-                let chatItem = document.createElement("li");
-                chatItem.innerHTML = `
-                    <div class="chat-item-avatar">
-                        <i class="fas fa-user-circle"></i>
-                    </div>
-                    <div class="chat-item-details">
-                        <span class="chat-item-name">${chat.username}</span>
-                    </div>
-                `;
-                chatItem.dataset.recipientId = chat.user_id;
-                chatItem.dataset.recipientName = chat.username;
-                
-                // Restore unread status if it had one before
-                if (unreadChats.includes(chat.user_id.toString())) {
-                    chatItem.classList.add('has-unread');
-                }
-                
-                // Make active if this was the currently selected chat
-                if (currentActive && chat.user_id.toString() === currentActive.toString()) {
-                    chatItem.classList.add('active');
-                }
-                
-                chatItem.addEventListener("click", () => {
-                    // Highlight the selected chat
-                    document.querySelectorAll('#chat-list li').forEach(item => {
-                        item.classList.remove('active');
-                    });
-                    chatItem.classList.add('active');
-                    
-                    loadChat(chat.user_id, chat.username);
-                });
-                chatList.appendChild(chatItem);
-                
-                // If this chat matches the direct message user, select it
-                if (directChatUser && chat.username === directChatUser) {
-                    chatItem.click();
-                }
-            });
-            
-            // Initialize mobile interaction handlers
-            initMobileInteraction();
-            
-            // Update online status for chat list
-            updateChatListStatus();
-            
-            // If we have a direct message user but no matching chat, create a new chat
-            if (directChatUser && !chats.some(chat => chat.username === directChatUser)) {
-                initiateDirectChat(directChatUser);
-            }
-            
-            // If we're on mobile and no chat is selected, show the sidebar
-            if (isMobile() && !currentRecipientId) {
-                sidebar.classList.add('active');
-            }
-        })
-        .catch(err => {
-            console.error("Error fetching chats:", err);
-            // Show an error message to the user
-            const chatList = document.getElementById("chat-list");
-            chatList.innerHTML = `
-                <div class="chat-error">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <p>Unable to load conversations</p>
-                    <button id="retry-chats-btn">Retry</button>
-                </div>
-            `;
-            
-            // Add retry functionality
-            document.getElementById('retry-chats-btn')?.addEventListener('click', () => {
-                fetchUserChats(directChatUser);
-            });
-        });
+        .then(chats => handleFetchChatsSuccess(chats, directChatUser))
+        .catch(err => handleFetchChatsError(err, directChatUser));
+}
+
+function handleFetchChatsSuccess(chats, directChatUser) {
+    const chatList = document.getElementById("chat-list");
+    const currentActive = currentRecipientId;
+    const unreadChats = Array.from(document.querySelectorAll('#chat-list li.has-unread'))
+        .map(li => li.dataset.recipientId);
+
+    chatList.innerHTML = "";
+
+    chats.forEach(chat => {
+        const chatItem = createChatItem(chat, currentActive, unreadChats, directChatUser);
+        chatList.appendChild(chatItem);
+    });
+
+    initMobileInteraction();
+    updateChatListStatus();
+
+    if (directChatUser && !chats.some(chat => chat.username === directChatUser)) {
+        initiateDirectChat(directChatUser);
+    }
+
+    if (isMobile() && !currentRecipientId) {
+        sidebar.classList.add('active');
+    }
+}
+
+function createChatItem(chat, currentActive, unreadChats, directChatUser) {
+    const chatItem = document.createElement("li");
+    chatItem.innerHTML = `
+        <div class="chat-item-avatar">
+            <i class="fas fa-user-circle"></i>
+        </div>
+        <div class="chat-item-details">
+            <span class="chat-item-name">${chat.username}</span>
+        </div>
+    `;
+
+    chatItem.dataset.recipientId = chat.user_id;
+    chatItem.dataset.recipientName = chat.username;
+
+    if (unreadChats.includes(chat.user_id.toString())) {
+        chatItem.classList.add('has-unread');
+    }
+
+    if (currentActive && chat.user_id.toString() === currentActive.toString()) {
+        chatItem.classList.add('active');
+    }
+
+    chatItem.addEventListener("click", () => {
+        document.querySelectorAll('#chat-list li').forEach(item => item.classList.remove('active'));
+        chatItem.classList.add('active');
+        loadChat(chat.user_id, chat.username);
+    });
+
+    if (directChatUser && chat.username === directChatUser) {
+        chatItem.click();
+    }
+
+    return chatItem;
+}
+
+function handleFetchChatsError(err, directChatUser) {
+    console.error("Error fetching chats:", err);
+    const chatList = document.getElementById("chat-list");
+
+    chatList.innerHTML = `
+        <div class="chat-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <p>Unable to load conversations</p>
+            <button id="retry-chats-btn">Retry</button>
+        </div>
+    `;
+
+    document.getElementById('retry-chats-btn')?.addEventListener('click', () => {
+        fetchUserChats(directChatUser);
+    });
 }
 
 // Initiate a direct chat from URL parameter
@@ -509,6 +504,8 @@ function loadChat(recipientId, recipientName) {
             
             // Focus the message input
             document.getElementById("message").focus();
+
+            loadPinnedMessage();
         })
         .catch(err => {
             console.error("Error loading messages:", err);
@@ -532,7 +529,6 @@ function loadChat(recipientId, recipientName) {
 
 // Format date for message separators
 function formatDateSeparator(dateString) {
-    const date = new Date(dateString);
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -628,60 +624,76 @@ function sendMessage() {
 
 // Display messages
 socket.on("private-message", (msg) => {
-    // Update chat list first to show unread message indicators
-    if (msg.senderId !== loggedInUserId && msg.senderId !== currentRecipientId) {
-        // Find existing chat item for this sender
-        let chatItem = document.querySelector(`#chat-list li[data-recipient-id="${msg.senderId}"]`);
-        
-        if (chatItem) {
-            // Add an unread indicator if it's not the current chat
-            chatItem.classList.add('has-unread');
-            
-            // Move this chat to the top of the list
-            const chatList = document.getElementById("chat-list");
-            chatList.prepend(chatItem);
-        } else {
-            // If chat doesn't exist yet, reload the chat list
-            fetchUserChats();
-        }
-        
-        // Show notification
+    if (shouldHandleUnreadIndicator(msg)) {
+        handleUnreadIndicator(msg);
         showNotification(msg);
-        return; // Don't update chat window for chats we're not viewing
+        return;
     }
-    
-    // Handle message in current chat window
-    if (msg.senderId == loggedInUserId || msg.recipientId == loggedInUserId) {
-        // Only process message in chat window if it's for the current chat
-        if (msg.senderId === currentRecipientId || msg.recipientId === currentRecipientId || msg.senderId === loggedInUserId) {
-            // Try different ID formats for pending messages
-            let pendingMessage = document.getElementById('msg-' + msg.id);
-            exportChat.push(msg)
-            // If not found, try looking for a message with tempId
-            if (!pendingMessage && msg.tempId) {
-                pendingMessage = document.getElementById(msg.tempId);
-            }
-            
-            if (pendingMessage) {
-                pendingMessage.classList.remove('pending');
-                const statusElement = pendingMessage.querySelector('.message-status');
-                if (statusElement) {
-                    statusElement.innerHTML = '<i class="fas fa-check"></i>';
-                }
-            } else {
-                // This is a new message
-                
-                displayMessage(msg, msg.senderId === loggedInUserId);
-                
-                // If this is from someone else in the current chat, scroll to bottom
-                if (msg.senderId !== loggedInUserId) {
-                    const chatMessages = document.getElementById("chat-messages");
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
-            }
-        }
+
+    if (shouldHandleCurrentChat(msg)) {
+        handleCurrentChatMessage(msg);
     }
 });
+
+function shouldHandleUnreadIndicator(msg) {
+    return msg.senderId !== loggedInUserId && msg.senderId !== currentRecipientId;
+}
+
+function shouldHandleCurrentChat(msg) {
+    return msg.senderId == loggedInUserId || msg.recipientId == loggedInUserId;
+}
+
+function handleUnreadIndicator(msg) {
+    const chatItem = document.querySelector(`#chat-list li[data-recipient-id="${msg.senderId}"]`);
+    if (chatItem) {
+        chatItem.classList.add('has-unread');
+        document.getElementById("chat-list").prepend(chatItem);
+    } else {
+        fetchUserChats();
+    }
+}
+
+function handleCurrentChatMessage(msg) {
+    if (isMessageForCurrentChat(msg)) {
+        exportChat.push(msg);
+
+        const pendingMessage = findPendingMessage(msg);
+
+        if (pendingMessage) {
+            updatePendingMessageStatus(pendingMessage);
+        } else {
+            insertNewMessage(msg);
+        }
+    }
+}
+
+function isMessageForCurrentChat(msg) {
+    return msg.senderId === currentRecipientId || msg.recipientId === currentRecipientId || msg.senderId === loggedInUserId;
+}
+
+function findPendingMessage(msg) {
+    return document.getElementById('msg-' + msg.id) || (msg.tempId ? document.getElementById(msg.tempId) : null);
+}
+
+function updatePendingMessageStatus(pendingMessage) {
+    pendingMessage.classList.remove('pending');
+    const statusElement = pendingMessage.querySelector('.message-status');
+    if (statusElement) {
+        statusElement.innerHTML = '<i class="fas fa-check"></i>';
+    }
+}
+
+function insertNewMessage(msg) {
+    displayMessage(msg, msg.senderId === loggedInUserId);
+    if (msg.senderId !== loggedInUserId) {
+        scrollChatToBottom();
+    }
+}
+
+function scrollChatToBottom() {
+    const chatMessages = document.getElementById("chat-messages");
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
 
 // HTML sanitization function to prevent XSS attacks
 function sanitizeHTML(text) {
@@ -737,16 +749,26 @@ function displayMessage(msg, isOwnMessage) {
     `;
     
     // Add controls for non-own messages
-    if (!isOwnMessage) {
+   
         messageContent += `
-            <div class="message-actions">
-                <button class="reply-btn" title="Reply to this message"><i class="fas fa-reply"></i></button>
-            </div>
+        <div class="message-actions">
+        ${!isOwnMessage ? `
+            <button class="reply-btn" title="Reply to this message"><i class="fas fa-reply"></i></button>
+            ` : ''}
+            <button class="pin-btn" title="Pin this message"><i class="fas fa-thumbtack"></i></button>
+        </div>
         `;
-    }
+    
     
     messageElement.innerHTML = messageContent;
     
+    const pinBtn = messageElement.querySelector('.pin-btn');
+    if (pinBtn) {
+        pinBtn.addEventListener('click', () => {
+            pinMessageToChat(msg.id); 
+        });
+    }
+
     // Add event listener for reply button
     if (!isOwnMessage) {
         const replyBtn = messageElement.querySelector('.reply-btn');
@@ -755,6 +777,21 @@ function displayMessage(msg, isOwnMessage) {
     
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    if (msg.text !== "Removed by Admin") {
+        const pinButton = document.createElement("button");
+        pinButton.innerHTML = '<i class="fas fa-thumbtack"></i>';
+        pinButton.title = "Pin message";
+        pinButton.classList.add("pin-btn");
+    
+        pinButton.addEventListener("click", () => {
+            fetch(`/api/channel-messages/${msg.id}/pin`, {
+                method: "PUT"
+            }).then(() => loadPinnedMessage());
+        });
+    
+        messageElement.appendChild(pinButton);
+    }
 }
 
 function showNotification(msg) {
@@ -939,3 +976,65 @@ window.addEventListener('message', (event) => {
         chatFrame.style.display = "none";
     }
 });
+
+function pinMessageToChat(messageId) {
+    fetch(`/api/messages/${messageId}/pin`, {
+        method: 'PUT'
+    })
+    .then(res => res.json())
+    .then(data => {
+        loadPinnedMessage(); 
+    })
+    .catch(err => {
+        console.error("Failed to pin message:", err);
+    });
+}
+
+function loadPinnedMessage() {
+    console.log("Fetching pinned message for:", loggedInUserId, currentRecipientId);
+    fetch(`/api/messages/pinned?senderId=${loggedInUserId}&recipientId=${currentRecipientId}`)
+        .then(res => res.json())
+        .then(msg => {
+            console.log("Pinned message from server:", msg);
+            const pinnedDiv = document.getElementById('pinned-message-display');
+            if (!msg) {
+                pinnedDiv.style.display = 'none';
+                pinnedDiv.innerHTML = '';
+                return;
+            }
+            else{
+                pinnedDiv.style.display = 'block';
+                pinnedDiv.innerHTML = `
+                <strong>Pinned:</strong> ${sanitizeHTML(msg.text)}
+                <button onclick="unpinMessage(${msg.id})" style="margin-left: 10px;">
+                    <i class="fas fa-times"></i> Unpin
+                </button>
+            `;
+
+
+            }
+            
+        });
+}
+
+function unpinMessage(messageId) {
+    fetch(`/api/messages/${messageId}/unpin`, {
+        method: 'PUT'
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const pinnedDiv = document.getElementById('pinned-message-display');
+            if (pinnedDiv) {
+                pinnedDiv.style.display = 'none';
+                pinnedDiv.innerHTML = '';
+            }
+        } else {
+            alert("Failed to unpin the message.");
+        }
+    })
+    .catch(err => {
+        console.error("Error unpinning message:", err);
+        alert("Error unpinning message.");
+    });
+}
