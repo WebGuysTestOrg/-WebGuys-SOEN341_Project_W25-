@@ -221,6 +221,8 @@ function createChannelListItem(channel) {
             teamName: teamName,
             channelName: channel
         });
+
+        loadPinnedMessage();
         
         // Enable input controls
         enableInputControls(channel);
@@ -442,6 +444,21 @@ console.log(msg)
 
     // Append the message to the chat window
     chatMessages.appendChild(messageElement);
+
+    if (msg.text !== "Removed by Admin") {
+        const pinButton = document.createElement("button");
+        pinButton.innerHTML = '<i class="fas fa-thumbtack"></i>';
+        pinButton.title = "Pin message";
+        pinButton.classList.add("pin-btn");
+    
+        pinButton.addEventListener("click", () => {
+            fetch(`/api/channel-messages/${msg.id}/pin`, {
+                method: "PUT"
+            }).then(() => loadPinnedMessage());
+        });
+    
+        messageElement.appendChild(pinButton);
+    }
 }
 
 // Send message to the server
@@ -610,6 +627,35 @@ socket.on("connect", () => {
 socket.on("disconnect", () => {
     console.log("Socket disconnected");
 });
+
+function loadPinnedMessage() {
+    fetch(`/api/channel-messages/pinned?teamName=${teamName}&channelName=${channelClicked}`)
+        .then(res => res.json())
+        .then(msg => {
+            const pinnedDiv = document.getElementById('pinned-message-display');
+            if (!pinnedDiv) return;
+
+            if (!msg) {
+                pinnedDiv.style.display = 'none';
+                pinnedDiv.innerHTML = '';
+                return;
+            }
+
+            pinnedDiv.style.display = 'block';
+            pinnedDiv.innerHTML = `
+                <strong>Pinned:</strong> ${msg.text}
+                <button onclick="unpinMessage(${msg.id})" style="margin-left: 10px;">
+                    <i class="fas fa-times"></i> Unpin
+                </button>
+            `;
+        });
+}
+
+function unpinMessage(messageId) {
+    fetch(`/api/channel-messages/${messageId}/unpin`, {
+        method: "PUT"
+    }).then(() => loadPinnedMessage());
+}
 
 // Start the initialization
 initializeChannels();

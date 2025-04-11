@@ -509,6 +509,8 @@ function loadChat(recipientId, recipientName) {
             
             // Focus the message input
             document.getElementById("message").focus();
+
+            loadPinnedMessage();
         })
         .catch(err => {
             console.error("Error loading messages:", err);
@@ -737,16 +739,26 @@ function displayMessage(msg, isOwnMessage) {
     `;
     
     // Add controls for non-own messages
-    if (!isOwnMessage) {
+   
         messageContent += `
-            <div class="message-actions">
-                <button class="reply-btn" title="Reply to this message"><i class="fas fa-reply"></i></button>
-            </div>
+        <div class="message-actions">
+        ${!isOwnMessage ? `
+            <button class="reply-btn" title="Reply to this message"><i class="fas fa-reply"></i></button>
+            ` : ''}
+            <button class="pin-btn" title="Pin this message"><i class="fas fa-thumbtack"></i></button>
+        </div>
         `;
-    }
+    
     
     messageElement.innerHTML = messageContent;
     
+    const pinBtn = messageElement.querySelector('.pin-btn');
+    if (pinBtn) {
+        pinBtn.addEventListener('click', () => {
+            pinMessageToChat(msg.id); 
+        });
+    }
+
     // Add event listener for reply button
     if (!isOwnMessage) {
         const replyBtn = messageElement.querySelector('.reply-btn');
@@ -755,6 +767,21 @@ function displayMessage(msg, isOwnMessage) {
     
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    if (msg.text !== "Removed by Admin") {
+        const pinButton = document.createElement("button");
+        pinButton.innerHTML = '<i class="fas fa-thumbtack"></i>';
+        pinButton.title = "Pin message";
+        pinButton.classList.add("pin-btn");
+    
+        pinButton.addEventListener("click", () => {
+            fetch(`/api/channel-messages/${msg.id}/pin`, {
+                method: "PUT"
+            }).then(() => loadPinnedMessage());
+        });
+    
+        messageElement.appendChild(pinButton);
+    }
 }
 
 function showNotification(msg) {
@@ -939,3 +966,65 @@ window.addEventListener('message', (event) => {
         chatFrame.style.display = "none";
     }
 });
+
+function pinMessageToChat(messageId) {
+    fetch(`/api/messages/${messageId}/pin`, {
+        method: 'PUT'
+    })
+    .then(res => res.json())
+    .then(data => {
+        loadPinnedMessage(); 
+    })
+    .catch(err => {
+        console.error("Failed to pin message:", err);
+    });
+}
+
+function loadPinnedMessage() {
+    console.log("Fetching pinned message for:", loggedInUserId, currentRecipientId);
+    fetch(`/api/messages/pinned?senderId=${loggedInUserId}&recipientId=${currentRecipientId}`)
+        .then(res => res.json())
+        .then(msg => {
+            console.log("Pinned message from server:", msg);
+            const pinnedDiv = document.getElementById('pinned-message-display');
+            if (!msg) {
+                pinnedDiv.style.display = 'none';
+                pinnedDiv.innerHTML = '';
+                return;
+            }
+            else{
+                pinnedDiv.style.display = 'block';
+                pinnedDiv.innerHTML = `
+                <strong>Pinned:</strong> ${sanitizeHTML(msg.text)}
+                <button onclick="unpinMessage(${msg.id})" style="margin-left: 10px;">
+                    <i class="fas fa-times"></i> Unpin
+                </button>
+            `;
+
+
+            }
+            
+        });
+}
+
+function unpinMessage(messageId) {
+    fetch(`/api/messages/${messageId}/unpin`, {
+        method: 'PUT'
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const pinnedDiv = document.getElementById('pinned-message-display');
+            if (pinnedDiv) {
+                pinnedDiv.style.display = 'none';
+                pinnedDiv.innerHTML = '';
+            }
+        } else {
+            alert("Failed to unpin the message.");
+        }
+    })
+    .catch(err => {
+        console.error("Error unpinning message:", err);
+        alert("Error unpinning message.");
+    });
+}
