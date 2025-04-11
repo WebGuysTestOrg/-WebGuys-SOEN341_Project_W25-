@@ -1775,10 +1775,11 @@ app.get('/api/channel-messages/pinned', (req, res) => {
     connection.query(`
         SELECT * FROM channels_messages 
         WHERE pinned = true AND team_name = ? AND channel_name = ?
-        ORDER BY created_at DESC LIMIT 1
+        ORDER BY created_at DESC 
     `, [teamName, channelName], (err, results) => {
+        console.log(results)
         if (err) return res.status(500).json({ error: 'Failed to fetch pinned message' });
-        res.json(results[0] || null);
+        res.json(results || null);
     });
 });
 
