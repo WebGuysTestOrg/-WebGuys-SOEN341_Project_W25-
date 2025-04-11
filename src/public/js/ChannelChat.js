@@ -631,25 +631,34 @@ socket.on("disconnect", () => {
 function loadPinnedMessage() {
     fetch(`/api/channel-messages/pinned?teamName=${teamName}&channelName=${channelClicked}`)
         .then(res => res.json())
-        .then(msg => {
+        .then(messages => {
             const pinnedDiv = document.getElementById('pinned-message-display');
             if (!pinnedDiv) return;
 
-            if (!msg) {
+            if (!messages || messages.length === 0) {
                 pinnedDiv.style.display = 'none';
                 pinnedDiv.innerHTML = '';
                 return;
             }
 
+            console.log(messages); // Check if it's an array
+
             pinnedDiv.style.display = 'block';
-            pinnedDiv.innerHTML = `
-                <strong>Pinned:</strong> ${msg.text}
-                <button onclick="unpinMessage(${msg.id})" style="margin-left: 10px;">
-                    <i class="fas fa-times"></i> Unpin
-                </button>
-            `;
+            pinnedDiv.innerHTML = ''; // Clear previous content
+
+            messages.forEach(msg => {
+                const msgDiv = document.createElement('div');
+                msgDiv.innerHTML = `
+                    <strong>Pinned:</strong> ${msg.text}
+                    <button onclick="unpinMessage(${msg.id})" style="margin-left: 10px;">
+                        <i class="fas fa-times"></i> Unpin
+                    </button>
+                `;
+                pinnedDiv.appendChild(msgDiv);
+            });
         });
 }
+
 
 function unpinMessage(messageId) {
     fetch(`/api/channel-messages/${messageId}/unpin`, {
