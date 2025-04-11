@@ -8,280 +8,271 @@ let globalChatOpen = false;
 let currentUserId = null;
 let currentUserName = null;
 
-function fetchUserTeams() {
-    fetch('/get-user-teams')
-        .then(response => response.json())
-        .then(teams => {
-            userTeams = {};  // Reset userTeams object
-            const teamsContainer = document.getElementById("teams-container");
-            teamsContainer.innerHTML = "";
-
-            teams.forEach(team => {
-                // Store team data
-                userTeams[team.teamId] = team;
-                
-                // Create team card
-                let teamElement = document.createElement("div");
-                teamElement.classList.add("team-card");
-
-                let teamHeader = document.createElement("div");
-                teamHeader.classList.add("team-header");
-                teamHeader.innerHTML = `
-                    <h3>(${team.teamId}) ${team.teamName}</h3>
-                    <p><strong>Created by:</strong> ${team.creatorName || "Unknown"}</p>
-                    <div class="team-members">
-                        <strong>Members:</strong> ${team.members.length > 0 ? team.members.join(", ") : "No members"}
-                    </div>
-                `;
-
-                // Add channel creation form
-                let createChannelForm = document.createElement("div");
-                createChannelForm.classList.add("create-channel-form");
-                createChannelForm.innerHTML = `
-                    <div class="channel-form-header">
-                        <button class="btn show-channel-form">
-                            <i class="fas fa-plus"></i> Create Channel
-                        </button>
-                    </div>
-                    <form class="channel-form" style="display: none;">
-                        <input type="text" class="channel-name-input" placeholder="Enter Channel Name" required>
-                        <div class="channel-helper">Channel name can contain letters, numbers, hyphens and underscores</div>
-                        <button type="submit" class="btn create-channel-btn">
-                            <i class="fas fa-plus"></i> Create
-                        </button>
-                    </form>
-                `;
-
-                // Add event listeners for channel creation
-                const showFormBtn = createChannelForm.querySelector('.show-channel-form');
-                const channelForm = createChannelForm.querySelector('.channel-form');
-                const channelNameInput = createChannelForm.querySelector('.channel-name-input');
-
-                showFormBtn.addEventListener('click', () => {
-                    channelForm.style.display = channelForm.style.display === 'none' ? 'block' : 'none';
-                });
-
-                channelForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const channelName = channelNameInput.value.trim();
-
-                    if (!channelName) {
-                        showToast("Channel name is required", "error");
-                        return;
-                    }
-
-                    // Validate channel name format
-                    const channelNameRegex = /^[a-zA-Z0-9_-]+$/;
-                    if (!channelNameRegex.test(channelName)) {
-                        showToast("Channel name can only contain letters, numbers, hyphens and underscores", "error");
-                        return;
-                    }
-
-                    try {
-                        const response = await fetch('/create-channel', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                channelName: channelName,
-                                teamId: team.teamId
-                            })
-                        });
-
-                        const data = await response.json();
-                        
-                        if (!response.ok) {
-                            throw new Error(data.error || 'Failed to create channel');
-                        }
-
-                        showToast("Channel created successfully!", "success");
-                        channelForm.style.display = 'none';
-                        channelNameInput.value = '';
-                        fetchUserTeams(); // Refresh the teams display
-                    } catch (err) {
-                        console.error("Error creating channel:", err);
-                        showToast(err.message || "Failed to create channel", "error");
-                    }
-                });
-
-                let channelsSection = document.createElement("div");
-                channelsSection.classList.add("channels-section");
-
-                console.log(team)
-                // Display channels
-                if (team.channels && Object.keys(team.channels).length > 0) {
-                    Object.values(team.channels).forEach(channel => {
-                        let channelElement = document.createElement("div");
-                        channelElement.classList.add("channel-item");
-                        
-                        let channelContent = document.createElement("div");
-                        channelContent.classList.add("channel-content");
-                        channelContent.innerHTML = `
-                            <div class="channel-header">
-                                <h4>📢 ${channel.channelName}</h4>
-                                <button class="assign-user-btn" title="Assign User">
-                                    <i class="fas fa-user-plus"></i>
-                                </button>
-                            </div>
-                            <p class="channel-members"><strong>Members:</strong> ${channel.members.length > 0 ? channel.members.join(", ") : "No members"}</p>
-                        `;
-
-                        // Create hidden assignment form
-                        let assignForm = document.createElement("div");
-                        assignForm.classList.add("channel-assign-form");
-                        assignForm.style.display = "none";
-                        
-                        // Filter out members already in the channel
-                        const availableMembers = team.members.filter(member => 
-                            !channel.members.includes(member)
-                        );
-
-                        assignForm.innerHTML = `
-                            <div class="assign-form-content">
-                                <select class="team-members-select">
-                                    <option value="">Select Team Member</option>
-                                    ${availableMembers.map(member => 
-                                        `<option value="${member}">${member}</option>`
-                                    ).join('')}
-                                </select>
-                                <button class="btn assign-btn" disabled>
-                                    <i class="fas fa-plus"></i> Add
-                                </button>
-                                <button class="btn cancel-btn">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        `;
-
-                        // Add event listeners
-                        const assignUserBtn = channelContent.querySelector('.assign-user-btn');
-                        assignUserBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            // Close any other open forms first
-                            document.querySelectorAll('.channel-assign-form').forEach(form => {
-                                if (form !== assignForm) {
-                                    form.style.display = "none";
-                                }
-                            });
-                            assignForm.style.display = assignForm.style.display === "none" ? "block" : "none";
-                        });
-
-                        const cancelBtn = assignForm.querySelector('.cancel-btn');
-                        cancelBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            assignForm.style.display = "none";
-                        });
-
-                        const memberSelect = assignForm.querySelector('.team-members-select');
-                        const assignBtn = assignForm.querySelector('.assign-btn');
-                        
-                        memberSelect.addEventListener('change', () => {
-                            assignBtn.disabled = !memberSelect.value;
-                        });
-
-                        assignBtn.addEventListener('click', async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            
-                            const selectedUser = memberSelect.value;
-                            if (!selectedUser) {
-                                showToast("Please select a team member", "error");
-                                return;
-                            }
-
-                            // Disable the button and show loading state
-                            assignBtn.disabled = true;
-                            assignBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
-
-                            try {
-                                const response = await fetch('/assign-user', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        teamId: team.teamId,
-                                        channelName: channel.channelName,
-                                        userName: selectedUser
-                                    })
-                                });
-
-                                const data = await response.json();
-                                
-                                if (!response.ok) {
-                                    throw new Error(data.error || 'Failed to assign user');
-                                }
-
-                                // Show success notification
-                                showToast(`Successfully assigned ${selectedUser} to channel ${channel.channelName}`, "success");
-                                
-                                // Update the members list with the new data
-                                const membersP = channelContent.querySelector('.channel-members');
-                                membersP.innerHTML = `<strong>Members:</strong> ${data.updatedMembers.join(', ')}`;
-                                
-                                // Hide the form
-                                assignForm.style.display = "none";
-                                
-                                // Reset the form
-                                memberSelect.value = '';
-                                assignBtn.disabled = true;
-
-                                // Remove the assigned user from the dropdown
-                                Array.from(memberSelect.options).forEach(option => {
-                                    if (option.value === selectedUser) {
-                                        option.remove();
-                                    }
-                                });
-
-                                // If no more members to add, disable the assign button
-                                if (memberSelect.options.length <= 1) { // Only the default option left
-                                    assignUserBtn.disabled = true;
-                                    assignUserBtn.title = 'All team members are already in this channel';
-                                }
-
-                            } catch (err) {
-                                console.error("Error assigning user:", err);
-                                showToast(err.message || "Failed to assign user", "error");
-                            } finally {
-                                // Reset button state
-                                assignBtn.disabled = false;
-                                assignBtn.innerHTML = '<i class="fas fa-plus"></i> Add';
-                            }
-                        });
-
-                        channelElement.appendChild(channelContent);
-                        channelElement.appendChild(assignForm);
-                        channelsSection.appendChild(channelElement);
-                    });
-                } else {
-                    let noChannelsMsg = document.createElement("p");
-                    noChannelsMsg.textContent = "No channels yet";
-                    noChannelsMsg.style.fontStyle = "italic";
-                    channelsSection.appendChild(noChannelsMsg);
-                }
-
-                let teamsButton = document.createElement("button");
-                teamsButton.textContent = "Open Team Chat";
-                teamsButton.classList.add("teamsButton");
-                teamsButton.addEventListener("click", () => {
-                    window.location.href = `channel_chat.html?team=${encodeURIComponent(team.teamName)}`;
-                });
-
-                teamElement.appendChild(teamHeader);
-                teamElement.appendChild(createChannelForm);
-                teamElement.appendChild(channelsSection);
-                teamElement.appendChild(teamsButton);
-                teamsContainer.appendChild(teamElement);
-            });
-        })
-        .catch(err => {
-            console.error("Error fetching teams:", err);
-            showToast("Failed to load teams. Please try again.", "error");
-        });
+async function fetchUserTeams() {
+    try {
+        const response = await fetch('/get-user-teams');
+        const teams = await response.json();
+        renderTeams(teams);
+    } catch (err) {
+        console.error("Error fetching teams:", err);
+        showToast("Failed to load teams. Please try again.", "error");
+    }
 }
+
+function renderTeams(teams) {
+    userTeams = {}; 
+    const teamsContainer = document.getElementById("teams-container");
+    teamsContainer.innerHTML = "";
+
+    teams.forEach(team => {
+        userTeams[team.teamId] = team;
+        const teamElement = createTeamCard(team);
+        teamsContainer.appendChild(teamElement);
+    });
+}
+
+function createTeamCard(team) {
+    const teamElement = document.createElement("div");
+    teamElement.classList.add("team-card");
+
+    const teamHeader = createTeamHeader(team);
+    const createChannelForm = createChannelFormElement(team);
+    const channelsSection = createChannelsSection(team);
+    const teamsButton = createTeamButton(team);
+
+    teamElement.appendChild(teamHeader);
+    teamElement.appendChild(createChannelForm);
+    teamElement.appendChild(channelsSection);
+    teamElement.appendChild(teamsButton);
+
+    return teamElement;
+}
+
+function createTeamHeader(team) {
+    const header = document.createElement("div");
+    header.classList.add("team-header");
+    header.innerHTML = `
+        <h3>(${team.teamId}) ${team.teamName}</h3>
+        <p><strong>Created by:</strong> ${team.creatorName || "Unknown"}</p>
+        <div class="team-members">
+            <strong>Members:</strong> ${team.members.length ? team.members.join(", ") : "No members"}
+        </div>
+    `;
+    return header;
+}
+
+function createChannelFormElement(team) {
+    const formWrapper = document.createElement("div");
+    formWrapper.classList.add("create-channel-form");
+    formWrapper.innerHTML = `
+        <div class="channel-form-header">
+            <button class="btn show-channel-form"><i class="fas fa-plus"></i> Create Channel</button>
+        </div>
+        <form class="channel-form" style="display: none;">
+            <input type="text" class="channel-name-input" placeholder="Enter Channel Name" required>
+            <div class="channel-helper">Channel name can contain letters, numbers, hyphens and underscores</div>
+            <button type="submit" class="btn create-channel-btn"><i class="fas fa-plus"></i> Create</button>
+        </form>
+    `;
+
+    handleChannelFormEvents(formWrapper, team);
+    return formWrapper;
+}
+
+function handleChannelFormEvents(formWrapper, team) {
+    const showFormBtn = formWrapper.querySelector('.show-channel-form');
+    const channelForm = formWrapper.querySelector('.channel-form');
+    const channelNameInput = formWrapper.querySelector('.channel-name-input');
+
+    showFormBtn.addEventListener('click', () => {
+        channelForm.style.display = channelForm.style.display === 'none' ? 'block' : 'none';
+    });
+
+    channelForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const channelName = channelNameInput.value.trim();
+
+        if (!channelName) return showToast("Channel name is required", "error");
+
+        const validName = /^[a-zA-Z0-9_-]+$/;
+        if (!validName.test(channelName)) {
+            return showToast("Channel name can only contain letters, numbers, hyphens and underscores", "error");
+        }
+
+        await createChannel(team.teamId, channelName);
+        channelForm.style.display = 'none';
+        channelNameInput.value = '';
+        fetchUserTeams();
+    });
+}
+
+async function createChannel(teamId, channelName) {
+    try {
+        const response = await fetch('/create-channel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ teamId, channelName })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to create channel');
+        
+        showToast("Channel created successfully!", "success");
+    } catch (err) {
+        console.error("Error creating channel:", err);
+        showToast(err.message || "Failed to create channel", "error");
+    }
+}
+
+function createChannelsSection(team) {
+    const section = document.createElement("div");
+    section.classList.add("channels-section");
+
+    if (team.channels && Object.keys(team.channels).length) {
+        Object.values(team.channels).forEach(channel => {
+            const channelElement = createChannelElement(channel, team);
+            section.appendChild(channelElement);
+        });
+    } else {
+        const noChannelsMsg = document.createElement("p");
+        noChannelsMsg.textContent = "No channels yet";
+        noChannelsMsg.style.fontStyle = "italic";
+        section.appendChild(noChannelsMsg);
+    }
+
+    return section;
+}
+
+function createChannelElement(channel, team) {
+    const wrapper = document.createElement("div");
+    wrapper.classList.add("channel-item");
+
+    const content = document.createElement("div");
+    content.classList.add("channel-content");
+    content.innerHTML = `
+        <div class="channel-header">
+            <h4>📢 ${channel.channelName}</h4>
+            <button class="assign-user-btn" title="Assign User"><i class="fas fa-user-plus"></i></button>
+        </div>
+        <p class="channel-members"><strong>Members:</strong> ${channel.members.length ? channel.members.join(", ") : "No members"}</p>
+    `;
+
+    const assignForm = createAssignForm(team, channel, content);
+
+    wrapper.appendChild(content);
+    wrapper.appendChild(assignForm);
+    return wrapper;
+}
+
+function createAssignForm(team, channel, content) {
+    const form = document.createElement("div");
+    form.classList.add("channel-assign-form");
+    form.style.display = "none";
+
+    const availableMembers = team.members.filter(member => !channel.members.includes(member));
+
+    form.innerHTML = `
+        <div class="assign-form-content">
+            <select class="team-members-select">
+                <option value="">Select Team Member</option>
+                ${availableMembers.map(m => `<option value="${m}">${m}</option>`).join('')}
+            </select>
+            <button class="btn assign-btn" disabled><i class="fas fa-plus"></i> Add</button>
+            <button class="btn cancel-btn"><i class="fas fa-times"></i></button>
+        </div>
+    `;
+
+    handleAssignFormEvents(form, team, channel, content);
+    return form;
+}
+
+function handleAssignFormEvents(form, team, channel, content) {
+    const assignUserBtn = content.querySelector('.assign-user-btn');
+    const cancelBtn = form.querySelector('.cancel-btn');
+    const memberSelect = form.querySelector('.team-members-select');
+    const assignBtn = form.querySelector('.assign-btn');
+
+    assignUserBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        document.querySelectorAll('.channel-assign-form').forEach(f => {
+            if (f !== form) f.style.display = "none";
+        });
+        form.style.display = form.style.display === "none" ? "block" : "none";
+    });
+
+    cancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        form.style.display = "none";
+    });
+
+    memberSelect.addEventListener('change', () => {
+        assignBtn.disabled = !memberSelect.value;
+    });
+
+    assignBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const userName = memberSelect.value;
+        if (!userName) return showToast("Please select a team member", "error");
+
+        await assignUserToChannel(team.teamId, channel.channelName, userName, form, content, memberSelect, assignBtn, assignUserBtn);
+    });
+}
+
+async function assignUserToChannel(teamId, channelName, userName, form, content, memberSelect, assignBtn, assignUserBtn) {
+    assignBtn.disabled = true;
+    assignBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+
+    try {
+        const response = await fetch('/assign-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ teamId, channelName, userName })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to assign user');
+
+        showToast(`Successfully assigned ${userName} to channel ${channelName}`, "success");
+
+        const membersP = content.querySelector('.channel-members');
+        membersP.innerHTML = `<strong>Members:</strong> ${data.updatedMembers.join(', ')}`;
+
+        form.style.display = "none";
+        memberSelect.value = '';
+        assignBtn.disabled = true;
+
+        Array.from(memberSelect.options).forEach(opt => {
+            if (opt.value === userName) opt.remove();
+        });
+
+        if (memberSelect.options.length <= 1) {
+            assignUserBtn.disabled = true;
+            assignUserBtn.title = 'All team members are already in this channel';
+        }
+
+    } catch (err) {
+        console.error("Error assigning user:", err);
+        showToast(err.message || "Failed to assign user", "error");
+    } finally {
+        assignBtn.disabled = false;
+        assignBtn.innerHTML = '<i class="fas fa-plus"></i> Add';
+    }
+}
+
+function createTeamButton(team) {
+    const button = document.createElement("button");
+    button.textContent = "Open Team Chat";
+    button.classList.add("teamsButton");
+    button.addEventListener("click", () => {
+        window.location.href = `channel_chat.html?team=${encodeURIComponent(team.teamName)}`;
+    });
+    return button;
+}
+
 
 // Initialize global chat
 function initializeGlobalChat() {
@@ -520,96 +511,100 @@ function initializeGlobalChat() {
 }
 
 // Function to fetch and display private channels (groups)
-function fetchPrivateChannels() {
-    const privateChannelsContainer = document.getElementById("private-channels-container");
-    privateChannelsContainer.innerHTML = '<div class="private-channels-loading"><i class="fas fa-spinner fa-spin"></i> Loading your private channels...</div>';
+async function fetchPrivateChannels() {
+    const container = document.getElementById("private-channels-container");
+    showLoading(container);
 
-    fetch("/get-groups")
-        .then(response => response.json())
-        .then(groups => {
-            privateChannelsContainer.innerHTML = "";
+    try {
+        const response = await fetch("/get-groups");
+        const groups = await response.json();
 
-            if (groups.length === 0) {
-                privateChannelsContainer.innerHTML = `
-                    <div class="no-private-channels">
-                        <i class="fas fa-users-slash"></i>
-                        <p>You don't have any private channels yet</p>
-                    </div>
-                `;
-                return;
-            }
+        await handleGroupsResponse(groups, container);
+    } catch (err) {
+        console.error("Error fetching private channels:", err);
+        showError(container, "Failed to load private channels. Please try again.");
+    }
+}
 
-            // Create a card for each group that the user is a member of
-            let fetchingCount = 0;
-            let privateChannels = [];
+function showLoading(container) {
+    container.innerHTML = `
+        <div class="private-channels-loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading your private channels...
+        </div>`;
+}
 
-            const checkGroupsComplete = () => {
-                if (fetchingCount === 0) {
-                    if (privateChannels.length === 0) {
-                        privateChannelsContainer.innerHTML = `
-                            <div class="no-private-channels">
-                                <i class="fas fa-users-slash"></i>
-                                <p>You don't have any private channels yet</p>
-                            </div>
-                        `;
-                        return;
-                    }
+function showError(container, message) {
+    container.innerHTML = `
+        <div class="no-private-channels" style="color: #e74c3c;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>${message}</p>
+        </div>`;
+}
 
-                    privateChannels.forEach(group => {
-                        const card = document.createElement("div");
-                        card.className = "private-channel-card";
-                        
-                        card.innerHTML = `
-                            <h3>${group.name}</h3>
-                            <p>${group.description || "No description available"}</p>
-                            <div class="members-count">
-                                <i class="fas fa-users"></i> ${group.memberCount} members
-                            </div>
-                            <div class="private-channel-actions">
-                                <a href="private_channels.html?id=${group.id}" class="btn">
-                                    <i class="fas fa-comment-dots"></i> Open Chat
-                                </a>
-                            </div>
-                        `;
-                        
-                        privateChannelsContainer.appendChild(card);
-                    });
-                }
-            };
+async function handleGroupsResponse(groups, container) {
+    container.innerHTML = "";
 
-            // Check membership for each group
-            groups.forEach(group => {
-                fetchingCount++;
-                fetch(`/group-members/${group.id}`)
-                    .then(response => response.json())
-                    .then(members => {
-                        // Check if current user is a member
-                        const isMember = members.some(member => member.id === currentUserId);
-                        if (isMember) {
-                            privateChannels.push({
-                                ...group,
-                                memberCount: members.length
-                            });
-                        }
-                        fetchingCount--;
-                        checkGroupsComplete();
-                    })
-                    .catch(err => {
-                        console.error(`Error fetching members for group ${group.id}:`, err);
-                        fetchingCount--;
-                        checkGroupsComplete();
-                    });
+    if (!groups.length) {
+        return renderNoPrivateChannels(container);
+    }
+
+    const privateChannels = [];
+
+    await Promise.all(groups.map(group => fetchGroupMembers(group, privateChannels)));
+
+    if (!privateChannels.length) {
+        return renderNoPrivateChannels(container);
+    }
+
+    renderPrivateChannels(container, privateChannels);
+}
+
+async function fetchGroupMembers(group, privateChannels) {
+    try {
+        const response = await fetch(`/group-members/${group.id}`);
+        const members = await response.json();
+
+        const isMember = members.some(member => member.id === currentUserId);
+
+        if (isMember) {
+            privateChannels.push({
+                ...group,
+                memberCount: members.length
             });
-        })
-        .catch(err => {
-            console.error("Error fetching private channels:", err);
-            privateChannelsContainer.innerHTML = `
-                <div class="no-private-channels" style="color: #e74c3c;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>Failed to load private channels. Please try again.</p>
-                </div>
-            `;
-        });
+        }
+    } catch (err) {
+        console.error(`Error fetching members for group ${group.id}:`, err);
+    }
+}
+
+function renderNoPrivateChannels(container) {
+    container.innerHTML = `
+        <div class="no-private-channels">
+            <i class="fas fa-users-slash"></i>
+            <p>You don't have any private channels yet</p>
+        </div>`;
+}
+
+function renderPrivateChannels(container, privateChannels) {
+    privateChannels.forEach(group => {
+        const card = document.createElement("div");
+        card.className = "private-channel-card";
+
+        card.innerHTML = `
+            <h3>${group.name}</h3>
+            <p>${group.description || "No description available"}</p>
+            <div class="members-count">
+                <i class="fas fa-users"></i> ${group.memberCount} members
+            </div>
+            <div class="private-channel-actions">
+                <a href="private_channels.html?id=${group.id}" class="btn">
+                    <i class="fas fa-comment-dots"></i> Open Chat
+                </a>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
 }
 
 // Initialize page

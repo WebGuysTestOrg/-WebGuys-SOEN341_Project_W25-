@@ -137,152 +137,147 @@ const socket = io();
         function fetchGroups() {
             fetch("/get-groups")
                 .then(response => response.json())
-                .then(groups => {
-                    const groupList = document.getElementById("group-list");
-                    groupList.innerHTML = "";
-                    
-                    if (groups.length === 0) {
-                        groupList.innerHTML = `
-                            <li class="empty-group-list">
-                                <em>No private channels found.</em>
-                            </li>
-                        `;
-                        document.getElementById("empty-state").style.display = "flex";
-                        return;
-                    }
-                    
-                    document.getElementById("empty-state").style.display = "none";
-                    
-                    // Clear current group selection
-                    currentGroupId = null;
-                    
-                    groups.forEach(group => {
-                        let groupItem = document.createElement("li");
-                        groupItem.innerHTML = `<i class="fas fa-users-rectangle"></i> <strong>${group.name}</strong>`;
-                        groupItem.dataset.groupId = group.id;
-                        groupItem.dataset.groupName = group.name;
-                        groupItem.dataset.groupDescription = group.description || "";
-                        
-                        // Add click handler for group selection
-                        groupItem.addEventListener("click", function(e) {
-                            e.preventDefault();
-                            
-                            const clickedGroupId = parseInt(group.id) || group.id;
-                            console.log(`Clicked on group: ${clickedGroupId}, current group: ${currentGroupId}`);
-                            
-                            // Clear active state from all groups
-                            document.querySelectorAll('#group-list li').forEach(li => {
-                                li.classList.remove('active');
-                            });
-                            
-                            // Mark this group as active
-                            this.classList.add('active');
-                            
-                            // Explicitly clean up any existing socket listeners before loading new group
-                            if (currentGroupId) {
-                                socket.off(`group-message-${currentGroupId}`);
-                            }
-                            
-                            // Load the group details and chat
-                            loadGroup(clickedGroupId, group.name, group.description);
-                            
-                            // Update URL with group ID (without reloading page)
-                            const newUrl = window.location.pathname + '?id=' + clickedGroupId;
-                            history.pushState(null, '', newUrl);
-                            
-                            return false;
-                        });
-                        
-                        groupList.appendChild(groupItem);
-                    });
-                    
-                    // If we have a group ID in the URL, load that group
-                    if (groupIdFromUrl) {
-                        const groupItem = document.querySelector(`#group-list li[data-group-id="${groupIdFromUrl}"]`);
-                        if (groupItem) {
-                            groupItem.classList.add('active');
-                            loadGroup(groupIdFromUrl, groupItem.querySelector('strong').textContent, '');
-                        }
-                    }
-                })
-                .catch(err => {
-                    console.error("Error fetching groups:", err);
-                    document.getElementById("group-list").innerHTML = `
-                        <li class="error-state">
-                            <i class="fas fa-exclamation-circle"></i> Error loading groups
-                        </li>
-                    `;
-                });
+                .then(groups => handleGroupsSuccess(groups))
+                .catch(err => handleGroupsError(err));
         }
+        
+        function handleGroupsSuccess(groups) {
+            const groupList = document.getElementById("group-list");
+            groupList.innerHTML = "";
+        
+            if (groups.length === 0) {
+                renderEmptyState();
+                return;
+            }
+        
+            document.getElementById("empty-state").style.display = "none";
+            currentGroupId = null;
+        
+            groups.forEach(group => {
+                const groupItem = createGroupItem(group);
+                groupList.appendChild(groupItem);
+            });
+        
+            if (groupIdFromUrl) {
+                loadGroupFromUrl(groupIdFromUrl);
+            }
+        }
+        
+        function renderEmptyState() {
+            const groupList = document.getElementById("group-list");
+            groupList.innerHTML = `
+                <li class="empty-group-list">
+                    <em>No private channels found.</em>
+                </li>
+            `;
+            document.getElementById("empty-state").style.display = "flex";
+        }
+        
+        function createGroupItem(group) {
+            const groupItem = document.createElement("li");
+            groupItem.innerHTML = `<i class="fas fa-users-rectangle"></i> <strong>${group.name}</strong>`;
+            groupItem.dataset.groupId = group.id;
+            groupItem.dataset.groupName = group.name;
+            groupItem.dataset.groupDescription = group.description || "";
+        
+            groupItem.addEventListener("click", (e) => {
+                e.preventDefault();
+                handleGroupClick(group);
+            });
+        
+            return groupItem;
+        }
+        
+        function handleGroupClick(group) {
+            const clickedGroupId = parseInt(group.id) || group.id;
+            console.log(`Clicked on group: ${clickedGroupId}, current group: ${currentGroupId}`);
+        
+            document.querySelectorAll('#group-list li').forEach(li => li.classList.remove('active'));
+        
+            const groupItem = document.querySelector(`#group-list li[data-group-id="${group.id}"]`);
+            groupItem?.classList.add('active');
+        
+            if (currentGroupId) {
+                socket.off(`group-message-${currentGroupId}`);
+            }
+        
+            loadGroup(clickedGroupId, group.name, group.description);
+        
+            const newUrl = window.location.pathname + '?id=' + clickedGroupId;
+            history.pushState(null, '', newUrl);
+        }
+        
+        function loadGroupFromUrl(groupIdFromUrl) {
+            const groupItem = document.querySelector(`#group-list li[data-group-id="${groupIdFromUrl}"]`);
+            if (groupItem) {
+                groupItem.classList.add('active');
+                loadGroup(groupIdFromUrl, groupItem.querySelector('strong').textContent, '');
+            }
+        }
+        
+        function handleGroupsError(err) {
+            console.error("Error fetching groups:", err);
+            document.getElementById("group-list").innerHTML = `
+                <li class="error-state">
+                    <i class="fas fa-exclamation-circle"></i> Error loading groups
+                </li>
+            `;
+        }
+        
 
         // Create a new group
         function createNewChannel() {
             const groupName = prompt("Enter private channel name:");
             if (!groupName) return;
-            
+        
             const groupDescription = prompt("Enter description (interests, topic, etc.):");
             if (!groupDescription) return;
-
+        
             fetch("/create-group", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: groupName, description: groupDescription })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-                
-                alert(data.message);
-                fetchGroups();
-                
-                // Load the newly created group
-                setTimeout(() => {
-                    const newGroupItem = document.querySelector(`#group-list li[data-group-id="${data.groupId}"]`);
-                    if (newGroupItem) {
-                        newGroupItem.click();
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
                     }
-                }, 300);
-            })
-            .catch(error => console.error("Error creating group:", error));
+        
+                    alert(data.message);
+                    fetchGroups();
+        
+                    setTimeout(() => {
+                        document.querySelector(`#group-list li[data-group-id="${data.groupId}"]`)?.click();
+                    }, 300);
+                })
+                .catch(error => console.error("Error creating group:", error));
         }
-
-        // Create a new group button event
+        
         document.getElementById("create-group-btn").addEventListener("click", createNewChannel);
-
+        
         function loadGroup(groupId, groupName, groupDescription) {
             console.log(`Loading group: ${groupId} - ${groupName}`);
-            
-            // Clean up any existing socket listeners for previous groups
+        
             if (currentGroupId && currentGroupId !== groupId) {
                 socket.off(`group-message-${currentGroupId}`);
             }
-            
+        
             currentGroupId = groupId;
-            
-            const emptyState = document.getElementById("empty-state");
-if (emptyState) {
-  emptyState.style.display = "none";
-}
-            
-            // Ensure the header is updated to show the correct channel name
-            const mainHeader = document.querySelector("#chat-header");
-            if (mainHeader) {
-                mainHeader.innerHTML = `<strong>Private Channel: ${groupName}</strong>`;
-            }
-            
-            // Update the page title to reflect current channel
-            document.title = `${groupName} - Private Channels`;
-            
-            // Update only the chat window content, not the entire layout
+        
+            document.getElementById("empty-state")?.style.setProperty('display', 'none');
+        
+            setupChatUI(groupName, groupDescription);
+            addMessageInputEvents(groupId);
+            fetchAndRenderGroupOwner(groupId, groupDescription);
+        }
+        
+        function setupChatUI(groupName, groupDescription) {
             const chatWindow = document.querySelector(".chat-window");
             chatWindow.innerHTML = `
                 <div id="chat-header"><strong>Private Channel: ${groupName}</strong></div>
-                
                 <div class="channel-layout">
-                    <!-- Left Panel: Group Details & Admin Controls -->
                     <div class="channel-info-panel">
                         <div id="group-details">
                             <h3>${groupName}</h3>
@@ -293,8 +288,6 @@ if (emptyState) {
                         <div id="owner-controls"></div>
                         <div id="group-actions"></div>
                     </div>
-                    
-                    <!-- Right Panel: Chat Interface -->
                     <div class="channel-chat-panel">
                         <div id="group-chat">
                             <h3><i class="fas fa-comments"></i> <span id="chat-title">${groupName}</span></h3>
@@ -307,19 +300,21 @@ if (emptyState) {
                     </div>
                 </div>
             `;
-            
-            // Add event listener for sending message on Enter key
+        
+            document.title = `${groupName} - Private Channels`;
+        }
+        
+        function addMessageInputEvents(groupId) {
             const chatMessageInput = document.getElementById("chat-message");
             if (chatMessageInput) {
                 chatMessageInput.addEventListener("keypress", (e) => {
                     if (e.key === "Enter") sendMessage();
                 });
-                
-                // Focus the input field
                 setTimeout(() => chatMessageInput.focus(), 100);
             }
-            
-            // Fetch group owner info
+        }
+        
+        function fetchAndRenderGroupOwner(groupId, groupDescription) {
             fetch(`/group-owner/${groupId}`)
                 .then(response => response.json())
                 .then(ownerData => {
@@ -327,121 +322,109 @@ if (emptyState) {
                         console.error("Error fetching group owner:", ownerData.error);
                         return;
                     }
-
+        
                     const ownerId = ownerData.owner_id;
                     const isOwner = loggedInUserId === ownerId;
-
-                    // If the user is the owner, add edit button for description
-                    if (isOwner) {
-                        const descriptionEl = document.querySelector('.group-description');
-                        const editBtn = document.createElement('button');
-                        editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Description';
-                        editBtn.className = 'edit-description-btn';
-                        editBtn.onclick = () => editDescription(groupId, groupDescription);
-                        descriptionEl.parentNode.insertBefore(editBtn, descriptionEl.nextSibling);
-                    }
-
-                    // Fetch group members and update UI
-                    fetch(`/group-members/${groupId}`)
-                        .then(response => response.json())
-                        .then(members => {
-                            const memberList = document.getElementById("member-list");
-                            memberList.innerHTML = "";
-                            
-                            members.forEach(member => {
-                                const isGroupOwner = member.id === ownerId;
-                                const listItem = document.createElement("li");
-                                listItem.dataset.userId = member.id;
-                                
-                                if (isGroupOwner) {
-                                    listItem.innerHTML = `<strong>${member.name} (Owner)</strong>`;
-                                } else {
-                                    listItem.innerHTML = member.name;
-                                    
-                                    // Add remove button if current user is owner
-                                    if (isOwner && member.id !== loggedInUserId) {
-                                        const removeBtn = document.createElement('button');
-                                        removeBtn.className = 'remove-member-btn';
-                                        removeBtn.innerHTML = '<i class="fas fa-times"></i>';
-                                        removeBtn.title = 'Remove from channel';
-                                        removeBtn.onclick = (e) => {
-                                            e.stopPropagation();
-                                            removeMember(groupId, member.id, member.name);
-                                        };
-                                        listItem.appendChild(removeBtn);
-                                    }
-                                }
-                                
-                                memberList.appendChild(listItem);
-                            });
-                            
-                            // Update status indicators
-                            updateMembersWithStatus();
-
-                            const isMember = members.some(m => m.id === loggedInUserId);
-
-                            // If the user is the owner, show owner controls
-                            if (isOwner) {
-                                document.getElementById("owner-controls").innerHTML = `
-                                    <h4>Pending Requests</h4>
-                                    <ul id="request-list">Loading requests...</ul>
-                                    <h4>Add Member</h4>
-                                    <div class="add-member-container">
-                                        <input type="text" id="add-user-input" placeholder="Enter username">
-                                        <button class="join-btn" onclick="addUserToGroup(${groupId})">
-                                            <i class="fas fa-user-plus"></i> Add User
-                                        </button>
-                                    </div>
-                                `;
-                                fetchPendingRequests(groupId);
-                            } else {
-                                document.getElementById("owner-controls").innerHTML = "";
-                            }
-
-                            // Show leave button for regular members (not owners)
-                            const groupActions = document.getElementById("group-actions");
-                            groupActions.innerHTML = "";
-                            
-                            if (isMember && !isOwner) {
-                                const leaveBtn = document.createElement("button");
-                                leaveBtn.className = "leave-btn";
-                                leaveBtn.innerHTML = `<i class="fas fa-sign-out-alt"></i> Leave Channel`;
-                                leaveBtn.onclick = () => leaveGroup(groupId);
-                                groupActions.appendChild(leaveBtn);
-                            } else if (!isMember) {
-                                const joinBtn = document.createElement("button");
-                                joinBtn.className = "join-btn";
-                                joinBtn.innerHTML = `<i class="fas fa-sign-in-alt"></i> Request to Join`;
-                                joinBtn.onclick = () => requestJoinGroup(groupId);
-                                groupActions.appendChild(joinBtn);
-                            }
-                            
-                            // Configure chat box based on membership
-                            if (isMember || isOwner) {
-                                // Enable message input for members and owners
-                                document.getElementById("chat-message").disabled = false;
-                                document.querySelector(".send-btn").disabled = false;
-                                document.getElementById("chat-message").placeholder = "Type a message...";
-                                
-                                // Load and show messages for members and owners
-                                showGroupChat(groupId);
-                            } else {
-                                // Disable message input for non-members
-                                document.getElementById("chat-message").disabled = true;
-                                document.querySelector(".send-btn").disabled = true;
-                                document.getElementById("chat-message").placeholder = "Join this channel to send messages";
-                                
-                                // Show access restricted message for non-members
-                                document.getElementById("chat-box").innerHTML = `
-                                    <div class="access-restricted">
-                                        <i class="fas fa-lock"></i>
-                                        <p>You need to join this channel to see messages</p>
-                                    </div>
-                                `;
-                            }
-                        });
+                    fetchAndRenderGroupMembers(groupId, ownerId, isOwner, groupDescription);
                 });
         }
+        
+        function fetchAndRenderGroupMembers(groupId, ownerId, isOwner, groupDescription) {
+            fetch(`/group-members/${groupId}`)
+                .then(response => response.json())
+                .then(members => {
+                    const memberList = document.getElementById("member-list");
+                    memberList.innerHTML = "";
+        
+                    members.forEach(member => {
+                        const listItem = document.createElement("li");
+                        listItem.dataset.userId = member.id;
+                        const isGroupOwner = member.id === ownerId;
+        
+                        listItem.innerHTML = isGroupOwner ? `<strong>${member.name} (Owner)</strong>` : member.name;
+        
+                        if (isOwner && member.id !== loggedInUserId && !isGroupOwner) {
+                            const removeBtn = document.createElement('button');
+                            removeBtn.className = 'remove-member-btn';
+                            removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                            removeBtn.title = 'Remove from channel';
+                            removeBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                removeMember(groupId, member.id, member.name);
+                            };
+                            listItem.appendChild(removeBtn);
+                        }
+        
+                        memberList.appendChild(listItem);
+                    });
+        
+                    updateMembersWithStatus();
+                    const isMember = members.some(m => m.id === loggedInUserId);
+                    renderGroupActions(groupId, isOwner, isMember);
+                    handleMessageAccess(groupId, isOwner, isMember);
+                });
+        }
+        
+        function renderGroupActions(groupId, isOwner, isMember) {
+            const ownerControls = document.getElementById("owner-controls");
+            const groupActions = document.getElementById("group-actions");
+        
+            if (isOwner) {
+                ownerControls.innerHTML = `
+                    <h4>Pending Requests</h4>
+                    <ul id="request-list">Loading requests...</ul>
+                    <h4>Add Member</h4>
+                    <div class="add-member-container">
+                        <input type="text" id="add-user-input" placeholder="Enter username">
+                        <button class="join-btn" onclick="addUserToGroup(${groupId})">
+                            <i class="fas fa-user-plus"></i> Add User
+                        </button>
+                    </div>
+                `;
+                fetchPendingRequests(groupId);
+            } else {
+                ownerControls.innerHTML = "";
+            }
+        
+            groupActions.innerHTML = "";
+        
+            if (isMember && !isOwner) {
+                const leaveBtn = document.createElement("button");
+                leaveBtn.className = "leave-btn";
+                leaveBtn.innerHTML = `<i class="fas fa-sign-out-alt"></i> Leave Channel`;
+                leaveBtn.onclick = () => leaveGroup(groupId);
+                groupActions.appendChild(leaveBtn);
+            } else if (!isMember) {
+                const joinBtn = document.createElement("button");
+                joinBtn.className = "join-btn";
+                joinBtn.innerHTML = `<i class="fas fa-sign-in-alt"></i> Request to Join`;
+                joinBtn.onclick = () => requestJoinGroup(groupId);
+                groupActions.appendChild(joinBtn);
+            }
+        }
+        
+        function handleMessageAccess(groupId, isOwner, isMember) {
+            const chatInput = document.getElementById("chat-message");
+            const sendBtn = document.querySelector(".send-btn");
+        
+            if (isOwner || isMember) {
+                chatInput.disabled = false;
+                sendBtn.disabled = false;
+                chatInput.placeholder = "Type a message...";
+                showGroupChat(groupId);
+            } else {
+                chatInput.disabled = true;
+                sendBtn.disabled = true;
+                chatInput.placeholder = "Join this channel to send messages";
+                document.getElementById("chat-box").innerHTML = `
+                    <div class="access-restricted">
+                        <i class="fas fa-lock"></i>
+                        <p>You need to join this channel to see messages</p>
+                    </div>
+                `;
+            }
+        }
+        
 
         function fetchPendingRequests(groupId) {
             fetch(`/group-requests/${groupId}`)
