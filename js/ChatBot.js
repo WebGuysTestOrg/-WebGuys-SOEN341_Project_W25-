@@ -16,7 +16,20 @@ const model = genAI.getGenerativeModel({
 let messages = {
     history: [],
 }
-
+function extractBodyContent(htmlString) {
+  // Find the start of <body>
+  const bodyStart = htmlString.indexOf('<body>');
+  // Find the end of </body>
+  const bodyEnd = htmlString.indexOf('</body>') + '</body>'.length;
+  
+  // If both tags are found, extract the content between them
+  if (bodyStart !== -1 && bodyEnd !== -1) {
+    return htmlString.slice(bodyStart, bodyEnd);
+  }
+  
+  // If not found, return the original string or handle as needed
+  return htmlString;
+}
 async function sendMessage() {
   const input = document.querySelector(".chat-window input");
   const userMessage = input.value.trim();
@@ -46,7 +59,7 @@ async function sendMessage() {
       prompt = `Please check the grammar and make the pargraph better:\n\n${userMessage}`;
       break;
     case "fact check":
-      prompt = `Please fact-check the following claim and provide a brief explanation:\n\n${userMessage}`;
+      prompt = `Can you explain  whether I am wrong or right to me and why and send the answer back in html format :\n\n${userMessage}`;
       break;
     default:
       prompt = "Unsupported task selected.";
@@ -57,11 +70,12 @@ async function sendMessage() {
     const result = await model.generateContent(prompt);
     const response = result.response.text();
 
+    console.log(extractBodyContent(response))
     document.querySelector(".chat-window .chat .loader").remove();
 
     document.querySelector(".chat-window .chat").insertAdjacentHTML("beforeend", `
       <div class="model">
-        <p>${response}</p>
+        ${extractBodyContent(response)}
       </div>
     `);
 
