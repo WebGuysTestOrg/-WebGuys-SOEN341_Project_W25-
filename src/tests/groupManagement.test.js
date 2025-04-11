@@ -41,126 +41,137 @@ describe('Group Management', () => {
     };
   });
   
-  describe('Group Creation', () => {
-    test('should create a new group successfully', () => {
-      // Set up request data
-      req.body = {
-        groupName: 'Test Group',
-        description: 'A test group for unit testing'
-      };
-      
-      // Mock database responses
-      connection.query
-        .mockImplementationOnce((query, params, callback) => {
-          // First call - insert group
-          callback(null, { insertId: 1 });
-        })
-        .mockImplementationOnce((query, params, callback) => {
-          // Second call - add creator as member
-          callback(null, { affectedRows: 1 });
-        })
-        .mockImplementationOnce((query, params, callback) => {
-          // Third call - add system message
-          callback(null, { insertId: 1 });
-        });
-      
-      // Create test function
-      const createGroup = (req, res) => {
-        const { groupName, description } = req.body;
-        const userId = req.session.user.id;
-        const userName = req.session.user.name;
-        
-        if (!groupName) {
-          return res.status(400).json({ error: "Group name is required" });
-        }
-        
-        // Create group
+describe('Group Creation', () => {
+  test('should create a new group successfully', async () => {
+    // Set up request data
+    req.body = {
+      groupName: 'Test Group',
+      description: 'A test group for unit testing'
+    };
+
+    // Mock database responses
+    connection.query
+      .mockImplementationOnce((query, params, callback) => {
+        // First call - insert group
+        callback(null, { insertId: 1 });
+      })
+      .mockImplementationOnce((query, params, callback) => {
+        // Second call - add creator as member
+        callback(null, { affectedRows: 1 });
+      })
+      .mockImplementationOnce((query, params, callback) => {
+        // Third call - add system message
+        callback(null, { insertId: 1 });
+      });
+
+    const insertGroup = (connection, groupName, description, userId) => {
+      return new Promise((resolve, reject) => {
         connection.query(
           "INSERT INTO `groups` (name, description, created_by, created_at) VALUES (?, ?, ?, NOW())",
           [groupName, description || '', userId],
           (err, result) => {
-            if (err) {
-              if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(400).json({ error: "Group name already exists" });
-              }
-              return res.status(500).json({ error: "Error creating group" });
-            }
-            
-            const groupId = result.insertId;
-            
-            // Add creator as member
-            connection.query(
-              "INSERT INTO group_members (group_id, user_id, joined_at) VALUES (?, ?, NOW())",
-              [groupId, userId],
-              (err) => {
-                if (err) {
-                  return res.status(500).json({ error: "Error adding you to the group" });
-                }
-                
-                // Add system message
-                connection.query(
-                  "INSERT INTO group_messages (group_id, user_id, text, is_system_message, created_at) VALUES (?, ?, ?, 1, NOW())",
-                  [groupId, userId, `${userName} created the group.`],
-                  (err) => {
-                    if (err) {
-                      console.error("Error adding system message:", err);
-                      // Continue anyway
-                    }
-                    
-                    // Notify connected clients
-                    const io = req.app.get('io');
-                    if (io) {
-                      io.emit('groupCreated', {
-                        groupId,
-                        groupName,
-                        createdBy: userId,
-                        creatorName: userName
-                      });
-                    }
-                    
-                    res.json({ 
-                      message: "Group created successfully",
-                      groupId,
-                      groupName
-                    });
-                  }
-                );
-              }
-            );
+            if (err) return reject(err);
+            resolve(result.insertId);
           }
         );
-      };
-      
-      // Call function
-      createGroup(req, res);
-      
-      // Verify database operations
-      expect(connection.query).toHaveBeenCalledTimes(3);
-      // First query - create group
-      expect(connection.query.mock.calls[0][0]).toContain('INSERT INTO `groups`');
-      expect(connection.query.mock.calls[0][1]).toEqual(['Test Group', 'A test group for unit testing', 1]);
-      // Second query - add creator as member
-      expect(connection.query.mock.calls[1][0]).toContain('INSERT INTO group_members');
-      expect(connection.query.mock.calls[1][1]).toEqual([1, 1]);
-      // Third query - add system message
-      expect(connection.query.mock.calls[2][0]).toContain('INSERT INTO group_messages');
-      expect(connection.query.mock.calls[2][1]).toEqual([1, 1, 'TestUser created the group.']);
-      
-      // Verify socket.io notification
-      expect(req.app.get('io').emit).toHaveBeenCalledWith('groupCreated', {
-        groupId: 1,
-        groupName: 'Test Group',
-        createdBy: 1,
-        creatorName: 'TestUser'
       });
-      
-      // Verify response
-      expect(res.json).toHaveBeenCalledWith({
-        message: "Group created successfully",
-        groupId: 1,
-        groupName: 'Test Group'
+    };
+
+    const addGroupMember = (connection, groupId, userId) => {
+      return new Promise((resolve, reject) => {
+        connection.query(
+          "INSERT INTO group_members (group_id, user_id, joined_at) VALUES (?, ?, NOW())",
+          [groupId, userId],
+          (err) => {
+            if (err) return reject(err);
+            resolve();
+          }
+        );
       });
+    };
+
+    const addSystemMessage = (connection, groupId, userId, userName) => {
+      return new Promise((resolve) => {
+        connection.query(
+          "INSERT INTO group_messages (group_id, user_id, text, is_system_message, created_at) VALUES (?, ?, ?, 1, NOW())",
+          [groupId, userId, `${userName} created the group.`],
+          (err) => {
+            if (err) console.error("Error adding system message:", err);
+            resolve(); // Continue anyway
+          }
+        );
+      });
+    };
+
+    // Refactored createGroup function
+    const createGroup = async (req, res) => {
+      const { groupName, description } = req.body;
+      const userId = req.session.user.id;
+      const userName = req.session.user.name;
+
+      if (!groupName) {
+        return res.status(400).json({ error: "Group name is required" });
+      }
+
+      try {
+        const groupId = await insertGroup(connection, groupName, description, userId);
+        await addGroupMember(connection, groupId, userId);
+        await addSystemMessage(connection, groupId, userId, userName);
+
+        const io = req.app.get('io');
+        if (io) {
+          io.emit('groupCreated', {
+            groupId,
+            groupName,
+            createdBy: userId,
+            creatorName: userName
+          });
+        }
+
+        res.json({
+          message: "Group created successfully",
+          groupId,
+          groupName
+        });
+
+      } catch (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json({ error: "Group name already exists" });
+        }
+        res.status(500).json({ error: "Error creating group" });
+      }
+    };
+
+    // Call function
+    await createGroup(req, res);
+
+    // Verify database operations
+    expect(connection.query).toHaveBeenCalledTimes(3);
+    // First query - create group
+    expect(connection.query.mock.calls[0][0]).toContain('INSERT INTO `groups`');
+    expect(connection.query.mock.calls[0][1]).toEqual(['Test Group', 'A test group for unit testing', 1]);
+    // Second query - add creator as member
+    expect(connection.query.mock.calls[1][0]).toContain('INSERT INTO group_members');
+    expect(connection.query.mock.calls[1][1]).toEqual([1, 1]);
+    // Third query - add system message
+    expect(connection.query.mock.calls[2][0]).toContain('INSERT INTO group_messages');
+    expect(connection.query.mock.calls[2][1]).toEqual([1, 1, 'TestUser created the group.']);
+
+    // Verify socket.io notification
+    expect(req.app.get('io').emit).toHaveBeenCalledWith('groupCreated', {
+      groupId: 1,
+      groupName: 'Test Group',
+      createdBy: 1,
+      creatorName: 'TestUser'
     });
+
+    // Verify response
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Group created successfully",
+      groupId: 1,
+      groupName: 'Test Group'
+    });
+  });
     
     test('should return error when group name is missing', () => {
       // Set up request with missing name

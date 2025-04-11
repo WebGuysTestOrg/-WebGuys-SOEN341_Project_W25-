@@ -57,18 +57,20 @@ const channelController = {
     // Get channels for a specific team
     getChannels: async (req, res) => {
         try {
-            const { teamId } = req.body;
+            // FIX HERE -> check body first, fallback to params
+            const teamId = req.body.teamId || req.params.teamId;
+    
             if (!teamId) {
                 return res.status(400).json({ error: "Team ID is required." });
             }
-
+    
             const channelQuery = "SELECT name FROM channels WHERE team_id = ?";
             const results = await query(channelQuery, [teamId]);
-            
+    
             if (results.length === 0) {
                 return res.status(404).json({ error: "No channels found for this team." });
             }
-            
+    
             const channelNames = results.map(row => row.name);
             res.json({ channels: channelNames });
         } catch (err) {
