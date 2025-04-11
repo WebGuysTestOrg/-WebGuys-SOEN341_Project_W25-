@@ -38,6 +38,17 @@ const connection = mysql.createConnection({
     multipleStatements: true 
 });
 
+// Create a connection pool for promise API usage
+const pool = mysql.createPool({
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "",
+    database: "chathaven",
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
+
 // Connect and setup database
 connection.connect((err) => {
     if (err) {
@@ -197,6 +208,10 @@ function checkAndHandleSenderColumn() {
 // If preloadChannelMessages was defined in server.js and relied on `connection`, 
 // it might need to be moved here or passed the connection object.
 
+// Export the connection object with promise method
+connection.promise = () => {
+    return pool.promise();
+};
 
 // Export the connection object
 module.exports = connection; 

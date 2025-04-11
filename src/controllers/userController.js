@@ -1,8 +1,20 @@
 const crypto = require('crypto');
 const connection = require('../config/db');
 
-// Create a connection pool that returns promises instead of using callbacks
-const promisePool = connection.promise();
+// Create a mock promise pool for testing purposes
+const promisePool = {
+    query: async (sql, params) => {
+        return new Promise((resolve, reject) => {
+            connection.query(sql, params, (err, results) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve([results, null]);
+                }
+            });
+        });
+    }
+};
 
 const userController = {
     // Common functions for all users
