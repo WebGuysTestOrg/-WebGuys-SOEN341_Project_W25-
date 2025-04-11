@@ -59,7 +59,7 @@ io.on('connection', socket => {
 
     const session = socket.handshake.session;
 
-    if (!session || !session.user || !session.user.name) {
+    if (!session?.user?.name) {
         console.log(`Unauthorized connection attempt - disconnecting socket ${socket.id}`);
         socket.disconnect();
         return;
@@ -93,7 +93,7 @@ io.on('connection', socket => {
     };
 
     socket.on("userOnline", async (userId) => {
-        if (!socket.userId) {
+        if (!socket?.userId) {
             socket.emit('error', { message: 'You must be logged in to update status' });
             return;
         }
@@ -123,7 +123,7 @@ io.on('connection', socket => {
         }
     });
     socket.on("userAway", async (userId) => {
-        if (!socket.userId) {
+        if (!socket?.userId) {
             socket.emit('error', { message: 'You must be logged in to update status' });
             return;
         }
@@ -153,85 +153,9 @@ io.on('connection', socket => {
         }
     });
 
-
-
-    // Handle user status
-//     socket.on("userOnline", (userId) => {
-//         if (!socket.userId) {
-//             socket.emit('error', { message: 'You must be logged in to update status' });
-//             return;
-//         }
-        
-//         const userIdStr = userId.toString();
-//         console.log(`Setting user ${userIdStr} as ONLINE (socket: ${socket.id}, type: ${socket.userType})`);
-        
-//         onlineUsers.set(userIdStr, socket.id);
-//         awayUsers.delete(userIdStr);
-//         console.log(onlineUsers)
-
-//         const userIds = Array.from(onlineUsers.keys());
-        
-//         let onlineNames=[]
-//         if ((userIds.length) > 0) {
-//   const placeholders = userIds.map(() => '?').join(', ');
-//   const sql = `SELECT name FROM user_form WHERE id IN (${placeholders})`;
-
-//   connection.query(sql, userIds, (err, results) => {
-//     if (err) throw err;
-
-//     onlineNames= results.map(row => row.name);
-
-//     io.emit("updateUserStatus", {
-//         online: Array.from(onlineUsers.keys()),
-//         online_names:onlineNames,
-//         away: Array.from(awayUsers.keys())
-//     });
-
-//     resetInactivityTimer(userIdStr);
-//   });
-
-
-// } else {
-//   console.log('No online users');
-// }
-
-        
-//     });
-
-//     socket.on("userAway", (userId) => {
-//         if (!socket.userId) {
-//             socket.emit('error', { message: 'You must be logged in to update status' });
-//             return;
-//         }
-        
-//         const userIdStr = userId.toString();
-//         console.log(`Setting user ${userIdStr} as AWAY (socket: ${socket.id})`);
-        
-//         awayUsers.set(userIdStr, socket.id);
-//         onlineUsers.delete(userIdStr);
-        
-//         const AwayUserIds=Array.from(awayUsers.keys());
-//         let awayNames=[]
-//         if ((AwayUserIds.length) > 0) {
-//   const placeholders = AwayUserIds.map(() => '?').join(', ');
-//   const sql = `SELECT name FROM user_form WHERE id IN (${placeholders})`;
-
-//   connection.query(sql, AwayUserIds, (err, results) => {
-//     if (err) throw err;
-
-//     awayNames= results.map(row => row.name);
-//  console.log(awayNames)
-//         io.emit("updateUserStatus", {
-//             online: Array.from(onlineUsers.keys()),
-//             away: Array.from(awayUsers.keys()),
-//             away_names: awayNames
-//         });
-//     });
-// }})
-
     // Handle status update requests
     socket.on("requestStatusUpdate", () => {
-        if (!socket.userId) {
+        if (!socket?.userId) {
             socket.emit('error', { message: 'You must be logged in to request status updates' });
             return;
         }
@@ -322,7 +246,11 @@ app.post("/register", (req, res) => {
     return res.status(400).json({ error: "Passwords do not match!" });
   }
 
-  //  Check if email is already registered
+  checkEmailExists(name, email, password, user_type, res);
+});
+
+// Helper function to check if email exists
+function checkEmailExists(name, email, password, user_type, res) {
   const checkEmailQuery = "SELECT id FROM user_form WHERE email = ?";
   connection.query(checkEmailQuery, [email], (err, emailResults) => {
     if (err) {
@@ -334,7 +262,12 @@ app.post("/register", (req, res) => {
       return res.status(400).json({ error: "Email is already in use!" });
     }
 
-    //  Check if username is already taken
+    checkUsernameExists(name, email, password, user_type, res);
+  });
+}
+
+// Helper function to check if username exists
+function checkUsernameExists(name, email, password, user_type, res) {
     const checkUsernameQuery = "SELECT id FROM user_form WHERE name = ?";
     connection.query(checkUsernameQuery, [name], (err, nameResults) => {
       if (err) {
@@ -346,7 +279,12 @@ app.post("/register", (req, res) => {
         return res.status(400).json({ error: "Username is already in use!" });
       }
 
-      // Hash password & insert user
+    insertNewUser(name, email, password, user_type, res);
+  });
+}
+
+// Helper function to insert new user
+function insertNewUser(name, email, password, user_type, res) {
       const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
       const insertQuery = "INSERT INTO user_form (name, email, password, user_type) VALUES (?, ?, ?, ?)";
 
@@ -359,9 +297,7 @@ app.post("/register", (req, res) => {
         // Success
         res.status(200).json({ redirect: "/Login-Form.html" });
       });
-    });
-  });
-});
+}
 
 app.post("/login", (req, res) => {
     const { email, password } = req.body;
@@ -433,7 +369,7 @@ app.post("/remove-message", (req, res) => {
     });
 });
 app.get("/user-info", (req, res) => {
-    if (!req.session.user) {
+    if (!req.session?.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
     res.json({ 
@@ -446,7 +382,7 @@ app.get("/user-info", (req, res) => {
 });
 
 app.get("/admin-info", (req, res) => {
-    if (!req.session.user || req.session.user.user_type !== "admin") {
+    if (!req.session?.user || req.session.user.user_type !== "admin") {
         return res.status(401).json({ error: "Unauthorized" });
     }
     res.json({ 
@@ -459,7 +395,7 @@ app.get("/admin-info", (req, res) => {
 });
 
 app.post("/create-team", (req, res) => {
-    if (!req.session.user || req.session.user.user_type !== "admin") {
+    if (!req.session?.user || req.session.user.user_type !== "admin") {
         return res.status(403).json({ error: "Only Super Admin can create teams." });
     }
 
@@ -507,7 +443,7 @@ app.get("/get-team-id", (req, res) => {
 });
 
 app.post("/create-channel", (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: "Unauthorized" });
+    if (!req.session?.user) return res.status(401).json({ error: "Unauthorized" });
 
     const { channelName, teamId } = req.body;
     const userId = req.session.user.id;
@@ -595,7 +531,7 @@ app.post('/assign-user-to-team', (req, res) => {
 
 // Delete team and all associated channels
 app.post('/delete-team', (req, res) => {
-    if (!req.session.user) {
+    if (!req.session?.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -625,6 +561,12 @@ app.post('/delete-team', (req, res) => {
             return res.status(403).json({ error: "Only the team creator or an admin can delete a team." });
         }
 
+        getTeamChannelsAndStartDeletion(teamId, res);
+    });
+});
+
+// Helper function to get team channels and start the deletion process
+function getTeamChannelsAndStartDeletion(teamId, res) {
         // Get all channels in this team
         const getChannelsQuery = "SELECT id FROM channels WHERE team_id = ?";
         connection.query(getChannelsQuery, [teamId], (err, channelResults) => {
@@ -643,7 +585,13 @@ app.post('/delete-team', (req, res) => {
                     return res.status(500).json({ error: "Error starting database transaction." });
                 }
 
-                // Delete channel messages for this team
+            deleteTeamChannelMessages(teamId, channelIds, res);
+        });
+    });
+}
+
+// Helper function to delete team channel messages
+function deleteTeamChannelMessages(teamId, channelIds, res) {
                 const deleteMessagesQuery = "DELETE FROM channels_messages WHERE team_name = (SELECT name FROM teams WHERE id = ?)";
                 connection.query(deleteMessagesQuery, [teamId], err => {
                     if (err) {
@@ -653,8 +601,12 @@ app.post('/delete-team', (req, res) => {
                         });
                     }
 
-                    // Function to continue with deletion steps
-                    const continueWithDeletion = () => {
+        deleteUserChannelAssociations(teamId, channelIds, res);
+    });
+}
+
+// Helper function to delete user-channel associations
+function deleteUserChannelAssociations(teamId, channelIds, res) {
                         // Delete user_channels entries
                         const deleteUserChannelsQuery = channelIds.length > 0 ? 
                             "DELETE FROM user_channels WHERE channel_id IN (?)" : 
@@ -670,7 +622,12 @@ app.post('/delete-team', (req, res) => {
                                 });
                             }
 
-                            // Delete channels
+        deleteTeamChannels(teamId, res);
+    });
+}
+
+// Helper function to delete team channels
+function deleteTeamChannels(teamId, res) {
                             const deleteChannelsQuery = "DELETE FROM channels WHERE team_id = ?";
                             connection.query(deleteChannelsQuery, [teamId], err => {
                                 if (err) {
@@ -680,7 +637,12 @@ app.post('/delete-team', (req, res) => {
                                     });
                                 }
 
-                                // Delete user_teams entries
+        deleteUserTeamAssociations(teamId, res);
+    });
+}
+
+// Helper function to delete user-team associations
+function deleteUserTeamAssociations(teamId, res) {
                                 const deleteUserTeamsQuery = "DELETE FROM user_teams WHERE team_id = ?";
                                 connection.query(deleteUserTeamsQuery, [teamId], err => {
                                     if (err) {
@@ -690,7 +652,12 @@ app.post('/delete-team', (req, res) => {
                                         });
                                     }
 
-                                    // Finally delete the team
+        deleteTeam(teamId, res);
+    });
+}
+
+// Helper function to delete the team
+function deleteTeam(teamId, res) {
                                     const deleteTeamQuery = "DELETE FROM teams WHERE id = ?";
                                     connection.query(deleteTeamQuery, [teamId], err => {
                                         if (err) {
@@ -712,22 +679,11 @@ app.post('/delete-team', (req, res) => {
                                             res.json({ message: "Team and all associated channels successfully deleted." });
                                         });
                                     });
-                                });
-                            });
-                        });
-                        
-                        // Execute the deletion process
-                        continueWithDeletion();
-                    };
-                });
-            });
-        });
-    });
-});
+}
 
 // Remove a user from a team
 app.post('/remove-team-member', (req, res) => {
-    if (!req.session.user) {
+    if (!req.session?.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -762,6 +718,12 @@ app.post('/remove-team-member', (req, res) => {
             return res.status(403).json({ error: "Cannot remove the team creator from their own team." });
         }
 
+        checkUserTeamMembership(teamId, memberIdToRemove, res);
+    });
+});
+
+// Helper function to check user team membership
+function checkUserTeamMembership(teamId, memberIdToRemove, res) {
         // Check if user is in the team
         const checkUserInTeamQuery = "SELECT * FROM user_teams WHERE user_id = ? AND team_id = ?";
         connection.query(checkUserInTeamQuery, [memberIdToRemove, teamId], (err, userTeamResults) => {
@@ -774,6 +736,12 @@ app.post('/remove-team-member', (req, res) => {
                 return res.status(404).json({ error: "User is not a member of this team." });
             }
 
+        startTeamMemberRemovalTransaction(teamId, memberIdToRemove, res);
+    });
+}
+
+// Helper function to start transaction for member removal
+function startTeamMemberRemovalTransaction(teamId, memberIdToRemove, res) {
             // Begin transaction for the multi-step removal
             connection.beginTransaction(err => {
                 if (err) {
@@ -781,6 +749,12 @@ app.post('/remove-team-member', (req, res) => {
                     return res.status(500).json({ error: "Error starting database transaction." });
                 }
 
+        getTeamChannelsForMemberRemoval(teamId, memberIdToRemove, res);
+    });
+}
+
+// Helper function to get team channels for member removal
+function getTeamChannelsForMemberRemoval(teamId, memberIdToRemove, res) {
                 // Get all channels in this team
                 const getChannelsQuery = "SELECT id FROM channels WHERE team_id = ?";
                 connection.query(getChannelsQuery, [teamId], (err, channelResults) => {
@@ -793,10 +767,12 @@ app.post('/remove-team-member', (req, res) => {
 
                     // Extract channel IDs
                     const channelIds = channelResults.map(channel => channel.id);
+        removeUserFromChannels(teamId, memberIdToRemove, channelIds, res);
+    });
+}
 
-                    // Function to continue with removal steps
-                    const continueWithRemoval = () => {
-                        // Remove user from all channels in the team
+// Helper function to remove user from channels
+function removeUserFromChannels(teamId, memberIdToRemove, channelIds, res) {
                         if (channelIds.length > 0) {
                             const deleteUserChannelsQuery = "DELETE FROM user_channels WHERE user_id = ? AND channel_id IN (?)";
                             connection.query(deleteUserChannelsQuery, [memberIdToRemove, channelIds], err => {
@@ -806,15 +782,15 @@ app.post('/remove-team-member', (req, res) => {
                                         res.status(500).json({ error: "Error removing user from team channels." });
                                     });
                                 }
-                                removeFromTeam();
+            removeUserFromTeam(teamId, memberIdToRemove, res);
                             });
                         } else {
-                            removeFromTeam();
+        removeUserFromTeam(teamId, memberIdToRemove, res);
                         }
-                    };
+}
 
-                    // Remove user from team
-                    const removeFromTeam = () => {
+// Helper function to remove user from team
+function removeUserFromTeam(teamId, memberIdToRemove, res) {
                         const deleteUserTeamQuery = "DELETE FROM user_teams WHERE user_id = ? AND team_id = ?";
                         connection.query(deleteUserTeamQuery, [memberIdToRemove, teamId], err => {
                             if (err) {
@@ -824,7 +800,12 @@ app.post('/remove-team-member', (req, res) => {
                                 });
                             }
 
-                            // Commit the transaction
+        commitMemberRemovalTransaction(res);
+    });
+}
+
+// Helper function to commit the transaction
+function commitMemberRemovalTransaction(res) {
                             connection.commit(err => {
                                 if (err) {
                                     console.error("Error committing transaction:", err);
@@ -835,16 +816,7 @@ app.post('/remove-team-member', (req, res) => {
 
                                 res.json({ message: "User successfully removed from team and all associated channels." });
                             });
-                        });
-                    };
-
-                    // Continue with removal process
-                    continueWithRemoval();
-                });
-            });
-        });
-    });
-});
+}
 
 app.post("/assign-user", async (req, res) => {
     const { teamId, channelName, userName } = req.body;
@@ -854,7 +826,15 @@ app.post("/assign-user", async (req, res) => {
     }
 
     try {
-        // First check if the user exists and get their ID
+        findUserByName(teamId, channelName, userName, res);
+    } catch (error) {
+        console.error("Server error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+// Helper function to find user by name
+function findUserByName(teamId, channelName, userName, res) {
         const userQuery = "SELECT id FROM user_form WHERE name = ?";
         connection.query(userQuery, [userName], (err, userResults) => {
             if (err) {
@@ -867,8 +847,12 @@ app.post("/assign-user", async (req, res) => {
             }
 
             const userId = userResults[0].id;
+        checkTeamMembership(teamId, channelName, userId, userName, res);
+    });
+}
 
-            // Check if user is a member of the team
+// Helper function to check team membership
+function checkTeamMembership(teamId, channelName, userId, userName, res) {
             const teamMemberQuery = "SELECT * FROM user_teams WHERE team_id = ? AND user_id = ?";
             connection.query(teamMemberQuery, [teamId, userId], (err, teamResults) => {
                 if (err) {
@@ -880,7 +864,12 @@ app.post("/assign-user", async (req, res) => {
                     return res.status(400).json({ error: "User must be a team member first" });
                 }
 
-                // Check if the channel exists and get its ID
+        findChannelByName(teamId, channelName, userId, userName, res);
+    });
+}
+
+// Helper function to find channel by name
+function findChannelByName(teamId, channelName, userId, userName, res) {
                 const channelQuery = "SELECT id FROM channels WHERE team_id = ? AND name = ?";
                 connection.query(channelQuery, [teamId, channelName], (err, channelResults) => {
                     if (err) {
@@ -893,8 +882,12 @@ app.post("/assign-user", async (req, res) => {
                     }
 
                     const channelId = channelResults[0].id;
+        checkChannelMembership(channelId, userId, userName, res);
+    });
+}
 
-                    // Check if user is already in the channel
+// Helper function to check channel membership
+function checkChannelMembership(channelId, userId, userName, res) {
                     const channelMemberQuery = "SELECT * FROM user_channels WHERE channel_id = ? AND user_id = ?";
                     connection.query(channelMemberQuery, [channelId, userId], (err, memberResults) => {
                         if (err) {
@@ -906,7 +899,12 @@ app.post("/assign-user", async (req, res) => {
                             return res.status(400).json({ error: "User is already a member of this channel" });
                         }
 
-                        // Finally, add the user to the channel
+        addUserToChannel(channelId, userId, userName, res);
+    });
+}
+
+// Helper function to add user to channel
+function addUserToChannel(channelId, userId, userName, res) {
                         const insertQuery = "INSERT INTO user_channels (channel_id, user_id) VALUES (?, ?)";
                         connection.query(insertQuery, [channelId, userId], (err) => {
                             if (err) {
@@ -914,7 +912,12 @@ app.post("/assign-user", async (req, res) => {
                                 return res.status(500).json({ error: "Database error adding user to channel" });
                             }
 
-                            // After successful insertion, fetch the updated channel members
+        fetchUpdatedChannelMembers(channelId, userName, res);
+    });
+}
+
+// Helper function to fetch updated channel members
+function fetchUpdatedChannelMembers(channelId, userName, res) {
                             const getUpdatedMembersQuery = `
                                 SELECT uf.name 
                                 FROM user_channels uc 
@@ -934,16 +937,7 @@ app.post("/assign-user", async (req, res) => {
                                     updatedMembers: memberNames
                                 });
                             });
-                        });
-                    });
-                });
-            });
-        });
-    } catch (error) {
-        console.error("Server error:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-});
+}
 
 app.get("/get-teams-with-members", (req, res) => {
     const query = `
@@ -1048,7 +1042,7 @@ app.get("/api/users", (req, res) => {
 });
 
 app.get("/get-user-channels", (req, res) => {
-    if (!req.session || !req.session.user) {
+    if (!req.session?.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -1096,7 +1090,7 @@ app.get("/get-user-channels", (req, res) => {
 });
 
 app.get("/get-user-teams", (req, res) => {
-    if (!req.session.user) {
+    if (!req.session?.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -1181,7 +1175,7 @@ app.get("/get-user-teams", (req, res) => {
 });
 
 app.get("/logout", (req, res) => {
-    if (!req.session.user) {
+    if (!req.session?.user) {
         return res.redirect("/Login-Form.html");
     }
 
@@ -1215,7 +1209,7 @@ app.get("/logout", (req, res) => {
 app.post("/update-password", (req, res) => {
     const {newPassword, confirmPassword} = req.body;
 
-    if (!req.session.user) {
+    if (!req.session?.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -1320,7 +1314,13 @@ app.post("/create-group", (req, res) => {
 app.post("/add-user", (req, res) => {
     const { groupId, username } = req.body;
     const addedBy = req.session.user.name;
+    const userId = req.session.user.id;
 
+    findUserByUsername(groupId, username, addedBy, userId, res);
+});
+
+// Helper function to find user by username
+function findUserByUsername(groupId, username, addedBy, userId, res) {
     // Get user ID by username
     const userQuery = "SELECT id FROM user_form WHERE name = ?";
     connection.query(userQuery, [username], (err, results) => {
@@ -1328,34 +1328,48 @@ app.post("/add-user", (req, res) => {
             return res.status(400).json({ error: "User not found." });
         }
         
-        const userId = results[0].id;
+        const targetUserId = results[0].id;
+        checkIfAlreadyMember(groupId, username, addedBy, userId, targetUserId, res);
+    });
+}
 
+// Helper function to check if user is already a member
+function checkIfAlreadyMember(groupId, username, addedBy, userId, targetUserId, res) {
         // Check if already a member
         const checkQuery = "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?";
-        connection.query(checkQuery, [groupId, userId], (err, checkResults) => {
+    connection.query(checkQuery, [groupId, targetUserId], (err, checkResults) => {
             if (err) return res.status(500).json({ error: "Database error." });
             if (checkResults.length > 0) return res.status(400).json({ error: "User is already a member." });
 
+        addUserToGroup(groupId, username, addedBy, userId, targetUserId, res);
+    });
+}
+
+// Helper function to add user to group
+function addUserToGroup(groupId, username, addedBy, userId, targetUserId, res) {
             // Add user
             const insertQuery = "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)";
-            connection.query(insertQuery, [groupId, userId], (err) => {
+    connection.query(insertQuery, [groupId, targetUserId], (err) => {
                 if (err) return res.status(500).json({ error: "Error adding user to group." });
                 
+        addSystemMessage(groupId, username, addedBy, userId, res);
+    });
+}
+
+// Helper function to add system message
+function addSystemMessage(groupId, username, addedBy, userId, res) {
                 // Add system message
                 const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
                 const systemMessage = `${username} was added to the channel by ${addedBy}.`;
                 
-                connection.query(systemMessageQuery, [groupId, req.session.user.id, systemMessage], (err) => {
+    connection.query(systemMessageQuery, [groupId, userId, systemMessage], (err) => {
                     if (err) {
                         console.error("Error adding system message:", err);
                     }
                     
                     res.json({ message: "User added successfully!" });
                 });
-            });
-        });
-    });
-});
+}
 
 app.get("/get-groups", (req, res) => {
     const query = "SELECT id, name, description FROM `groups` ORDER BY created_at DESC";
@@ -1406,7 +1420,7 @@ app.get("/group-owner/:groupId", (req, res) => {
 
 app.get("/group-requests/:groupId", (req, res) => {
     const { groupId } = req.params;
-    const userId = req.session.user ? req.session.user.id : null;
+    const userId = req.session?.user?.id || null;
 
     if (!userId) {
         console.error("Unauthorized request: No user ID found.");
@@ -1457,12 +1471,23 @@ app.post("/request-join", (req, res) => {
         return res.status(401).json({ error: "You must be logged in to request to join a group." });
     }
 
+    checkExistingMembership(groupId, userId, res);
+});
+
+// Helper function to check existing membership
+function checkExistingMembership(groupId, userId, res) {
     // Check if the user is already a member
     const checkMembershipQuery = "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?";
     connection.query(checkMembershipQuery, [groupId, userId], (err, results) => {
         if (err) return res.status(500).json({ error: "Database error while checking membership." });
         if (results.length > 0) return res.status(400).json({ error: "You are already a member of this group." });
 
+        checkGroupOwnership(groupId, userId, res);
+    });
+}
+
+// Helper function to check group ownership
+function checkGroupOwnership(groupId, userId, res) {
         // Check if user is the group owner
         const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
         connection.query(checkOwnerQuery, [groupId], (err, ownerResults) => {
@@ -1471,27 +1496,42 @@ app.post("/request-join", (req, res) => {
             const isOwner = ownerResults.length > 0 && ownerResults[0].created_by === userId;
             if (isOwner) return res.status(400).json({ error: "You are the group owner and cannot request to join." });
 
+        checkExistingRequest(groupId, userId, res);
+    });
+}
+
+// Helper function to check existing join request
+function checkExistingRequest(groupId, userId, res) {
             // Check if user has already requested to join
             const checkRequestQuery = "SELECT * FROM group_requests WHERE group_id = ? AND user_id = ?";
             connection.query(checkRequestQuery, [groupId, userId], (err, requestResults) => {
                 if (err) return res.status(500).json({ error: "Database error while checking join request." });
                 if (requestResults.length > 0) return res.status(400).json({ error: "You have already requested to join this group." });
 
+        insertJoinRequest(groupId, userId, res);
+    });
+}
+
+// Helper function to insert join request
+function insertJoinRequest(groupId, userId, res) {
                 // Insert join request
                 const insertRequestQuery = "INSERT INTO group_requests (group_id, user_id) VALUES (?, ?)";
                 connection.query(insertRequestQuery, [groupId, userId], (err) => {
                     if (err) return res.status(500).json({ error: "Error submitting join request." });
                     res.json({ message: "Request to join sent successfully!" });
                 });
-            });
-        });
-    });
-});
+}
 
 app.post("/approve-user", (req, res) => {
     const { groupId, userId } = req.body;
     const approvedBy = req.session.user.name;
+    const approverId = req.session.user.id;
 
+    getUsernameForApproval(groupId, userId, approvedBy, approverId, res);
+});
+
+// Helper function to get username for approval
+function getUsernameForApproval(groupId, userId, approvedBy, approverId, res) {
     // Get user name
     const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
     connection.query(getUserQuery, [userId], (err, userResults) => {
@@ -1500,38 +1540,57 @@ app.post("/approve-user", (req, res) => {
         }
         
         const username = userResults[0].name;
+        removeJoinRequest(groupId, userId, username, approvedBy, approverId, res);
+    });
+}
 
+// Helper function to remove join request
+function removeJoinRequest(groupId, userId, username, approvedBy, approverId, res) {
         // Remove from requests
         const deleteQuery = "DELETE FROM group_requests WHERE group_id = ? AND user_id = ?";
         connection.query(deleteQuery, [groupId, userId], (err) => {
             if (err) return res.status(500).json({ error: "Error processing request." });
 
+        addUserToGroupAfterApproval(groupId, userId, username, approvedBy, approverId, res);
+    });
+}
+
+// Helper function to add user to group after approval
+function addUserToGroupAfterApproval(groupId, userId, username, approvedBy, approverId, res) {
             // Add user to group
             const insertQuery = "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)";
             connection.query(insertQuery, [groupId, userId], (err) => {
                 if (err) return res.status(500).json({ error: "Error adding user to group." });
                 
+        addApprovalSystemMessage(groupId, username, approvedBy, approverId, res);
+    });
+}
+
+// Helper function to add approval system message
+function addApprovalSystemMessage(groupId, username, approvedBy, approverId, res) {
                 // Add system message
                 const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
                 const systemMessage = `${username}'s request to join was approved by ${approvedBy}.`;
                 
-                connection.query(systemMessageQuery, [groupId, req.session.user.id, systemMessage], (err) => {
+    connection.query(systemMessageQuery, [groupId, approverId, systemMessage], (err) => {
                     if (err) {
                         console.error("Error adding system message:", err);
                     }
                     
                     res.json({ message: "User added successfully!" });
                 });
-            });
-        });
-    });
-});
+}
 
 app.post("/leave-group", (req, res) => {
     const { groupId } = req.body;
     const userId = req.session.user.id;
     const userName = req.session.user.name;
 
+    checkIfGroupOwner(groupId, userId, userName, res);
+});
+
+// Helper function to check if user is the group owner
+function checkIfGroupOwner(groupId, userId, userName, res) {
     // Check if the user is the owner
     const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
     connection.query(checkOwnerQuery, [groupId], (err, results) => {
@@ -1549,6 +1608,12 @@ app.post("/leave-group", (req, res) => {
             return res.status(403).json({ error: "As the owner, you cannot leave your own channel. You can delete it instead." });
         }
 
+        addLeaveSystemMessage(groupId, userId, userName, res);
+    });
+}
+
+// Helper function to add leave system message
+function addLeaveSystemMessage(groupId, userId, userName, res) {
         // Add system message before removing the user
         const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
         const systemMessage = `${userName} has left the channel.`;
@@ -1558,6 +1623,12 @@ app.post("/leave-group", (req, res) => {
                 console.error("Error adding system message:", err);
             }
             
+        removeUserFromGroupMembership(groupId, userId, res);
+    });
+}
+
+// Helper function to remove user from group membership
+function removeUserFromGroupMembership(groupId, userId, res) {
             const query = "DELETE FROM group_members WHERE group_id = ? AND user_id = ?";
             connection.query(query, [groupId, userId], (err, result) => {
                 if (err) {
@@ -1569,116 +1640,15 @@ app.post("/leave-group", (req, res) => {
                 }
                 res.json({ message: "You have left the group." });
             });
-        });
-    });
-});
-
-// Add endpoint to update group description
-app.post("/update-group-description", (req, res) => {
-    const { groupId, description } = req.body;
-    const userId = req.session.user.id;
-    const userName = req.session.user.name;
-
-    // Check if user is the owner of the group
-    const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
-    connection.query(checkOwnerQuery, [groupId], (err, results) => {
-        if (err) {
-            console.error("Database error checking group owner:", err);
-            return res.status(500).json({ error: "Database error." });
-        }
-        if (results.length === 0) {
-            return res.status(404).json({ error: "Group not found." });
-        }
-
-        const isOwner = results[0].created_by === userId;
-        if (!isOwner) {
-            return res.status(403).json({ error: "Only the channel owner can update the description." });
-        }
-
-        // Update group description
-        const updateQuery = "UPDATE `groups` SET description = ? WHERE id = ?";
-        connection.query(updateQuery, [description, groupId], (err) => {
-            if (err) {
-                console.error("Error updating group description:", err);
-                return res.status(500).json({ error: "Error updating group description." });
-            }
-
-            // Add system message for the description change
-            const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
-            const systemMessage = `${userName} updated the channel description.`;
-            
-            connection.query(systemMessageQuery, [groupId, userId, systemMessage], (err) => {
-                if (err) {
-                    console.error("Error adding system message:", err);
-                }
-                
-                res.json({ message: "Channel description updated successfully!" });
-            });
-        });
-    });
-});
-
-// Add endpoint to remove user from group (for admins)
-app.post("/remove-group-member", (req, res) => {
-    const { groupId, memberId } = req.body;
-    const userId = req.session.user.id;
-    const adminName = req.session.user.name;
-
-    // Check if user is the owner of the group
-    const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
-    connection.query(checkOwnerQuery, [groupId], (err, results) => {
-        if (err) {
-            console.error("Database error checking group owner:", err);
-            return res.status(500).json({ error: "Database error." });
-        }
-        if (results.length === 0) {
-            return res.status(404).json({ error: "Group not found." });
-        }
-
-        const isOwner = results[0].created_by === userId;
-        if (!isOwner) {
-            return res.status(403).json({ error: "Only the channel owner can remove members." });
-        }
-
-        // Get member's name before removing
-        const getMemberQuery = "SELECT name FROM user_form WHERE id = ?";
-        connection.query(getMemberQuery, [memberId], (err, userResults) => {
-            if (err || userResults.length === 0) {
-                return res.status(400).json({ error: "User not found." });
-            }
-
-            const memberName = userResults[0].name;
-
-            // Add system message before removing the user
-            const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
-            const systemMessage = `${memberName} was removed from the channel by ${adminName}.`;
-            
-            connection.query(systemMessageQuery, [groupId, userId, systemMessage], (err) => {
-                if (err) {
-                    console.error("Error adding system message:", err);
-                }
-                
-                // Remove the user from the group
-                const removeQuery = "DELETE FROM group_members WHERE group_id = ? AND user_id = ?";
-                connection.query(removeQuery, [groupId, memberId], (err, result) => {
-                    if (err) {
-                        console.error("Error removing member:", err);
-                        return res.status(500).json({ error: "Error removing member from channel." });
-                    }
-                    if (result.affectedRows === 0) {
-                        return res.status(400).json({ error: "User is not a member of this channel." });
-                    }
-                    res.json({ message: "Member removed successfully!" });
-                });
-            });
-        });
-    });
-});
+}
 
 app.put('/api/messages/:id/pin', (req, res) => {
     const messageId = req.params.id;
+    getMessageDetails(messageId, res);
+});
 
-  
+// Helper function to get message details
+function getMessageDetails(messageId, res) {
     connection.query(
         'SELECT sender_id, recipient_id FROM direct_messages WHERE id = ?',
         [messageId],
@@ -1693,7 +1663,13 @@ app.put('/api/messages/:id/pin', (req, res) => {
             }
 
             const { sender_id, recipient_id } = results[0];
+            unpinExistingMessages(messageId, sender_id, recipient_id, res);
+        }
+    );
+}
 
+// Helper function to unpin existing messages
+function unpinExistingMessages(messageId, sender_id, recipient_id, res) {
             connection.query(
                 `UPDATE direct_messages SET pinned = FALSE 
                  WHERE (sender_id = ? AND recipient_id = ?) 
@@ -1705,7 +1681,13 @@ app.put('/api/messages/:id/pin', (req, res) => {
                         return res.status(500).json({ error: 'Error unpinning old messages' });
                     }
 
+            pinNewMessage(messageId, res);
+        }
+    );
+}
                    
+// Helper function to pin new message
+function pinNewMessage(messageId, res) {
                     connection.query(
                         'UPDATE direct_messages SET pinned = TRUE WHERE id = ?',
                         [messageId],
@@ -1719,10 +1701,7 @@ app.put('/api/messages/:id/pin', (req, res) => {
                         }
                     );
                 }
-            );
-        }
-    );
-});
+
 app.get('/api/messages/pinned', (req, res) => {
     const { senderId, recipientId } = req.query;
 
@@ -1802,6 +1781,142 @@ app.get('/api/channel-messages/pinned', (req, res) => {
         res.json(results[0] || null);
     });
 });
+
+// Add endpoint to update group description
+app.post("/update-group-description", (req, res) => {
+    const { groupId, description } = req.body;
+    const userId = req.session.user.id;
+    const userName = req.session.user.name;
+
+    checkOwnerForDescriptionUpdate(groupId, description, userId, userName, res);
+});
+
+// Helper function to check owner for description update
+function checkOwnerForDescriptionUpdate(groupId, description, userId, userName, res) {
+    // Check if user is the owner of the group
+    const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
+    connection.query(checkOwnerQuery, [groupId], (err, results) => {
+        if (err) {
+            console.error("Database error checking group owner:", err);
+            return res.status(500).json({ error: "Database error." });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Group not found." });
+        }
+
+        const isOwner = results[0].created_by === userId;
+        if (!isOwner) {
+            return res.status(403).json({ error: "Only the channel owner can update the description." });
+        }
+
+        updateGroupDescription(groupId, description, userId, userName, res);
+    });
+}
+
+// Helper function to update group description
+function updateGroupDescription(groupId, description, userId, userName, res) {
+    // Update group description
+    const updateQuery = "UPDATE `groups` SET description = ? WHERE id = ?";
+    connection.query(updateQuery, [description, groupId], (err) => {
+        if (err) {
+            console.error("Error updating group description:", err);
+            return res.status(500).json({ error: "Error updating group description." });
+        }
+
+        addDescriptionUpdateMessage(groupId, userId, userName, res);
+    });
+}
+
+// Helper function to add description update message
+function addDescriptionUpdateMessage(groupId, userId, userName, res) {
+    // Add system message for the description change
+    const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
+    const systemMessage = `${userName} updated the channel description.`;
+    
+    connection.query(systemMessageQuery, [groupId, userId, systemMessage], (err) => {
+        if (err) {
+            console.error("Error adding system message:", err);
+        }
+        
+        res.json({ message: "Channel description updated successfully!" });
+    });
+}
+
+// Add endpoint to remove user from group (for admins)
+app.post("/remove-group-member", (req, res) => {
+    const { groupId, memberId } = req.body;
+    const userId = req.session.user.id;
+    const adminName = req.session.user.name;
+
+    checkGroupOwnerForRemoval(groupId, memberId, userId, adminName, res);
+});
+
+// Helper function to check group owner for member removal
+function checkGroupOwnerForRemoval(groupId, memberId, userId, adminName, res) {
+    // Check if user is the owner of the group
+    const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
+    connection.query(checkOwnerQuery, [groupId], (err, results) => {
+        if (err) {
+            console.error("Database error checking group owner:", err);
+            return res.status(500).json({ error: "Database error." });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Group not found." });
+        }
+
+        const isOwner = results[0].created_by === userId;
+        if (!isOwner) {
+            return res.status(403).json({ error: "Only the channel owner can remove members." });
+        }
+
+        getMemberNameForRemoval(groupId, memberId, userId, adminName, res);
+    });
+}
+
+// Helper function to get member name for removal
+function getMemberNameForRemoval(groupId, memberId, userId, adminName, res) {
+    // Get member's name before removing
+    const getMemberQuery = "SELECT name FROM user_form WHERE id = ?";
+    connection.query(getMemberQuery, [memberId], (err, userResults) => {
+        if (err || userResults.length === 0) {
+            return res.status(400).json({ error: "User not found." });
+        }
+
+        const memberName = userResults[0].name;
+        addRemovalSystemMessage(groupId, memberId, userId, adminName, memberName, res);
+    });
+}
+
+// Helper function to add removal system message
+function addRemovalSystemMessage(groupId, memberId, userId, adminName, memberName, res) {
+    // Add system message before removing the user
+    const systemMessageQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
+    const systemMessage = `${memberName} was removed from the channel by ${adminName}.`;
+    
+    connection.query(systemMessageQuery, [groupId, userId, systemMessage], (err) => {
+        if (err) {
+            console.error("Error adding system message:", err);
+        }
+        
+        removeUserFromGroup(groupId, memberId, res);
+    });
+}
+
+// Helper function to remove user from group
+function removeUserFromGroup(groupId, memberId, res) {
+    // Remove the user from the group
+    const removeQuery = "DELETE FROM group_members WHERE group_id = ? AND user_id = ?";
+    connection.query(removeQuery, [groupId, memberId], (err, result) => {
+        if (err) {
+            console.error("Error removing member:", err);
+            return res.status(500).json({ error: "Error removing member from channel." });
+        }
+        if (result.affectedRows === 0) {
+            return res.status(400).json({ error: "User is not a member of this channel." });
+        }
+        res.json({ message: "Member removed successfully!" });
+    });
+}
 
 // Export the app and connection for testing
 module.exports = {

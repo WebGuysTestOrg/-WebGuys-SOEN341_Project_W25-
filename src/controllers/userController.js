@@ -1,13 +1,16 @@
 const crypto = require('crypto');
 const connection = require('../config/db');
 
+// Create a connection pool that returns promises instead of using callbacks
+const promisePool = connection.promise();
+
 const userController = {
     // Common functions for all users
     login: async (req, res) => {
         const { email, password } = req.body;
         try {
             const hashedPassword = crypto.createHash("md5").update(password).digest("hex");
-            const [results] = await connection.query(
+            const [results] = await promisePool.query(
                 "SELECT * FROM user_form WHERE email = ? AND password = ?",
                 [email, hashedPassword]
             );
@@ -22,7 +25,7 @@ const userController = {
                 };
 
                 // Log login time
-                await connection.query(
+                await promisePool.query(
                     "INSERT INTO user_activity_log (user_id, name) VALUES (?, ?)",
                     [user.id, user.name]
                 );
@@ -51,7 +54,7 @@ const userController = {
 
         try {
             const userId = req.session.user.id;
-            await connection.query(
+            await promisePool.query(
                 `UPDATE user_activity_log 
                  SET logout_time = CURRENT_TIMESTAMP 
                  WHERE user_id = ? 
@@ -81,7 +84,7 @@ const userController = {
 
         try {
             const hashedPassword = crypto.createHash("md5").update(newPassword).digest("hex");
-            await connection.query(
+            await promisePool.query(
                 "UPDATE user_form SET password = ? WHERE id = ?",
                 [hashedPassword, req.session.user.id]
             );
@@ -98,12 +101,12 @@ const userController = {
         createTeam: async (req, res) => {
             const { teamName } = req.body;
             try {
-                const [result] = await connection.query(
+                const [result] = await promisePool.query(
                     "INSERT INTO teams (name, created_by) VALUES (?, ?)",
                     [teamName, req.session.user.id]
                 );
 
-                await connection.query(
+                await promisePool.query(
                     "INSERT INTO user_teams (user_id, team_id) VALUES (?, ?)",
                     [req.session.user.id, result.insertId]
                 );
@@ -118,7 +121,7 @@ const userController = {
         removeMessage: async (req, res) => {
             const { messageId } = req.body;
             try {
-                await connection.query(
+                await promisePool.query(
                     "UPDATE channels_messages SET text = 'Removed by Moderator' WHERE id = ?",
                     [messageId]
                 );
@@ -132,7 +135,7 @@ const userController = {
         removeUserFromTeam: async (req, res) => {
             const { teamId, userId } = req.body;
             try {
-                const [team] = await connection.query(
+                const [team] = await promisePool.query(
                     "SELECT created_by FROM teams WHERE id = ?",
                     [teamId]
                 );
@@ -143,7 +146,7 @@ const userController = {
                     });
                 }
 
-                await connection.query(
+                await promisePool.query(
                     "DELETE FROM user_teams WHERE team_id = ? AND user_id = ?",
                     [teamId, userId]
                 );
@@ -158,22 +161,22 @@ const userController = {
         approveGroupRequest: async (req, res) => {
             const { groupId, userId } = req.body;
             try {
-                await connection.query(
+                await promisePool.query(
                     "DELETE FROM group_requests WHERE group_id = ? AND user_id = ?",
                     [groupId, userId]
                 );
 
-                await connection.query(
+                await promisePool.query(
                     "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)",
                     [groupId, userId]
                 );
 
-                const [user] = await connection.query(
+                const [user] = await promisePool.query(
                     "SELECT name FROM user_form WHERE id = ?",
                     [userId]
                 );
 
-                await connection.query(
+                await promisePool.query(
                     `INSERT INTO group_messages 
                      (group_id, user_id, text, is_system_message) 
                      VALUES (?, ?, ?, 1)`,
@@ -191,12 +194,12 @@ const userController = {
         updateGroupDescription: async (req, res) => {
             const { groupId, description } = req.body;
             try {
-                await connection.query(
+                await promisePool.query(
                     "UPDATE `groups` SET description = ? WHERE id = ?",
                     [description, groupId]
                 );
 
-                await connection.query(
+                await promisePool.query(
                     `INSERT INTO group_messages 
                      (group_id, user_id, text, is_system_message) 
                      VALUES (?, ?, ?, 1)`,
@@ -214,12 +217,12 @@ const userController = {
         removeGroupMember: async (req, res) => {
             const { groupId, memberId } = req.body;
             try {
-                const [member] = await connection.query(
+                const [member] = await promisePool.query(
                     "SELECT name FROM user_form WHERE id = ?",
                     [memberId]
                 );
 
-                await connection.query(
+                await promisePool.query(
                     `INSERT INTO group_messages 
                      (group_id, user_id, text, is_system_message) 
                      VALUES (?, ?, ?, 1)`,
@@ -227,7 +230,7 @@ const userController = {
                      `${member[0].name} was removed from the group by ${req.session.user.name}.`]
                 );
 
-                await connection.query(
+                await promisePool.query(
                     "DELETE FROM group_members WHERE group_id = ? AND user_id = ?",
                     [groupId, memberId]
                 );
@@ -245,7 +248,7 @@ const userController = {
         joinTeam: async (req, res) => {
             const { teamId } = req.body;
             try {
-                const [existing] = await connection.query(
+                const [existing] = await promisePool.query(
                     "SELECT * FROM user_teams WHERE team_id = ? AND user_id = ?",
                     [teamId, req.session.user.id]
                 );
@@ -254,7 +257,7 @@ const userController = {
                     return res.status(400).json({ error: "Already a member of this team" });
                 }
 
-                await connection.query(
+                await promisePool.query(
                     "INSERT INTO user_teams (user_id, team_id) VALUES (?, ?)",
                     [req.session.user.id, teamId]
                 );
@@ -269,7 +272,7 @@ const userController = {
         sendMessage: async (req, res) => {
             const { teamName, channelName, text } = req.body;
             try {
-                const [access] = await connection.query(
+                const [access] = await promisePool.query(
                     `SELECT * FROM user_channels uc 
                      JOIN channels c ON uc.channel_id = c.id 
                      JOIN teams t ON c.team_id = t.id 
@@ -281,7 +284,7 @@ const userController = {
                     return res.status(403).json({ error: "No access to this channel" });
                 }
 
-                await connection.query(
+                await promisePool.query(
                     `INSERT INTO channels_messages 
                      (team_name, channel_name, sender, text) 
                      VALUES (?, ?, ?, ?)`,
@@ -298,7 +301,7 @@ const userController = {
         requestJoinGroup: async (req, res) => {
             const { groupId } = req.body;
             try {
-                const [existing] = await connection.query(
+                const [existing] = await promisePool.query(
                     "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?",
                     [groupId, req.session.user.id]
                 );
@@ -307,7 +310,7 @@ const userController = {
                     return res.status(400).json({ error: "Already a member of this group" });
                 }
 
-                const [request] = await connection.query(
+                const [request] = await promisePool.query(
                     "SELECT * FROM group_requests WHERE group_id = ? AND user_id = ?",
                     [groupId, req.session.user.id]
                 );
@@ -316,7 +319,7 @@ const userController = {
                     return res.status(400).json({ error: "Already requested to join this group" });
                 }
 
-                await connection.query(
+                await promisePool.query(
                     "INSERT INTO group_requests (group_id, user_id) VALUES (?, ?)",
                     [groupId, req.session.user.id]
                 );
@@ -331,7 +334,7 @@ const userController = {
         leaveGroup: async (req, res) => {
             const { groupId } = req.body;
             try {
-                const [group] = await connection.query(
+                const [group] = await promisePool.query(
                     "SELECT created_by FROM `groups` WHERE id = ?",
                     [groupId]
                 );
@@ -342,7 +345,7 @@ const userController = {
                     });
                 }
 
-                await connection.query(
+                await promisePool.query(
                     `INSERT INTO group_messages 
                      (group_id, user_id, text, is_system_message) 
                      VALUES (?, ?, ?, 1)`,
@@ -350,7 +353,7 @@ const userController = {
                      `${req.session.user.name} has left the group.`]
                 );
 
-                await connection.query(
+                await promisePool.query(
                     "DELETE FROM group_members WHERE group_id = ? AND user_id = ?",
                     [groupId, req.session.user.id]
                 );
@@ -365,7 +368,7 @@ const userController = {
         updateStatus: async (req, res) => {
             const { status } = req.body;
             try {
-                await connection.query(
+                await promisePool.query(
                     "UPDATE user_form SET status = ? WHERE id = ?",
                     [status, req.session.user.id]
                 );
@@ -384,7 +387,7 @@ const userController = {
 
         getUserTeams: async (req, res) => {
             try {
-                const [teams] = await connection.query(
+                const [teams] = await promisePool.query(
                     `SELECT t.id, t.name, t.created_by 
                      FROM teams t 
                      JOIN user_teams ut ON t.id = ut.team_id 
@@ -401,7 +404,7 @@ const userController = {
 
         getUserChannels: async (req, res) => {
             try {
-                const [channels] = await connection.query(
+                const [channels] = await promisePool.query(
                     `SELECT c.id, c.name, t.name as team_name 
                      FROM channels c 
                      JOIN user_channels uc ON c.id = uc.channel_id 
