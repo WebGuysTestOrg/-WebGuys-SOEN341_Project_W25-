@@ -4,7 +4,7 @@ const sharedSession = require("express-socket.io-session");
 const {Server} = require("socket.io");
 const connection = require('./config/db');
 const { app, sessionMiddleware } = require('./app');
-
+  
 // Import routes
 const userRoutes = require('./routes/userRoutes');
 const teamRoutes = require('./routes/teamRoutes');
