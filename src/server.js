@@ -1675,6 +1675,134 @@ app.post("/remove-group-member", (req, res) => {
     });
 });
 
+app.put('/api/messages/:id/pin', (req, res) => {
+    const messageId = req.params.id;
+
+  
+    connection.query(
+        'SELECT sender_id, recipient_id FROM direct_messages WHERE id = ?',
+        [messageId],
+        (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            if (results.length === 0) {
+                return res.status(404).json({ error: 'Message not found' });
+            }
+
+            const { sender_id, recipient_id } = results[0];
+
+            connection.query(
+                `UPDATE direct_messages SET pinned = FALSE 
+                 WHERE (sender_id = ? AND recipient_id = ?) 
+                    OR (sender_id = ? AND recipient_id = ?)`,
+                [sender_id, recipient_id, recipient_id, sender_id],
+                (unpinErr) => {
+                    if (unpinErr) {
+                        console.error(unpinErr);
+                        return res.status(500).json({ error: 'Error unpinning old messages' });
+                    }
+
+                   
+                    connection.query(
+                        'UPDATE direct_messages SET pinned = TRUE WHERE id = ?',
+                        [messageId],
+                        (pinErr) => {
+                            if (pinErr) {
+                                console.error(pinErr);
+                                return res.status(500).json({ error: 'Error pinning message' });
+                            }
+
+                            res.json({ message: 'Message pinned successfully' });
+                        }
+                    );
+                }
+            );
+        }
+    );
+});
+app.get('/api/messages/pinned', (req, res) => {
+    const { senderId, recipientId } = req.query;
+
+    if (!senderId || !recipientId) {
+        return res.status(400).json({ error: 'Missing senderId or recipientId in query' });
+    }
+
+    const query = `
+        SELECT * FROM direct_messages 
+        WHERE pinned = TRUE AND (
+            (sender_id = ? AND recipient_id = ?) 
+            OR 
+            (sender_id = ? AND recipient_id = ?)
+        )
+        LIMIT 1
+    `;
+
+    connection.query(query, [senderId, recipientId, recipientId, senderId], (err, results) => {
+        if (err) {
+            console.error('Error fetching pinned message:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        const pinnedMessage = results.length > 0 ? results[0] : null;
+        res.json(pinnedMessage);
+    });
+});
+
+app.put('/api/messages/:id/unpin', (req, res) => {
+    const messageId = req.params.id;
+
+    connection.query(
+        'UPDATE direct_messages SET pinned = FALSE WHERE id = ?',
+        [messageId],
+        (err, results) => {
+            if (err) {
+                console.error("Error unpinning message:", err);
+                return res.status(500).json({ error: 'Failed to unpin message' });
+            }
+
+            res.json({ success: true });
+        }
+    );
+});
+
+app.put('/api/channel-messages/:id/pin', (req, res) => {
+    const messageId = req.params.id;
+
+    connection.query(`
+        UPDATE channels_messages SET pinned = true WHERE id = ?
+    `, [messageId], (err, result) => {
+        if (err) return res.status(500).json({ error: 'Failed to pin message' });
+        res.json({ success: true });
+    });
+});
+
+app.put('/api/channel-messages/:id/unpin', (req, res) => {
+    const messageId = req.params.id;
+
+    connection.query(`
+        UPDATE channels_messages SET pinned = false WHERE id = ?
+    `, [messageId], (err, result) => {
+        if (err) return res.status(500).json({ error: 'Failed to unpin message' });
+        res.json({ success: true });
+    });
+});
+
+app.get('/api/channel-messages/pinned', (req, res) => {
+    const { teamName, channelName } = req.query;
+
+    connection.query(`
+        SELECT * FROM channels_messages 
+        WHERE pinned = true AND team_name = ? AND channel_name = ?
+        ORDER BY created_at DESC LIMIT 1
+    `, [teamName, channelName], (err, results) => {
+        if (err) return res.status(500).json({ error: 'Failed to fetch pinned message' });
+        res.json(results[0] || null);
+    });
+});
+
 // Export the app and connection for testing
 module.exports = {
     app,
