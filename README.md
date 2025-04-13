@@ -31,7 +31,7 @@ As the project progresses, additional functionalities will be proposed and integ
 * Manlai Munkhbold (ManlaiM) - Front-End Developer
 * Sem Axil Raïs (kisuk8) - Full-Stack Developer
 * Noah Scally (NoahScally) - Front-End Developer
-* Chadi Zebian (chadithebian) - Front-End Developer
+* Chadi Zebian-40161464 (chadithebian) - Front-End Developer
   
 ## Technologies Used
 
