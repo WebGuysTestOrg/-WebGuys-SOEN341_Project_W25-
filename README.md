@@ -26,11 +26,11 @@ As the project progresses, additional functionalities will be proposed and integ
 
 ## Team Members
 
-* Wadih Bou Jaoude (WadihBj) - Full-Stack Developer
-* Ruso Kanapathipillai (RusoKan) - Full-Stack Developer
-* Manlai Munkhbold (ManlaiM) - Front-End Developer
-* Sem Axil Raïs (kisuk8) - Full-Stack Developer
-* Noah Scally (NoahScally) - Front-End Developer
+* Wadih Bou Jaoude-40273558 (WadihBj) - Full-Stack Developer
+* Ruso Kanapathipillai-40133397 (RusoKan) - Full-Stack Developer
+* Manlai Munkhbold-40282487 (ManlaiM) - Front-End Developer
+* Sem Axil Raïs-40113324 (kisuk8) - Full-Stack Developer
+* Noah Scally-40264384 (NoahScally) - Front-End Developer
 * Chadi Zebian-40161464 (chadithebian) - Full-Stack Developer
   
 ## Technologies Used
