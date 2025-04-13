@@ -108,7 +108,7 @@ function handleChannelFormEvents(formWrapper, team) {
 
 async function createChannel(teamId, channelName) {
     try {
-        const response = await fetch('/create-channel', {
+        const response = await fetch('/api/channels/create-channel', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ teamId, channelName })
@@ -609,7 +609,7 @@ function renderPrivateChannels(container, privateChannels) {
 
 // Initialize page
 document.addEventListener("DOMContentLoaded", () => {
-    fetch('/user-info')
+    fetch('/api/auth/user-info')
         .then(response => response.json())
         .then(data => {
             document.getElementById('username').textContent = data.name;
@@ -1036,7 +1036,7 @@ function updateUserStatusUI(onlineUsers = [], awayUsers = []) {
     }
     
     // Fetch user role from session data
-    fetch('/user-info')
+    fetch('/api/auth/user-info')
         .then(response => response.json())
         .then(data => {
             const userRole = data.role || 'user';

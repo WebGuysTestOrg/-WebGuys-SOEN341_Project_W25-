@@ -81,6 +81,7 @@ const userController = {
             console.error("Logout error:", err);
             res.status(500).json({ error: "Error logging out." });
         }
+        
     },
 
     updatePassword: async (req, res) => {
@@ -430,7 +431,7 @@ const userController = {
                 console.error("Channels fetch error:", err);
                 res.status(500).json({ error: "Error fetching channels" });
             }
-        }
+        },
     }
 };
 

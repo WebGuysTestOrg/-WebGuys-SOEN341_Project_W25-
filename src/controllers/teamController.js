@@ -119,7 +119,7 @@ const teamController = {
     // Get all teams with their members
     getTeamsWithMembers: async (req, res) => {
         try {
-            const query = `
+            const sqlquery = `
                 SELECT 
                     t.id AS teamId,
                     t.name AS teamName,
@@ -139,7 +139,7 @@ const teamController = {
                 ORDER BY t.id, c.id, m.name, cu.name;
             `;
 
-            const results = await query(query);
+            const results = await query(sqlquery);
             const teams = {};
 
             results.forEach((row) => {

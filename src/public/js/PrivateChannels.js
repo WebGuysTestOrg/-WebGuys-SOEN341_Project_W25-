@@ -46,7 +46,7 @@ const socket = io();
             };
             
             // Fetch logged-in user info
-            fetch('/user-info')
+            fetch('/api/auth/user-info')
                 .then(response => response.json())
                 .then(data => {
                     loggedInUserId = data.id;
@@ -76,7 +76,7 @@ const socket = io();
                 currentGroupId = null;
             }
             
-            fetch('/user-info')
+            fetch('/api/auth/user-info')
                 .then(response => response.json())
                 .then(data => {
                     window.location.href = data.role === "admin" ? "/AdminDashboard.html" : "/UserDashboard.html"; 

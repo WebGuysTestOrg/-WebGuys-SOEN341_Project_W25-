@@ -12,7 +12,7 @@ function showToast(message, type = 'success') {
 }
 
 // Load user information
-fetch('/user-info')
+fetch('/api/auth/user-info')
     .then(response => {
         if (!response.ok) throw new Error('Unauthorized');
         return response.json();
@@ -86,7 +86,7 @@ document.getElementById('updatePasswordBtn').addEventListener('click', function(
         return;
     }
 
-    fetch('/update-password', {
+    fetch('/api/auth/update-password', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

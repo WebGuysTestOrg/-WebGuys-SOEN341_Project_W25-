@@ -78,7 +78,7 @@ document.head.insertAdjacentHTML('beforeend', `
 `);
 
 // Fetch user information
-fetch('/user-info')
+fetch('/api/auth/user-info')
     .then(response => {
         if (!response.ok) throw new Error('Unauthorized');
         return response.json();

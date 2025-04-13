@@ -23,7 +23,7 @@ document.getElementById('registerForm').addEventListener('submit', function (e) 
     const errorMessage = document.getElementById('error-message');
     errorMessage.style.display = 'none';
 
-    fetch('/register', {
+    fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, cpassword, user_type }),

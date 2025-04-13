@@ -2,6 +2,8 @@ const mysql = require("mysql2");
 const fs = require('fs'); // Needed for reading SQL file
 const path = require('path'); // Needed for path joining
 
+
+
 // Function to execute SQL script (will be used if schema.sql exists)
 function executeSqlScript(connection, filePath, callback) {
     fs.readFile(filePath, 'utf8', (err, data) => {
@@ -214,4 +216,4 @@ connection.promise = () => {
 };
 
 // Export the connection object
-module.exports = connection; 
+module.exports = {connection, pool}; 

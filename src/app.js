@@ -6,7 +6,11 @@ const path = require("path");
 // --- Import Routers ---
 const chatRoutes = require('./routes/chatRoutes');
 const channelRoutes = require('./routes/channelRoutes');
-// Add other route imports here later (e.g., authRoutes, teamRoutes)
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const teamRoutes = require('./routes/teamRoutes');
+const groupMessagesRoute = require('./routes/groupMessages');
+const messageRoutes = require('./routes/messageRoutes');
 
 const app = express();
 
@@ -39,13 +43,12 @@ app.use(express.static(path.join(__dirname, "public")));
 // --- Mount Routers ---
 // Mount chat routes (all routes starting with / defined in chatRoutes)
 app.use('/', chatRoutes);
-// Mount channel routes
-app.use('/channels', channelRoutes);
-// Example for API prefix: app.use('/api', chatRoutes); 
-// Add other router mount points here (e.g., app.use('/auth', authRoutes);)
-
-// Placeholder for error handling middleware
-// app.use((err, req, res, next) => { ... });
-
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/channels', channelRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api', groupMessagesRoute);
+app.use("/api/messages", messageRoutes);
 // Export the configured app and session middleware
 module.exports = { app, sessionMiddleware }; 

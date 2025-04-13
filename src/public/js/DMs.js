@@ -98,7 +98,7 @@ document.addEventListener("click", function (event) {
 
 // Back button functionality
 document.getElementById("back-btn").addEventListener("click", () => {
-    fetch('/user-info')
+    fetch('/api/auth/user-info')
         .then(response => response.json())
         .then(data => {
             window.location.href = data.role === "admin" ? "/AdminDashboard.html" : "/UserDashboard.html";
@@ -107,7 +107,7 @@ document.getElementById("back-btn").addEventListener("click", () => {
 });
 
 // Initialize user data
-fetch('/user-info')
+fetch('/api/auth/user-info')
     .then(response => response.json())
     .then(data => {
         loggedInUserId = data.id;
