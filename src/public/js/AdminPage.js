@@ -200,19 +200,35 @@ function fetchTeamsWithMembers() {
 
 // Fetch and display teams where admin is a member but not creator
 function fetchTeamsIAmMemberOf() {
-    fetch('/get-user-teams')
-        .then(response => response.json())
+    fetch('/api/teams/user-teams')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: Failed to fetch teams`);
+            }
+            return response.json();
+        })
         .then(teams => {
             const memberTeamsContainer = document.getElementById('member-teams-container');
             memberTeamsContainer.innerHTML = '';
 
-            if (!teams || teams.length === 0) {
+            if (!teams || !Array.isArray(teams)) {
+                console.warn("Teams data is not in expected format:", teams);
+                memberTeamsContainer.innerHTML = '<p>Error: Unable to load teams data correctly.</p>';
+                return;
+            }
+
+            if (teams.length === 0) {
                 memberTeamsContainer.innerHTML = '<p>You are not a member of any additional teams.</p>';
                 return;
             }
 
             fetch('/api/auth/admin-info')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch admin info');
+                    }
+                    return response.json();
+                })
                 .then(adminData => {
                     // Filter out teams created by this admin
                     const memberTeams = teams.filter(team => team.creatorName !== adminData.name);
@@ -226,12 +242,17 @@ function fetchTeamsIAmMemberOf() {
                         const teamCard = createTeamCard(team, false);
                         memberTeamsContainer.appendChild(teamCard);
                     });
+                })
+                .catch(err => {
+                    console.error('Error fetching admin info:', err);
+                    memberTeamsContainer.innerHTML = '<p>Error loading admin information. Please try again later.</p>';
                 });
         })
         .catch(err => {
             console.error('Error fetching user teams:', err);
             const memberTeamsContainer = document.getElementById('member-teams-container');
             memberTeamsContainer.innerHTML = '<p>Error loading teams. Please try again later.</p>';
+            showToast('Failed to load teams you are a member of', 'error');
         });
 }
 

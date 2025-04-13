@@ -10,12 +10,25 @@ let currentUserName = null;
 
 async function fetchUserTeams() {
     try {
-        const response = await fetch('/get-user-teams');
+        const response = await fetch('/api/teams/user-teams');
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Error ${response.status}: Failed to fetch teams`);
+        }
+        
         const teams = await response.json();
+        
+        if (!teams || !Array.isArray(teams)) {
+            console.warn("Teams data is not in expected format:", teams);
+            showToast("Teams data is not in the expected format.", "error");
+            return;
+        }
+        
         renderTeams(teams);
     } catch (err) {
         console.error("Error fetching teams:", err);
-        showToast("Failed to load teams. Please try again.", "error");
+        showToast("Failed to load teams. this is the problemmdnmsdjolasdoiksdfhjosdifj.", "error");
     }
 }
 
@@ -23,6 +36,11 @@ function renderTeams(teams) {
     userTeams = {}; 
     const teamsContainer = document.getElementById("teams-container");
     teamsContainer.innerHTML = "";
+
+    if (!teams || teams.length === 0) {
+        teamsContainer.innerHTML = '<div class="no-teams-message"><p>You are not a member of any teams yet.</p></div>';
+        return;
+    }
 
     teams.forEach(team => {
         userTeams[team.teamId] = team;

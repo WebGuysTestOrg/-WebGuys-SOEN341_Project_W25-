@@ -1,4 +1,6 @@
 const { pool } = require('../config/db');
+const util = require('util');
+const query = util.promisify(pool.query).bind(pool);
 
 const channelController = {
     // Create a new channel
@@ -19,7 +21,7 @@ const channelController = {
                 LEFT JOIN user_teams ut ON t.id = ut.team_id
                 WHERE t.id = ? AND (t.created_by = ? OR ut.user_id = ?)`;
     
-            const [results] = await pool.promise().query(checkMembershipQuery, [teamId, userId, userId]);
+            const [results] = await query(checkMembershipQuery, [teamId, userId, userId]);
     
             if (results.length === 0) {
                 return res.status(403).json({ error: "You must be the creator or a member of the team to create a channel." });
@@ -28,14 +30,14 @@ const channelController = {
             const teamCreatorId = results[0].creatorId;
     
             const insertChannelQuery = "INSERT INTO channels (name, team_id) VALUES (?, ?)";
-            const [channelResult] = await pool.promise().query(insertChannelQuery, [channelName, teamId]);
+            const [channelResult] = await query(insertChannelQuery, [channelName, teamId]);
             const channelId = channelResult.insertId;
     
             const insertUserChannelQuery = "INSERT INTO user_channels (user_id, channel_id) VALUES (?, ?)";
-            await pool.promise().query(insertUserChannelQuery, [userId, channelId]);
+            await query(insertUserChannelQuery, [userId, channelId]);
     
             if (teamCreatorId !== userId) {
-                await pool.promise().query(insertUserChannelQuery, [teamCreatorId, channelId]);
+                await query(insertUserChannelQuery, [teamCreatorId, channelId]);
             }
     
             res.json({ message: "Channel created successfully" });

@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const connection = require('../config/db');
+const { connection } = require('../config/db');
 
 const authController = {
     // User Registration

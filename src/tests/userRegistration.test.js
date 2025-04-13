@@ -1,7 +1,7 @@
 const request = require('supertest');
 // Import server instead of app since registration routes are in server.js
-const { app } = require('../server');
-const connection = require('../config/db');
+const { app } = require('../app');
+const { connection } = require('../config/db');
 
 // Mock the database connection
 jest.mock('../config/db', () => ({

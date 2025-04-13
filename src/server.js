@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const sharedSession = require("express-socket.io-session"); 
-const connection = require('./config/db');
+const { connection } = require('./config/db');
 const { app, sessionMiddleware } = require('./app');
 const { initializeSocketServer } = require('./socket/utils/socketManager');
   
@@ -100,91 +100,6 @@ app.get("/get-user-channels", (req, res) => {
 
         res.json(Object.values(userChannels));
         console.log(Object.values(userChannels))
-    });
-});
-
-app.get("/get-user-teams", (req, res) => {
-    if (!req.session?.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    const userId = req.session.user.id;
-
-    const query = `
-        SELECT 
-            t.id AS teamId, 
-            t.name AS teamName, 
-            u.name AS creatorName,  
-            utm.name AS teamMemberName,
-            c.id AS channelId,
-            c.name AS channelName,
-            ucm.name AS channelMemberName
-        FROM 
-            user_teams ut
-        JOIN teams t ON ut.team_id = t.id
-        JOIN user_form u ON t.created_by = u.id  
-        LEFT JOIN user_teams team_users ON t.id = team_users.team_id
-        LEFT JOIN user_form utm ON team_users.user_id = utm.id
-        LEFT JOIN channels c ON t.id = c.team_id
-        LEFT JOIN user_channels uc ON (c.id = uc.channel_id)
-        LEFT JOIN user_form ucm ON uc.user_id = ucm.id
-        WHERE ut.user_id = ? 
-        AND (
-            c.id IN (SELECT channel_id FROM user_channels WHERE user_id = ?)  -- Channels user is member of
-            OR t.created_by = ?  -- User is team creator
-            OR c.id IS NULL     -- Include teams even if they have no channels
-        )
-        ORDER BY t.id, c.id, ucm.name;
-    `;
-
-    connection.query(query, [userId, userId, userId], (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "Error fetching user teams." });
-        }
-
-        const userTeams = {};
-
-        results.forEach((row) => {
-            if (!userTeams[row.teamId]) {
-                userTeams[row.teamId] = {
-                    teamId: row.teamId,
-                    teamName: row.teamName,
-                    creatorName: row.creatorName,
-                    members: new Set(),
-                    channels: {}
-                };
-            }
-
-            // Add members to the team
-            if (row.teamMemberName) {
-                userTeams[row.teamId].members.add(row.teamMemberName);
-            }
-
-            // Add channels to the team
-            if (row.channelId) {
-                if (!userTeams[row.teamId].channels[row.channelId]) {
-                    userTeams[row.teamId].channels[row.channelId] = {
-                        channelName: row.channelName,
-                        members: new Set()
-                    };
-                }
-
-                if (row.channelMemberName) {
-                    userTeams[row.teamId].channels[row.channelId].members.add(row.channelMemberName);
-                }
-            }
-        });
-
-        // Convert Sets to Arrays for JSON response
-        Object.values(userTeams).forEach(team => {
-            team.members = Array.from(team.members);
-            Object.values(team.channels).forEach(channel => {
-                channel.members = Array.from(channel.members);
-            });
-        });
-
-        res.json(Object.values(userTeams));
     });
 });
 

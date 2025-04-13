@@ -1,4 +1,6 @@
-const connection = require('../config/db');
+const io = require('socket.io-client');
+const { app } = require('../app');
+const { connection } = require('../config/db');
 
 // Mock the database connection
 jest.mock('../config/db', () => ({

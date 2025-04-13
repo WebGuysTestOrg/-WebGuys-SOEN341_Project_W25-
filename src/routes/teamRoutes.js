@@ -12,7 +12,7 @@ router.delete('/:teamId', teamController.deleteTeam);
 router.get('/all', teamController.getTeamsWithMembers);
 
 // Get teams for a specific user
-router.get('/user', teamController.getUserTeams);
+router.get('/user-teams', teamController.getUserTeams);
 router.post('/assign-user-to-team', teamController.assignUserToTeam);
 
 // Remove a team member

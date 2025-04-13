@@ -1,5 +1,6 @@
 const chatController = require('../controllers/chatController');
-const connection = require('../config/db');
+const io = require('socket.io-client');
+const { connection } = require('../config/db');
 
 // Mock the database connection
 jest.mock('../config/db', () => ({

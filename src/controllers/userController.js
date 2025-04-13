@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const connection = require('../config/db');
+const { connection } = require('../config/db');
 
 // Create a mock promise pool for testing purposes
 const promisePool = {

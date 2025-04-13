@@ -216,4 +216,4 @@ connection.promise = () => {
 };
 
 // Export the connection object
-module.exports = {connection, pool}; 
+module.exports = { connection, pool }; 

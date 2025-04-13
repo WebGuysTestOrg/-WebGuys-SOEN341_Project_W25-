@@ -1,5 +1,5 @@
 // Import the database connection
-const connection = require('../config/db');
+const { connection } = require('../config/db');
 
 // Controller function to get user chat list
 const getUserChats = (req, res) => {
