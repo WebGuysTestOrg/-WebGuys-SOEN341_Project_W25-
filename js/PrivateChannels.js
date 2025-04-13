@@ -46,7 +46,7 @@ const socket = io();
             };
             
             // Fetch logged-in user info
-            fetch('/user-info')
+            fetch('/api/auth/user-info')
                 .then(response => response.json())
                 .then(data => {
                     loggedInUserId = data.id;
@@ -76,7 +76,7 @@ const socket = io();
                 currentGroupId = null;
             }
             
-            fetch('/user-info')
+            fetch('/api/auth/user-info')
                 .then(response => response.json())
                 .then(data => {
                     window.location.href = data.role === "admin" ? "/AdminDashboard.html" : "/UserDashboard.html"; 
@@ -135,7 +135,7 @@ const socket = io();
 
         // Fetch groups
         function fetchGroups() {
-            fetch("/get-groups")
+            fetch("/api/groups/get-groups")
                 .then(response => response.json())
                 .then(groups => handleGroupsSuccess(groups))
                 .catch(err => handleGroupsError(err));
@@ -233,7 +233,7 @@ const socket = io();
             const groupDescription = prompt("Enter description (interests, topic, etc.):");
             if (!groupDescription) return;
         
-            fetch("/create-group", {
+            fetch("/api/groups/create-group", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: groupName, description: groupDescription })
@@ -258,6 +258,14 @@ const socket = io();
         document.getElementById("create-group-btn").addEventListener("click", createNewChannel);
         
         function loadGroup(groupId, groupName, groupDescription) {
+            if (currentGroupId && currentGroupId !== groupId) {
+                // Leave the previous group socket room
+                socket.emit('leave-group', currentGroupId);
+            }
+
+            // Update the current group ID
+            currentGroupId = groupId;
+        
             console.log(`Loading group: ${groupId} - ${groupName}`);
         
             if (currentGroupId && currentGroupId !== groupId) {
@@ -315,7 +323,7 @@ const socket = io();
         }
         
         function fetchAndRenderGroupOwner(groupId, groupDescription) {
-            fetch(`/group-owner/${groupId}`)
+            fetch(`/api/groups/group-owner/${groupId}`)
                 .then(response => response.json())
                 .then(ownerData => {
                     if (ownerData.error) {
@@ -330,7 +338,7 @@ const socket = io();
         }
         
         function fetchAndRenderGroupMembers(groupId, ownerId, isOwner, groupDescription) {
-            fetch(`/group-members/${groupId}`)
+            fetch(`/api/groups/group-members/${groupId}`)
                 .then(response => response.json())
                 .then(members => {
                     const memberList = document.getElementById("member-list");
@@ -427,7 +435,7 @@ const socket = io();
         
 
         function fetchPendingRequests(groupId) {
-            fetch(`/group-requests/${groupId}`)
+            fetch(`/api/groups/group-requests/${groupId}`)
                 .then(response => response.json())
                 .then(requests => {
                     const requestList = document.getElementById("request-list");
@@ -458,7 +466,7 @@ const socket = io();
         }
 
         function requestJoinGroup(groupId) {
-            fetch("/request-join", {
+            fetch("/api/groups/request-join", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ groupId })
@@ -480,7 +488,7 @@ const socket = io();
         function leaveGroup(groupId) {
             if (!confirm("Are you sure you want to leave this private channel?")) return;
             
-            fetch("/leave-group", {
+            fetch("/api/groups/leave-group", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ groupId })
@@ -498,7 +506,7 @@ const socket = io();
             const username = document.getElementById("add-user-input").value.trim();
             if (!username) return alert("Please enter a valid username");
 
-            fetch("/add-user", {
+            fetch("/api/groups/add-user", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ groupId, username })
@@ -521,7 +529,7 @@ const socket = io();
         }
 
         function approveUser(groupId, userId) {
-            fetch("/approve-user", {
+            fetch("/api/groups/approve-user", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ groupId, userId })
@@ -546,8 +554,11 @@ const socket = io();
             const chatBox = document.getElementById("chat-box");
             chatBox.innerHTML = "<div class='loading-message'><i class='fas fa-spinner fa-spin'></i> Loading messages...</div>";
 
+            // Join the socket.io room for this group
+            socket.emit('join-group', groupId);
+
             // Fetch message history for this group
-            fetch(`/api/group-messages/${groupId}`)
+            fetch(`/api/groups/group-messages/${groupId}`)
                 .then(response => response.json())
                 .then(messages => {
                     // Check if we're still on the same group (user might have switched)
@@ -626,11 +637,15 @@ const socket = io();
             // Ensure we're still on the current group before sending
             if (!currentGroupId) return;
             
-            socket.emit("send-message", {
+            const messageData = {
                 groupId: currentGroupId,
                 userId: loggedInUserId,
                 message: text
-            });
+            };
+            
+            console.log('Sending group message:', messageData);
+            
+            socket.emit("send-message", messageData);
             
             messageInput.value = "";
             messageInput.focus();
@@ -641,7 +656,7 @@ const socket = io();
             const newDescription = prompt("Edit channel description:", currentDescription || "");
             if (newDescription === null || newDescription === currentDescription) return;
             
-            fetch("/update-group-description", {
+            fetch("/api/groups/update-group-description", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ groupId, description: newDescription })
@@ -665,7 +680,7 @@ const socket = io();
         function removeMember(groupId, memberId, memberName) {
             if (!confirm(`Are you sure you want to remove ${memberName} from this channel?`)) return;
             
-            fetch("/remove-group-member", {
+            fetch("/api/groups/remove-group-member", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ groupId, memberId })

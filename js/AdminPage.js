@@ -17,7 +17,7 @@ function showToast(message, type = 'success') {
 }
 
 // Fetch admin information
-fetch('/admin-info')
+fetch('/api/auth/admin-info')
     .then(response => {
         if (!response.ok) throw new Error('Unauthorized');
         return response.json();
@@ -50,7 +50,7 @@ document.getElementById("createTeamForm").addEventListener("submit", (e) => {
         return;
     }
 
-    fetch("/create-team", {
+    fetch("/api/teams/create-team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ teamName }),
@@ -110,7 +110,7 @@ document.getElementById('add-member-form').addEventListener('submit', (e) => {
         return;
     }
 
-    fetch("/assign-user-to-team", {
+    fetch("/api/teams/assign-user-to-team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userName, teamId }),
@@ -143,7 +143,7 @@ document.getElementById('modal-create-channel-form').addEventListener('submit', 
         return;
     }
 
-    fetch('/create-channel', {
+    fetch('/api/channels/create-channel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channelName, teamId }),
@@ -167,14 +167,14 @@ document.getElementById('modal-create-channel-form').addEventListener('submit', 
 
 // Fetch and display teams owned by admin
 function fetchTeamsWithMembers() {
-    fetch('/get-teams-with-members')
+    fetch('api/teams/all')
         .then(response => response.json())
         .then(teams => {
             const teamsContainer = document.getElementById('teams-container');
             teamsContainer.innerHTML = '';
 
             // Fetch admin info to show only teams created by this admin
-            fetch('/admin-info')
+            fetch('/api/auth/admin-info')
                 .then(response => response.json())
                 .then(adminData => {
                     // Filter teams where admin is the creator
@@ -200,19 +200,35 @@ function fetchTeamsWithMembers() {
 
 // Fetch and display teams where admin is a member but not creator
 function fetchTeamsIAmMemberOf() {
-    fetch('/get-user-teams')
-        .then(response => response.json())
+    fetch('/api/teams/user-teams')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: Failed to fetch teams`);
+            }
+            return response.json();
+        })
         .then(teams => {
             const memberTeamsContainer = document.getElementById('member-teams-container');
             memberTeamsContainer.innerHTML = '';
 
-            if (!teams || teams.length === 0) {
+            if (!teams || !Array.isArray(teams)) {
+                console.warn("Teams data is not in expected format:", teams);
+                memberTeamsContainer.innerHTML = '<p>Error: Unable to load teams data correctly.</p>';
+                return;
+            }
+
+            if (teams.length === 0) {
                 memberTeamsContainer.innerHTML = '<p>You are not a member of any additional teams.</p>';
                 return;
             }
 
-            fetch('/admin-info')
-                .then(response => response.json())
+            fetch('/api/auth/admin-info')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch admin info');
+                    }
+                    return response.json();
+                })
                 .then(adminData => {
                     // Filter out teams created by this admin
                     const memberTeams = teams.filter(team => team.creatorName !== adminData.name);
@@ -226,12 +242,17 @@ function fetchTeamsIAmMemberOf() {
                         const teamCard = createTeamCard(team, false);
                         memberTeamsContainer.appendChild(teamCard);
                     });
+                })
+                .catch(err => {
+                    console.error('Error fetching admin info:', err);
+                    memberTeamsContainer.innerHTML = '<p>Error loading admin information. Please try again later.</p>';
                 });
         })
         .catch(err => {
             console.error('Error fetching user teams:', err);
             const memberTeamsContainer = document.getElementById('member-teams-container');
             memberTeamsContainer.innerHTML = '<p>Error loading teams. Please try again later.</p>';
+            showToast('Failed to load teams you are a member of', 'error');
         });
 }
 
@@ -401,8 +422,8 @@ function deleteTeam(teamId, teamName) {
         return;
     }
 
-    fetch('/delete-team', {
-        method: 'POST',
+    fetch(`/api/teams/${teamId}`, {
+        method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teamId }),
     })
@@ -441,8 +462,8 @@ function removeMemberFromTeam(teamId, userName) {
             const userId = userData.userId;
 
             // Now remove the user from the team
-            fetch('/remove-team-member', {
-                method: 'POST',
+            fetch(`/api/teams/${teamId}/member/${userId}`, {
+                method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ teamId, userId }),
             })
@@ -720,7 +741,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         // Assign user to channel
-        fetch('/assign-user', {
+        fetch('/api/channels/assign-user-to-channel', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -891,7 +912,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let loggedInUserRole;
 
     // Get current user info
-    fetch('/user-info')
+    fetch('/api/auth/user-info')
         .then(response => {
             if (!response.ok) throw new Error('Unauthorized');
             return response.json();
@@ -1124,7 +1145,7 @@ function showAddToChannelModal(user) {
     modalChannelSelect.innerHTML = '<option value="">Loading channels...</option>';
     
     // Fetch all teams and their channels
-    fetch('/get-teams-with-members')
+    fetch('api/teams/all')
         .then(response => response.json())
         .then(teams => {
             modalChannelSelect.innerHTML = '<option value="">Select a channel</option>';
