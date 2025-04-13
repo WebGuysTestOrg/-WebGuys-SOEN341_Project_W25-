@@ -100,7 +100,7 @@ const TRUSTED_ORIGIN = window.location.origin;
 async function initializeChannels() {
     try {
         // Get team ID
-        const teamIdResponse = await fetch('/get-team-id-from-name', {
+        const teamIdResponse = await fetch('/api/teams/get-team-id-from-name', {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ teamName })
@@ -113,7 +113,7 @@ async function initializeChannels() {
         console.log("Fetched Team ID:", teamId);
         
         // Get channels for team
-        const channelsResponse = await fetch('/get-channels', {
+        const channelsResponse = await fetch('/api/channels/user-channels', {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ teamId })
@@ -137,7 +137,7 @@ async function populateChannelList(data, teamId) {
     if (data.channels && data.channels.length > 0) {
         try {
             // Get user's channels
-            const userChannelsResponse = await fetch('/get-user-channels', {
+            const userChannelsResponse = await fetch('/api/channels/user-channels', {
                 method: "GET",
                 headers: { "Content-Type": "application/json" }
             });

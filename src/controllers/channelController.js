@@ -1,4 +1,4 @@
-const { pool } = require('../config/db');
+const { pool, connection } = require('../config/db');
 const util = require('util');
 const query = util.promisify(pool.query).bind(pool);
 
@@ -21,7 +21,7 @@ const channelController = {
                 LEFT JOIN user_teams ut ON t.id = ut.team_id
                 WHERE t.id = ? AND (t.created_by = ? OR ut.user_id = ?)`;
     
-            const [results] = await query(checkMembershipQuery, [teamId, userId, userId]);
+            const results = await query(checkMembershipQuery, [teamId, userId, userId]); // FIXED
     
             if (results.length === 0) {
                 return res.status(403).json({ error: "You must be the creator or a member of the team to create a channel." });
@@ -30,7 +30,7 @@ const channelController = {
             const teamCreatorId = results[0].creatorId;
     
             const insertChannelQuery = "INSERT INTO channels (name, team_id) VALUES (?, ?)";
-            const [channelResult] = await query(insertChannelQuery, [channelName, teamId]);
+            const channelResult = await query(insertChannelQuery, [channelName, teamId]); // FIXED
             const channelId = channelResult.insertId;
     
             const insertUserChannelQuery = "INSERT INTO user_channels (user_id, channel_id) VALUES (?, ?)";
@@ -74,29 +74,33 @@ const channelController = {
 
     // Get channels for the current user
     getUserChannels: async (req, res) => {
-        try {
-            if (!req.session?.user) {
-                return res.status(401).json({ error: "Unauthorized" });
+    if (!req.session?.user) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+    
+        const userId = req.session.user.id;
+        const query = `
+            SELECT 
+                c.id AS channelId, 
+                c.name AS channelName,
+                t.id AS teamId,
+                t.name AS teamName
+            FROM 
+                user_channels uc  -- FIX: Changed from channel_members to user_channels
+            JOIN channels c ON uc.channel_id = c.id
+            JOIN teams t ON c.team_id = t.id
+            WHERE uc.user_id = ?
+            ORDER BY t.id, c.id;
+        `;
+    
+        connection.query(query, [userId], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: "Error fetching user channels." });
             }
-
-            const userId = req.session.user.id;
-            const sqlQuery = `
-                SELECT 
-                    c.id AS channelId, 
-                    c.name AS channelName,
-                    t.id AS teamId,
-                    t.name AS teamName
-                FROM 
-                    user_channels uc
-                JOIN channels c ON uc.channel_id = c.id
-                JOIN teams t ON c.team_id = t.id
-                WHERE uc.user_id = ?
-                ORDER BY t.id, c.id;
-            `;
-
-            const results = await query(sqlQuery, [userId]);
+    
             const userChannels = {};
-
+    
             results.forEach((row) => {
                 if (!userChannels[row.teamId]) {
                     userChannels[row.teamId] = {
@@ -105,18 +109,16 @@ const channelController = {
                         channels: []
                     };
                 }
-
+    
                 userChannels[row.teamId].channels.push({
                     channelId: row.channelId,
                     channelName: row.channelName
                 });
             });
-
+    
             res.json(Object.values(userChannels));
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ error: "Error fetching user channels." });
-        }
+            console.log(Object.values(userChannels))
+        })
     },
 
     // Assign a user to a channel

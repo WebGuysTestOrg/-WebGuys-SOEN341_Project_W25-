@@ -11,6 +11,7 @@ const userRoutes = require('./routes/userRoutes');
 const teamRoutes = require('./routes/teamRoutes');
 const groupMessagesRoute = require('./routes/groupMessages');
 const messageRoutes = require('./routes/messageRoutes');
+const groupRoutes = require('./routes/groupRoutes');
 
 const app = express();
 
@@ -50,5 +51,6 @@ app.use('/api/channels', channelRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api', groupMessagesRoute);
 app.use("/api/messages", messageRoutes);
+app.use('/api/groups', groupRoutes);
 // Export the configured app and session middleware
 module.exports = { app, sessionMiddleware }; 

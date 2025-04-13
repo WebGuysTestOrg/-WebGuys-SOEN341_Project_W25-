@@ -741,7 +741,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         // Assign user to channel
-        fetch('/assign-user', {
+        fetch('/api/channels/assign-user-to-channel', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

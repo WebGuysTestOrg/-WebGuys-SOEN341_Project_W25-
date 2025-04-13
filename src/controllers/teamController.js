@@ -387,7 +387,30 @@ const teamController = {
             console.error("Error removing team member:", err);
             res.status(500).json({ error: "Error removing team member." });
         }
+    },
+    // Get Team ID from Team Name
+getTeamIdFromName: async (req, res) => {
+    try {
+        const { teamName } = req.body;
+
+        if (!teamName) {
+            return res.status(400).json({ error: "Team name is required." });
+        }
+
+        const sql = "SELECT id FROM teams WHERE name = ?";
+        const results = await query(sql, [teamName]);
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Team not found." });
+        }
+
+        res.json({ teamId: results[0].id });
+    } catch (err) {
+        console.error("Error fetching team ID:", err);
+        res.status(500).json({ error: "Internal Server Error" });
     }
+},
+
 };
 
 module.exports = teamController; 

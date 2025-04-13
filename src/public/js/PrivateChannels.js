@@ -233,7 +233,7 @@ const socket = io();
             const groupDescription = prompt("Enter description (interests, topic, etc.):");
             if (!groupDescription) return;
         
-            fetch("/create-group", {
+            fetch("/api/groups/create-group", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: groupName, description: groupDescription })

@@ -245,7 +245,7 @@ async function assignUserToChannel(teamId, channelName, userName, form, content,
     assignBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
 
     try {
-        const response = await fetch('/assign-user', {
+        const response = await fetch('/api/channels/assign-user-to-channel', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ teamId, channelName, userName })
