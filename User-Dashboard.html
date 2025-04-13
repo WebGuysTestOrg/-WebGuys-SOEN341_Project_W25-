@@ -6,7 +6,7 @@
     <title>ChatHaven - User Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js" integrity="sha512-8ExARjWWkIllMlNzVg7JKq9RKWPlJABQUNq6YvAjE/HobctjH/NA+bSiDMDvouBVjp4Wwnf1VP1OEv7Zgjtuxw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="styles/UserDashboard.css">
+    <link rel="stylesheet" href="styles/user-dashboard.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart/css/emoji-mart.css" />
     <link rel="icon" type="image/png" href="assets/ChatHavenLogo.png">
     <script src="https://cdn.jsdelivr.net/npm/emoji-mart/dist/browser.js"></script>
@@ -16,12 +16,12 @@
         <h3>Welcome back, <span id="username">User</span>!</h3>
         <div class="quick-actions">
             <a href="DMs.html" class="btn"><i class="fas fa-comments"></i> Direct Messages</a>
-            <a href="private_channels.html" class="btn"><i class="fas fa-users"></i> Private Channels</a>
+            <a href="Private-Channels.html" class="btn"><i class="fas fa-users"></i> Private Channels</a>
             <div class="online-users-indicator" id="online-users-indicator">
                 <i class="fas fa-users"></i> Online Users
                 <span class="online-count" id="header-online-count">(1 online)</span>
             </div>
-            <a href="settings_page.html" class="btn settings-btn" title="Settings">
+            <a href="Settings-Page.html" class="btn settings-btn" title="Settings">
                 <i class="fa-solid fa-cog"></i> Settings
             </a>
             <a href="/api/auth/logout" class="btn logout-btn" title="Logout">
@@ -45,7 +45,7 @@
                     <i class="fas fa-spinner fa-spin"></i> Loading your private channels...
                 </div>
             </div>
-            <a href="private_channels.html" class="btn private-channel-btn">
+            <a href="Private-Channels.html" class="btn private-channel-btn">
                 <i class="fas fa-user-plus"></i> Manage Private Channels
             </a>
         </div>
@@ -105,7 +105,7 @@
     <!-- AI Chatbot Integration -->
     <iframe
         id="ai-chat-frame"
-        src="chatbot.html"
+        src="Chat-Bot.html"
         title="AI Chatbot"
     ></iframe>
 

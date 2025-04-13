@@ -285,7 +285,7 @@ function createTeamButton(team) {
     button.textContent = "Open Team Chat";
     button.classList.add("teamsButton");
     button.addEventListener("click", () => {
-        window.location.href = `channel_chat.html?team=${encodeURIComponent(team.teamName)}`;
+        window.location.href = `Channel-Chat.html?team=${encodeURIComponent(team.teamName)}`;
     });
     return button;
 }
@@ -614,7 +614,7 @@ function renderPrivateChannels(container, privateChannels) {
                 <i class="fas fa-users"></i> ${group.memberCount} members
             </div>
             <div class="private-channel-actions">
-                <a href="private_channels.html?id=${group.id}" class="btn">
+                <a href="Private-Channels.html?id=${group.id}" class="btn">
                     <i class="fas fa-comment-dots"></i> Open Chat
                 </a>
             </div>
