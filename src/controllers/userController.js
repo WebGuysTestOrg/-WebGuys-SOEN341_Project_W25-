@@ -43,8 +43,8 @@ const userController = {
                 );
 
                 const redirectPath = user.user_type === "admin" 
-                    ? "/AdminDashboard.html" 
-                    : "/UserDashboard.html";
+                    ? "/Admin-Dashboard.html" 
+                    : "/User-Dashboard.html";
 
                 res.json({ 
                     redirect: redirectPath,

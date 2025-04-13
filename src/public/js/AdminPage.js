@@ -30,8 +30,8 @@ fetch('/api/auth/admin-info')
         document.addEventListener("keydown", () => resetInactivityTimer(data.id));
         socket.emit("userOnline", data.id);
         
-        if (data.role === "user" && window.location.pathname !== "/UserDashboard.html") {
-            window.location.href = "/UserDashboard.html";
+        if (data.role === "user" && window.location.pathname !== "/User-Dashboard.html") {
+            window.location.href = "/User-Dashboard.html";
         }
         
         // Load teams
@@ -378,7 +378,7 @@ function createTeamCard(team, isOwner) {
     openChatButton.classList.add('action-btn', 'primary');
     openChatButton.innerHTML = '<i class="fas fa-comments"></i> Open Team Chat';
     openChatButton.addEventListener('click', () => {
-        window.location.href = `channel_chat.html?team=${encodeURIComponent(team.teamName)}`;
+        window.location.href = `Channel-Chat.html?team=${encodeURIComponent(team.teamName)}`;
     });
     actionButtons.appendChild(openChatButton);
     

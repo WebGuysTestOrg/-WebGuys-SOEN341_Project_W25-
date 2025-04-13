@@ -827,7 +827,6 @@ h2 {
     border: 3px solid var(--dark-grey);
     padding: 10px 15px;
     border-radius: 5px;
-    cursor: pointer;
     z-index: 1000;
     transition: all 0.3s ease;
 }

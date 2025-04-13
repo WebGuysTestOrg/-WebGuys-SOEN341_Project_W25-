@@ -164,7 +164,7 @@ describe('Auth Controller', () => {
         user_type: 'user'
       });
       expect(res.json).toHaveBeenCalledWith({
-        redirect: "/UserDashboard.html",
+        redirect: "/User-Dashboard.html",
         user: req.session.user
       });
     });
@@ -203,7 +203,7 @@ describe('Auth Controller', () => {
         user_type: 'admin'
       });
       expect(res.json).toHaveBeenCalledWith({
-        redirect: "/AdminDashboard.html",
+        redirect: "/Admin-Dashboard.html",
         user: req.session.user
       });
     });
