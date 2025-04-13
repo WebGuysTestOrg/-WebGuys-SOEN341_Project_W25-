@@ -10,7 +10,6 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const teamRoutes = require('./routes/teamRoutes');
 const groupMessagesRoute = require('./routes/groupMessages');
-const messageRoutes = require('./routes/messageRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 
 const app = express();
@@ -42,15 +41,15 @@ app.use(express.static(path.join(__dirname, "public")));
 // Example: app.set('views', path.join(__dirname, 'views'));
 
 // --- Mount Routers ---
-// Mount chat routes (all routes starting with / defined in chatRoutes)
 app.use('/', chatRoutes);
+app.use('/channels', channelRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api', groupMessagesRoute);
-app.use("/api/messages", messageRoutes);
 app.use('/api/groups', groupRoutes);
+
 // Export the configured app and session middleware
 module.exports = { app, sessionMiddleware }; 

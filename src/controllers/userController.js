@@ -397,24 +397,6 @@ const userController = {
                 res.status(500).json({ error: "Error updating status" });
             }
         },
-
-        getUserTeams: async (req, res) => {
-            try {
-                const [teams] = await promisePool.query(
-                    `SELECT t.id, t.name, t.created_by 
-                     FROM teams t 
-                     JOIN user_teams ut ON t.id = ut.team_id 
-                     WHERE ut.user_id = ?`,
-                    [req.session.user.id]
-                );
-
-                res.json(teams);
-            } catch (err) {
-                console.error("Teams fetch error:", err);
-                res.status(500).json({ error: "Error fetching teams" });
-            }
-        },
-
         getUserChannels: async (req, res) => {
             try {
                 const [channels] = await promisePool.query(

@@ -24,11 +24,10 @@ async function fetchUserTeams() {
             showToast("Teams data is not in the expected format.", "error");
             return;
         }
-        
         renderTeams(teams);
     } catch (err) {
         console.error("Error fetching teams:", err);
-        showToast("Failed to load teams. this is the problemmdnmsdjolasdoiksdfhjosdifj.", "error");
+        showToast("Failed to load teams. this is the problemm.", "error");
     }
 }
 
@@ -245,7 +244,7 @@ async function assignUserToChannel(teamId, channelName, userName, form, content,
     assignBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
 
     try {
-        const response = await fetch('/api/channels/assign-user-to-channel', {
+        const response = await fetch('/assign-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ teamId, channelName, userName })
@@ -534,7 +533,7 @@ async function fetchPrivateChannels() {
     showLoading(container);
 
     try {
-        const response = await fetch("/get-groups");
+        const response = await fetch("/api/groups/get-groups");
         const groups = await response.json();
 
         await handleGroupsResponse(groups, container);
@@ -579,7 +578,7 @@ async function handleGroupsResponse(groups, container) {
 
 async function fetchGroupMembers(group, privateChannels) {
     try {
-        const response = await fetch(`/group-members/${group.id}`);
+        const response = await fetch(`/api/groups/group-members/${group.id}`);
         const members = await response.json();
 
         const isMember = members.some(member => member.id === currentUserId);

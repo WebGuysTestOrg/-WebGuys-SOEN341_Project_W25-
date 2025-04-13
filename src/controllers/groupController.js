@@ -82,7 +82,95 @@ const groupController = {
             res.json(results[0]);
         });
     },
-// Request to Join Group
+
+    // Get Group Requests
+    getGroupRequests: (req, res) => {
+        const { groupId } = req.params;
+        const query = `
+            SELECT gr.id, gr.user_id, u.name as user_name
+            FROM group_requests gr
+            JOIN user_form u ON gr.user_id = u.id
+            WHERE gr.group_id = ?
+            ORDER BY gr.id DESC
+        `;
+        connection.query(query, [groupId], (err, results) => {
+            if (err) {
+                console.error("Error fetching group requests:", err);
+                return res.status(500).json({ error: "Error fetching group requests." });
+            }
+            res.json(results);
+        });
+    },
+
+    // Add User to Group
+    addUserToGroup: (req, res) => {
+        const { groupId, userId } = req.body;
+        const adderId = req.session.user.id;
+        
+        // Check if the user making the request is the group owner
+        const checkOwnerQuery = "SELECT created_by FROM `groups` WHERE id = ?";
+        connection.query(checkOwnerQuery, [groupId], (err, results) => {
+            if (err) {
+                console.error("Error checking group owner:", err);
+                return res.status(500).json({ error: "Database error" });
+            }
+            
+            if (results.length === 0) {
+                return res.status(404).json({ error: "Group not found" });
+            }
+            
+            if (results[0].created_by !== adderId) {
+                return res.status(403).json({ error: "Only the group owner can add users directly" });
+            }
+            
+            // Check if user is already a member
+            const checkMemberQuery = "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?";
+            connection.query(checkMemberQuery, [groupId, userId], (err, memberResults) => {
+                if (err) {
+                    console.error("Error checking membership:", err);
+                    return res.status(500).json({ error: "Database error" });
+                }
+                
+                if (memberResults.length > 0) {
+                    return res.status(400).json({ error: "User is already a member of this group" });
+                }
+                
+                // Add user to group
+                const addUserQuery = "INSERT INTO group_members (group_id, user_id) VALUES (?, ?)";
+                connection.query(addUserQuery, [groupId, userId], (err) => {
+                    if (err) {
+                        console.error("Error adding user to group:", err);
+                        return res.status(500).json({ error: "Failed to add user to group" });
+                    }
+                    
+                    // Get user's name
+                    const getUserQuery = "SELECT name FROM user_form WHERE id = ?";
+                    connection.query(getUserQuery, [userId], (err, userResults) => {
+                        if (err || userResults.length === 0) {
+                            console.error("Error getting user name:", err);
+                            return res.status(200).json({ message: "User added to group" });
+                        }
+                        
+                        const userName = userResults[0].name;
+                        const adderName = req.session.user.name;
+                        
+                        // Add system message
+                        const systemMsg = `${userName} was added to the group by ${adderName}`;
+                        const msgQuery = "INSERT INTO group_messages (group_id, user_id, text, is_system_message) VALUES (?, ?, ?, 1)";
+                        connection.query(msgQuery, [groupId, adderId, systemMsg], (err) => {
+                            if (err) {
+                                console.error("Error adding system message:", err);
+                            }
+                            
+                            res.json({ message: "User added to group successfully" });
+                        });
+                    });
+                });
+            });
+        });
+    },
+
+    // Request to Join Group
     requestJoin: (req, res) => {
         const { groupId } = req.body;
         const userId = req.session.user.id;
@@ -108,7 +196,6 @@ const groupController = {
         });
     },
 
-
     // Approve User to Group
     approveUser: (req, res) => {
         const { groupId, userId } = req.body;
@@ -132,7 +219,6 @@ const groupController = {
             });
         });
     },
-
 
     // Leave Group
     leaveGroup: (req, res) => {
@@ -163,7 +249,6 @@ const groupController = {
         });
     },
 
-
     // Update Group Description
     updateGroupDescription: (req, res) => {
         const { groupId, description } = req.body;
@@ -192,7 +277,6 @@ const groupController = {
             });
         });
     },
-
 
     // Remove Member from Group
     removeGroupMember: (req, res) => {
