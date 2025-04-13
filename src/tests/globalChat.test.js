@@ -95,7 +95,7 @@ jest.doMock('../socket/handlers/globalChat', () => {
 });
 
 // Now import modules after mocking
-const connection = require('../config/db');
+const { connection } = require('../config/db');
 const { EVENTS, ROOMS } = require('../socket/constants');
 
 // Create mock socket and io objects

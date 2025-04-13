@@ -10,12 +10,24 @@ let currentUserName = null;
 
 async function fetchUserTeams() {
     try {
-        const response = await fetch('/get-user-teams');
+        const response = await fetch('/api/teams/user-teams');
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Error ${response.status}: Failed to fetch teams`);
+        }
+        
         const teams = await response.json();
+        
+        if (!teams || !Array.isArray(teams)) {
+            console.warn("Teams data is not in expected format:", teams);
+            showToast("Teams data is not in the expected format.", "error");
+            return;
+        }
         renderTeams(teams);
     } catch (err) {
         console.error("Error fetching teams:", err);
-        showToast("Failed to load teams. Please try again.", "error");
+        showToast("Failed to load teams. this is the problemm.", "error");
     }
 }
 
@@ -23,6 +35,11 @@ function renderTeams(teams) {
     userTeams = {}; 
     const teamsContainer = document.getElementById("teams-container");
     teamsContainer.innerHTML = "";
+
+    if (!teams || teams.length === 0) {
+        teamsContainer.innerHTML = '<div class="no-teams-message"><p>You are not a member of any teams yet.</p></div>';
+        return;
+    }
 
     teams.forEach(team => {
         userTeams[team.teamId] = team;
@@ -108,7 +125,7 @@ function handleChannelFormEvents(formWrapper, team) {
 
 async function createChannel(teamId, channelName) {
     try {
-        const response = await fetch('/create-channel', {
+        const response = await fetch('/api/channels/create-channel', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ teamId, channelName })
@@ -516,7 +533,7 @@ async function fetchPrivateChannels() {
     showLoading(container);
 
     try {
-        const response = await fetch("/get-groups");
+        const response = await fetch("/api/groups/get-groups");
         const groups = await response.json();
 
         await handleGroupsResponse(groups, container);
@@ -561,7 +578,7 @@ async function handleGroupsResponse(groups, container) {
 
 async function fetchGroupMembers(group, privateChannels) {
     try {
-        const response = await fetch(`/group-members/${group.id}`);
+        const response = await fetch(`/api/groups/group-members/${group.id}`);
         const members = await response.json();
 
         const isMember = members.some(member => member.id === currentUserId);
@@ -609,7 +626,7 @@ function renderPrivateChannels(container, privateChannels) {
 
 // Initialize page
 document.addEventListener("DOMContentLoaded", () => {
-    fetch('/user-info')
+    fetch('/api/auth/user-info')
         .then(response => response.json())
         .then(data => {
             document.getElementById('username').textContent = data.name;
@@ -1036,7 +1053,7 @@ function updateUserStatusUI(onlineUsers = [], awayUsers = []) {
     }
     
     // Fetch user role from session data
-    fetch('/user-info')
+    fetch('/api/auth/user-info')
         .then(response => response.json())
         .then(data => {
             const userRole = data.role || 'user';

@@ -1,4 +1,4 @@
-const connection = require('../config/db');
+const { connection } = require('../config/db');
 const util = require('util');
 
 // Promisify connection methods
@@ -119,7 +119,7 @@ const teamController = {
     // Get all teams with their members
     getTeamsWithMembers: async (req, res) => {
         try {
-            const query = `
+            const sqlquery = `
                 SELECT 
                     t.id AS teamId,
                     t.name AS teamName,
@@ -139,7 +139,7 @@ const teamController = {
                 ORDER BY t.id, c.id, m.name, cu.name;
             `;
 
-            const results = await query(query);
+            const results = await query(sqlquery);
             const teams = {};
 
             results.forEach((row) => {
@@ -203,25 +203,20 @@ const teamController = {
                     c.id AS channelId,
                     c.name AS channelName,
                     ucm.name AS channelMemberName
-                FROM 
-                    user_teams ut
-                JOIN teams t ON ut.team_id = t.id
-                JOIN user_form u ON t.created_by = u.id  
-                LEFT JOIN user_teams team_users ON t.id = team_users.team_id
-                LEFT JOIN user_form utm ON team_users.user_id = utm.id
-                LEFT JOIN channels c ON t.id = c.team_id
-                LEFT JOIN user_channels uc ON (c.id = uc.channel_id)
-                LEFT JOIN user_form ucm ON uc.user_id = ucm.id
-                WHERE ut.user_id = ? 
-                AND (
-                    c.id IN (SELECT channel_id FROM user_channels WHERE user_id = ?)  -- Channels user is member of
-                    OR t.created_by = ?  -- User is team creator
-                    OR c.id IS NULL     -- Include teams even if they have no channels
-                )
-                ORDER BY t.id, c.id, ucm.name;
+                    FROM 
+                        user_teams ut
+                    JOIN teams t ON ut.team_id = t.id
+                    JOIN user_form u ON t.created_by = u.id  
+                    LEFT JOIN user_teams team_users ON t.id = team_users.team_id
+                    LEFT JOIN user_form utm ON team_users.user_id = utm.id
+                    LEFT JOIN channels c ON t.id = c.team_id
+                    LEFT JOIN user_channels uc ON c.id = uc.channel_id
+                    LEFT JOIN user_form ucm ON uc.user_id = ucm.id
+                    WHERE ut.user_id = ?
+                    ORDER BY t.id, c.id, ucm.name;
             `;
 
-            const results = await query(sqlQuery, [userId, userId, userId]);
+            const results = await query(sqlQuery, [userId]);
             const userTeams = {};
 
             results.forEach((row) => {
@@ -392,7 +387,30 @@ const teamController = {
             console.error("Error removing team member:", err);
             res.status(500).json({ error: "Error removing team member." });
         }
+    },
+    // Get Team ID from Team Name
+getTeamIdFromName: async (req, res) => {
+    try {
+        const { teamName } = req.body;
+
+        if (!teamName) {
+            return res.status(400).json({ error: "Team name is required." });
+        }
+
+        const sql = "SELECT id FROM teams WHERE name = ?";
+        const results = await query(sql, [teamName]);
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Team not found." });
+        }
+
+        res.json({ teamId: results[0].id });
+    } catch (err) {
+        console.error("Error fetching team ID:", err);
+        res.status(500).json({ error: "Internal Server Error" });
     }
+},
+
 };
 
 module.exports = teamController; 

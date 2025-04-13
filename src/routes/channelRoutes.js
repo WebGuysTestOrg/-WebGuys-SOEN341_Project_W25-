@@ -3,16 +3,14 @@ const router = express.Router();
 const channelController = require('../controllers/channelController');
 
 // Create a new channel
-router.post('/create', channelController.createChannel);
+router.post('/create-channel', channelController.createChannel);
 
 // Get channels for a specific team
 router.get('/team/:teamId', channelController.getChannels);
 
 // Get channels for the current user
-router.get('/user', channelController.getUserChannels);
-
-// Assign a user to a channel
-router.post('/assign', channelController.assignUser);
+router.get('/user-channels', channelController.getUserChannels);
+router.post('/assign-user-to-channel', channelController.assignUser);
 
 // Get messages for a specific channel
 router.get('/:channelId/messages', channelController.getChannelMessages);

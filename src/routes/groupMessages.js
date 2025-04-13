@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const MessageManager = require('../socket/utils/messageManager');
-const connection = require('../config/db');
+const { connection } = require('../config/db');
 
 const msgManager = new MessageManager(connection);
 

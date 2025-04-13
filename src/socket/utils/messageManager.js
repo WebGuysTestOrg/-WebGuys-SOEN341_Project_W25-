@@ -89,7 +89,7 @@ class MessageManager {
 
     async getGroupMessages(groupId) {
         const query = `
-            SELECT u.name AS sender, gm.text, gm.is_system_message
+            SELECT gm.id, u.name AS sender, gm.text, gm.is_system_message
             FROM group_messages gm 
             JOIN user_form u ON gm.user_id = u.id 
             WHERE gm.group_id = ?
