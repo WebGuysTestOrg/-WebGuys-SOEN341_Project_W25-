@@ -82,7 +82,7 @@ const messageController = {
                 return res.status(400).json({ error: 'Missing senderId or recipientId in query' });
             }
             
-            const query = `
+            const queryString = `
                 SELECT * FROM direct_messages 
                 WHERE pinned = TRUE AND (
                     (sender_id = ? AND recipient_id = ?) 
@@ -92,7 +92,7 @@ const messageController = {
                 LIMIT 1
             `;
             
-            const results = await query(query, [senderId, recipientId, recipientId, senderId]);
+            const results = await query(queryString, [senderId, recipientId, recipientId, senderId]);
             const pinnedMessage = results.length > 0 ? results[0] : null;
             
             res.json(pinnedMessage);
@@ -141,13 +141,13 @@ const messageController = {
                 return res.status(400).json({ error: 'Missing teamName or channelName in query' });
             }
             
-            const query = `
+            const queryString = `
                 SELECT * FROM channels_messages 
                 WHERE pinned = true AND team_name = ? AND channel_name = ?
                 ORDER BY created_at DESC LIMIT 1
             `;
             
-            const results = await query(query, [teamName, channelName]);
+            const results = await query(queryString, [teamName, channelName]);
             
             res.json(results[0] || null);
         } catch (err) {
