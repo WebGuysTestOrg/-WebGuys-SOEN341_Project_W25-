@@ -59,12 +59,12 @@ const authController = {
 
                 if (user.user_type === "admin") {
                     return res.json({ 
-                        redirect: "/AdminDashboard.html",
+                        redirect: "/Admin-Dashboard.html",
                         user: req.session.user
                     });
                 } else {
                     return res.json({ 
-                        redirect: "/UserDashboard.html",
+                        redirect: "/User-Dashboard.html",
                         user: req.session.user
                     });
                 }

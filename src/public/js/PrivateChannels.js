@@ -79,9 +79,9 @@ const socket = io();
             fetch('/api/auth/user-info')
                 .then(response => response.json())
                 .then(data => {
-                    window.location.href = data.role === "admin" ? "/AdminDashboard.html" : "/UserDashboard.html"; 
+                    window.location.href = data.role === "admin" ? "/Admin-Dashboard.html" : "/User-Dashboard.html"; 
                 })
-                .catch(() => window.location.href = "/UserDashboard.html");
+                .catch(() => window.location.href = "/User-Dashboard.html");
         });
 
         // Create channel button in empty state

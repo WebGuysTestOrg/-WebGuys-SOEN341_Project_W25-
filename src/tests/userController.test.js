@@ -95,7 +95,7 @@ describe('User Controller', () => {
         user_type: 'user'
       });
       expect(res.json).toHaveBeenCalledWith({
-        redirect: "/UserDashboard.html",
+        redirect: "/User-Dashboard.html",
         user: req.session.user
       });
     });

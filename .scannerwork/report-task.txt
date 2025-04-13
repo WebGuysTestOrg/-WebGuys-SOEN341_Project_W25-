@@ -2,5 +2,5 @@ projectKey=soen341-webguys
 serverUrl=http://localhost:9000
 serverVersion=25.4.0.105899
 dashboardUrl=http://localhost:9000/dashboard?id=soen341-webguys
-ceTaskId=dbaab890-465b-4bef-8000-723a0e5bafed
-ceTaskUrl=http://localhost:9000/api/ce/task?id=dbaab890-465b-4bef-8000-723a0e5bafed
+ceTaskId=9aa10f36-c412-4dff-887e-32426d1e4a4d
+ceTaskUrl=http://localhost:9000/api/ce/task?id=9aa10f36-c412-4dff-887e-32426d1e4a4d
